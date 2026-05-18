@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cornhole League</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--grass:#3B6D11;--grass-light:#639922;--grass-pale:#EAF3DE;--wood:#BA7517;--corn:#FAC775;--bg:#f7f5f0;--card:#ffffff;--text:#2C2C2A;--muted:#888780;--border:rgba(0,0,0,0.1);--danger:#E24B4A;--fd:'Bebas Neue',sans-serif;--fb:'DM Sans',sans-serif;--rad:10px}
+body{font-family:var(--fb);background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
+nav{background:var(--grass);padding:0 24px;display:flex;align-items:center;height:56px;position:sticky;top:0;z-index:100}
+.brand{font-family:var(--fd);font-size:22px;color:var(--corn);letter-spacing:1px;margin-right:32px;white-space:nowrap}
+.brand span{color:#fff}
+.nav-links{display:flex;gap:4px;flex:1}
+.nb{background:none;border:none;color:rgba(255,255,255,0.75);font-family:var(--fb);font-size:14px;font-weight:500;padding:8px 16px;border-radius:6px;cursor:pointer;transition:background .15s,color .15s}
+.nb:hover{background:rgba(255,255,255,0.12);color:#fff}
+.nb.active{background:rgba(255,255,255,0.18);color:#fff}
+.sbadge{margin-left:auto;font-size:12px;font-weight:600;color:var(--corn);background:rgba(0,0,0,0.25);padding:4px 12px;border-radius:20px}
+.page{display:none;padding:28px 24px;max-width:900px;margin:0 auto;width:100%}
+.page.active{display:block}
+.ph{margin-bottom:28px}
+.pt{font-family:var(--fd);font-size:36px;letter-spacing:1px;line-height:1}
+.ps{color:var(--muted);font-size:14px;margin-top:4px}
+.srow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+.sc{background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad);padding:16px}
+.sl{font-size:12px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.sv{font-family:var(--fd);font-size:28px;letter-spacing:.5px}
+.sv.g{color:var(--grass)}.sv.gold{color:var(--wood)}
+.tc{background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad);overflow:hidden}
+.tc table{width:100%;border-collapse:collapse}
+.tc thead tr{background:var(--grass-pale)}
+.tc th{text-align:left;font-size:12px;font-weight:600;color:var(--grass);text-transform:uppercase;letter-spacing:.5px;padding:10px 16px}
+.tc td{padding:12px 16px;border-top:0.5px solid var(--border);font-size:14px}
+.tc tbody tr:hover{background:#fafaf8}
+.rn{font-family:var(--fd);font-size:20px;color:var(--muted);min-width:28px;display:inline-block}
+.rn.top3{color:var(--wood)}
+.pn{font-weight:600;color:var(--text);cursor:pointer}
+.pn:hover{color:var(--grass)}
+.rp{display:inline-block;background:var(--grass-pale);color:var(--grass);font-weight:600;font-size:13px;padding:3px 10px;border-radius:20px}
+.fb2{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.3px}
+.fb2.singles{background:#FAEEDA;color:var(--wood)}
+.fb2.doubles{background:#E6F1FB;color:#185FA5}
+.fb2.both{background:#FBEAF0;color:#993556}
+.wb{display:flex;align-items:center;gap:8px}
+.wbg{flex:1;height:6px;background:var(--border);border-radius:4px;overflow:hidden;max-width:80px}
+.wbf{height:100%;background:var(--grass-light);border-radius:4px}
+.wp{font-size:13px;color:var(--muted);min-width:36px}
+.psc{background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad);padding:20px;margin-bottom:20px}
+.psc label{font-size:13px;font-weight:600;color:var(--muted);display:block;margin-bottom:8px}
+select,input[type=text],input[type=number]{width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;color:var(--text);background:#fff;outline:none;transition:border-color .15s}
+select:focus,input:focus{border-color:var(--grass)}
+.pp{background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad);padding:24px;margin-bottom:20px}
+.ptop{display:flex;align-items:center;gap:20px;margin-bottom:20px}
+.av{width:60px;height:60px;border-radius:50%;background:var(--grass-pale);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:22px;color:var(--grass);flex-shrink:0}
+.pname{font-family:var(--fd);font-size:28px;letter-spacing:.5px}
+.pmeta{font-size:13px;color:var(--muted);margin-top:2px}
+.prb{margin-left:auto;text-align:right}
+.rbn{font-family:var(--fd);font-size:44px;color:var(--grass);line-height:1}
+.rbl{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.pstats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.pstat{text-align:center}
+.psv{font-family:var(--fd);font-size:24px;color:var(--text)}
+.psl{font-size:12px;color:var(--muted)}
+.mh{background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad);overflow:hidden}
+.mhh{padding:14px 20px;border-bottom:0.5px solid var(--border);font-weight:600;font-size:14px}
+.mr{display:flex;align-items:center;gap:12px;padding:12px 20px;border-top:0.5px solid var(--border);font-size:13px}
+.mres{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+.mres.W{background:var(--grass-pale);color:var(--grass)}
+.mres.L{background:#FCEBEB;color:var(--danger)}
+.mscore{font-weight:600;min-width:60px}
+.mopp{color:var(--muted);flex:1}
+.md{font-weight:600;min-width:56px;text-align:right}
+.md.pos{color:var(--grass)}.md.neg{color:var(--danger)}
+.mdate{color:var(--muted);font-size:12px;min-width:80px;text-align:right}
+.sf{background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad);padding:28px}
+.fst{font-family:var(--fd);font-size:20px;letter-spacing:.5px;margin-bottom:16px;padding-bottom:10px;border-bottom:0.5px solid var(--border)}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.fg{display:flex;flex-direction:column;gap:6px}
+.fg label{font-size:13px;font-weight:600;color:var(--muted)}
+.vsd{display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:22px;color:var(--muted);padding-top:24px}
+.subbtn{width:100%;background:var(--grass);color:#fff;border:none;border-radius:8px;padding:14px;font-family:var(--fd);font-size:20px;letter-spacing:1px;cursor:pointer;margin-top:24px;transition:background .15s}
+.subbtn:hover{background:#27500A}
+.fmttgl{display:flex;gap:8px;margin-bottom:20px}
+.fo{flex:1;padding:12px;border:1.5px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;font-weight:600;font-size:14px;color:var(--muted);background:none;font-family:var(--fb);transition:all .15s}
+.fo.active{border-color:var(--grass);background:var(--grass-pale);color:var(--grass)}
+.fo:hover:not(.active){border-color:var(--muted)}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--grass);color:#fff;padding:14px 22px;border-radius:10px;font-weight:600;font-size:14px;transform:translateY(80px);opacity:0;transition:all .3s ease;z-index:9999;pointer-events:none}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.err{background:var(--danger)}
+.moverlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.moverlay.open{opacity:1;pointer-events:auto}
+.mbox{background:var(--card);border-radius:14px;padding:28px;width:380px;max-width:90vw}
+.mt2{font-family:var(--fd);font-size:24px;margin-bottom:16px}
+.macts{display:flex;gap:10px;margin-top:20px}
+.bsec{flex:1;padding:10px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;font-weight:500;cursor:pointer;background:none;color:var(--text)}
+.bpri{flex:1;padding:10px;background:var(--grass);border:none;border-radius:8px;font-family:var(--fb);font-size:14px;font-weight:600;cursor:pointer;color:#fff}
+.es{text-align:center;padding:48px 20px;color:var(--muted)}
+.apl{font-size:13px;color:var(--grass);cursor:pointer;font-weight:600;margin-left:12px}
+.apl:hover{text-decoration:underline}
+.fbtn{background:none;border:0.5px solid var(--border);border-radius:20px;padding:5px 14px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;font-family:var(--fb);transition:all .15s}
+.fbtn:hover{border-color:var(--grass);color:var(--grass)}
+@media(max-width:600px){
+  .srow{grid-template-columns:repeat(2,1fr)}
+  .pstats{grid-template-columns:repeat(2,1fr)}
+  .fr{grid-template-columns:1fr}
+  .vsd{padding-top:0}
+  nav{padding:0 12px}
+  .brand{font-size:18px;margin-right:16px}
+  .page{padding:16px 12px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">CORNHOLE <span>LEAGUE</span></div>
+  <div class="nav-links">
+    <button class="nb active" onclick="showPage('home',this)">Rankings</button>
+    <button class="nb" onclick="showPage('stats',this)">Player Stats</button>
+    <button class="nb" onclick="showPage('scores',this)">Enter Score</button>
+  </div>
+  <div class="sbadge">Season 2025</div>
+</nav>
+
+<!-- RANKINGS -->
+<div class="page active" id="page-home">
+  <div class="ph">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div><div class="pt">Leaderboard</div><div class="ps">Ratings updated after every match</div></div>
+      <button class="fbtn" style="background:var(--grass);border-color:var(--grass);color:#fff;font-size:14px" onclick="openAddPlayer()">+ Add Player</button>
+    </div>
+  </div>
+  <div class="srow" id="home-stats"></div>
+  <div class="tc"><table>
+    <thead><tr>
+      <th style="width:40px">#</th>
+      <th>Player</th>
+      <th>Rating</th>
+      <th>W – L</th>
+      <th>Win %</th>
+      <th>Pts Avg</th>
+    </tr></thead>
+    <tbody id="rankings-body"></tbody>
+  </table></div>
+</div>
+
+<!-- PLAYER STATS -->
+<div class="page" id="page-stats">
+  <div class="ph"><div class="pt">Player Stats</div><div class="ps">Individual performance and match history</div></div>
+  <div class="psc">
+    <label>Select a player <span class="apl" onclick="openAddPlayer()">+ Add new player</span></label>
+    <select id="stats-sel" onchange="renderPlayerStats()"><option value="">— Choose player —</option></select>
+  </div>
+  <div id="stats-content"></div>
+</div>
+
+<!-- ENTER SCORE -->
+<div class="page" id="page-scores">
+  <div class="ph"><div class="pt">Enter Score</div><div class="ps">Record a match result — ratings update automatically</div></div>
+  <div class="sf">
+    <div class="fst">Match Format</div>
+    <div class="fmttgl">
+      <button class="fo active" id="fmt-singles" onclick="setFormat('singles')">Singles (1v1)</button>
+      <button class="fo" id="fmt-doubles" onclick="setFormat('doubles')">Doubles (2v2)</button>
+    </div>
+    <div class="fst">Teams</div>
+    <div id="team-inputs"></div>
+    <div class="fst" style="margin-top:24px">Score</div>
+    <div class="fr">
+      <div class="fg"><label id="lbl-a">Player A Score</label><input type="number" id="score-a" min="0" max="30" placeholder="e.g. 21"></div>
+      <div class="fg"><label id="lbl-b">Player B Score</label><input type="number" id="score-b" min="0" max="30" placeholder="e.g. 15"></div>
+    </div>
+    <div class="fg" style="margin-bottom:8px"><label>Date Played</label><input type="text" id="match-date"></div>
+    <button class="subbtn" onclick="submitScore()">RECORD MATCH</button>
+  </div>
+</div>
+
+<!-- ADD PLAYER MODAL -->
+<div class="moverlay" id="modal" onclick="closeModal(event)">
+  <div class="mbox">
+    <div class="mt2">Add Player</div>
+    <div class="fg" style="margin-bottom:12px"><label>Full Name</label><input type="text" id="np-name" placeholder="e.g. Jake Miller"></div>
+    <div class="fg"><label>Preferred Format</label>
+      <select id="np-fmt">
+        <option value="both">Both Singles &amp; Doubles</option>
+        <option value="singles">Singles Only</option>
+        <option value="doubles">Doubles Only</option>
+      </select>
+    </div>
+    <div class="macts">
+      <button class="bsec" onclick="closeModal()">Cancel</button>
+      <button class="bpri" onclick="addPlayer()">Add Player</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── Rating scale ────────────────────────────────────────────────────────────
+// Internal Elo-like rating centered on 1000.
+// Display: 0–10, centered on 5 at raw 1000.
+// Formula: display = 5 + (raw − 1000) / 200
+// Each 200 raw points = 1 display point.
+// ─────────────────────────────────────────────────────────────────────────────
+const RAW_CENTER = 1000;
+const RAW_SCALE  = 200;
+const K          = 32;
+
+function toDisp(raw) {
+  return Math.max(0, Math.min(10, 5 + (raw - RAW_CENTER) / RAW_SCALE)).toFixed(1);
+}
+function deltaDisp(rawDelta) {
+  return (rawDelta / RAW_SCALE).toFixed(2);
+}
+
+// ─── Storage ─────────────────────────────────────────────────────────────────
+function load() {
+  try { return JSON.parse(localStorage.getItem('cornhole_league') || 'null') || { players:[], matches:[] }; }
+  catch { return { players:[], matches:[] }; }
+}
+function save(d) { try { localStorage.setItem('cornhole_league', JSON.stringify(d)); } catch {} }
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+function toast(msg, err) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (err ? ' err' : '') + ' show';
+  setTimeout(() => t.className = 'toast', 2800);
+}
+function initials(n) { return n.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2); }
+
+// ─── Elo / rating math ────────────────────────────────────────────────────────
+function expected(rA, rB) { return 1 / (1 + Math.pow(10, (rB - rA) / 400)); }
+
+function calcDelta(wR, lR, wS, lS) {
+  const E  = expected(wR, lR);
+  const mf = 1 + Math.log(Math.max(wS - lS, 1)) * 0.2;  // margin-of-victory multiplier
+  const pb = Math.min(wS / 21, 1) * 0.1;                 // points-scored bonus
+  return Math.max(Math.round(K * mf * (1 - E) * (1 + pb)), 1);
+}
+
+// ─── Navigation ──────────────────────────────────────────────────────────────
+function showPage(p, btn) {
+  document.querySelectorAll('.page').forEach(e => e.classList.remove('active'));
+  document.querySelectorAll('.nb').forEach(e => e.classList.remove('active'));
+  document.getElementById('page-' + p).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (p === 'home')   renderHome();
+  if (p === 'stats')  { fillSelects(); renderPlayerStats(); }
+  if (p === 'scores') { fillSelects(); renderTeamInputs(); }
+}
+
+// ─── Home / Rankings ─────────────────────────────────────────────────────────
+function renderHome() {
+  const d      = load();
+  const sorted = [...d.players].sort((a,b) => b.rating - a.rating);
+  const total  = d.players.length;
+  const top    = sorted[0];
+  const avgRaw = total ? d.players.reduce((s,p) => s + (p.rating || RAW_CENTER), 0) / total : RAW_CENTER;
+
+  document.getElementById('home-stats').innerHTML = `
+    <div class="sc"><div class="sl">Players</div><div class="sv">${total}</div></div>
+    <div class="sc"><div class="sl">Matches</div><div class="sv">${d.matches.length}</div></div>
+    <div class="sc"><div class="sl">Top Rated</div><div class="sv gold" style="font-size:22px;line-height:1.2">${top ? top.name.split(' ')[0] : '—'}</div></div>
+    <div class="sc"><div class="sl">Avg Rating</div><div class="sv g">${toDisp(avgRaw)}</div></div>`;
+
+  const tbody = document.getElementById('rankings-body');
+  if (!sorted.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="es"><p>No players yet — click <strong>+ Add Player</strong> to get started!</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = sorted.map((p, i) => {
+    const w = p.wins||0, l = p.losses||0, tot = w+l;
+    const pct = tot ? (w/tot*100) : 0;
+    const avg = tot ? ((p.totalPoints||0)/tot).toFixed(1) : '—';
+    return `<tr>
+      <td><span class="rn ${i<3?'top3':''}">${i+1}</span></td>
+      <td><span class="pn" onclick="goPlayer('${p.id}')">${p.name}</span></td>
+      <td><span class="rp">${toDisp(p.rating)}</span></td>
+      <td style="font-weight:500">${w} – ${l}</td>
+      <td><div class="wb"><div class="wbg"><div class="wbf" style="width:${pct}%"></div></div><span class="wp">${Math.round(pct)}%</span></div></td>
+      <td style="color:var(--muted)">${avg}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── Player Stats ─────────────────────────────────────────────────────────────
+function goPlayer(id) {
+  document.querySelectorAll('.nb').forEach((b,i) => b.classList.toggle('active', i===1));
+  document.querySelectorAll('.page').forEach(e => e.classList.remove('active'));
+  document.getElementById('page-stats').classList.add('active');
+  fillSelects();
+  document.getElementById('stats-sel').value = id;
+  renderPlayerStats();
+}
+
+function fillSelects() {
+  const d = load();
+  ['stats-sel','sp1a','sp2a','sp1b','sp2b'].forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    const cur = el.value;
+    el.innerHTML = '<option value="">— Select —</option>' + d.players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+    if (cur) el.value = cur;
+  });
+}
+
+function renderPlayerStats() {
+  const id  = document.getElementById('stats-sel').value;
+  const box = document.getElementById('stats-content');
+  if (!id) { box.innerHTML = ''; return; }
+  const d = load();
+  const p = d.players.find(x => x.id === id); if (!p) return;
+  const matches = d.matches.filter(m => m.players && m.players.includes(id)).reverse();
+  const w = p.wins||0, l = p.losses||0, tot = w+l;
+  const pct = tot ? Math.round(w/tot*100) : 0;
+  const avg = tot ? ((p.totalPoints||0)/tot).toFixed(1) : '—';
+  const fmt = p.format || 'both';
+
+  const rows = matches.map(m => {
+    const isA   = m.teamA.includes(id);
+    const won   = isA ? m.scoreA > m.scoreB : m.scoreB > m.scoreA;
+    const my    = isA ? m.scoreA : m.scoreB;
+    const opp   = isA ? m.scoreB : m.scoreA;
+    const rawD  = m.ratingChanges ? (m.ratingChanges[id] || 0) : 0;
+    const oppIds    = isA ? m.teamB : m.teamA;
+    const oppNames  = oppIds.map(oid => { const op = d.players.find(x => x.id===oid); return op ? op.name.split(' ')[0] : '?'; }).join(' & ');
+    const dd    = Math.abs(parseFloat(deltaDisp(Math.abs(rawD)))).toFixed(2);
+    const dStr  = rawD >= 0 ? `+${dd}` : `−${dd}`;
+    return `<div class="mr">
+      <div class="mres ${won?'W':'L'}">${won?'W':'L'}</div>
+      <div class="mscore">${my} – ${opp}</div>
+      <div class="mopp">vs ${oppNames} <span class="fb2 ${m.format}" style="margin-left:4px">${m.format}</span></div>
+      <div class="md ${rawD>=0?'pos':'neg'}">${dStr}</div>
+      <div class="mdate">${m.date||''}</div>
+    </div>`;
+  }).join('') || `<div class="es" style="padding:32px"><p>No matches recorded yet.</p></div>`;
+
+  box.innerHTML = `
+    <div class="pp">
+      <div class="ptop">
+        <div class="av">${initials(p.name)}</div>
+        <div>
+          <div class="pname">${p.name}</div>
+          <div class="pmeta"><span class="fb2 ${fmt}">${fmt==='both'?'Singles &amp; Doubles':fmt.charAt(0).toUpperCase()+fmt.slice(1)}</span></div>
+        </div>
+        <div class="prb"><div class="rbn">${toDisp(p.rating)}</div><div class="rbl">Rating</div></div>
+      </div>
+      <div class="pstats">
+        <div class="pstat"><div class="psv">${w}</div><div class="psl">Wins</div></div>
+        <div class="pstat"><div class="psv">${l}</div><div class="psl">Losses</div></div>
+        <div class="pstat"><div class="psv">${pct}%</div><div class="psl">Win Rate</div></div>
+        <div class="pstat"><div class="psv">${avg}</div><div class="psl">Avg Pts</div></div>
+      </div>
+    </div>
+    <div class="mh">
+      <div class="mhh">Match History <span style="color:var(--muted);font-weight:400;font-size:13px">(${matches.length} games)</span></div>
+      ${rows}
+    </div>`;
+}
+
+// ─── Enter Score ──────────────────────────────────────────────────────────────
+let curFmt = 'singles';
+function setFormat(f) {
+  curFmt = f;
+  document.getElementById('fmt-singles').classList.toggle('active', f==='singles');
+  document.getElementById('fmt-doubles').classList.toggle('active', f==='doubles');
+  renderTeamInputs();
+}
+
+function renderTeamInputs() {
+  const d    = load();
+  const opts = '<option value="">— Select —</option>' + d.players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  const sing = curFmt === 'singles';
+  document.getElementById('lbl-a').textContent = sing ? 'Player A Score' : 'Team A Score';
+  document.getElementById('lbl-b').textContent = sing ? 'Player B Score' : 'Team B Score';
+  document.getElementById('team-inputs').innerHTML = sing ? `
+    <div class="fr" style="align-items:end">
+      <div class="fg"><label>Player A</label><select id="sp1a">${opts}</select></div>
+      <div class="vsd">VS</div>
+      <div class="fg"><label>Player B</label><select id="sp1b">${opts}</select></div>
+    </div>` : `
+    <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px">TEAM A</div>
+    <div class="fr" style="margin-bottom:20px">
+      <div class="fg"><label>Player 1</label><select id="sp1a">${opts}</select></div>
+      <div class="fg"><label>Player 2</label><select id="sp2a">${opts}</select></div>
+    </div>
+    <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px">TEAM B</div>
+    <div class="fr">
+      <div class="fg"><label>Player 1</label><select id="sp1b">${opts}</select></div>
+      <div class="fg"><label>Player 2</label><select id="sp2b">${opts}</select></div>
+    </div>`;
+}
+
+function submitScore() {
+  const d    = load();
+  const sing = curFmt === 'singles';
+  const p1a  = document.getElementById('sp1a')?.value;
+  const p1b  = document.getElementById('sp1b')?.value;
+  const p2a  = sing ? null : document.getElementById('sp2a')?.value;
+  const p2b  = sing ? null : document.getElementById('sp2b')?.value;
+  const sA   = parseInt(document.getElementById('score-a').value);
+  const sB   = parseInt(document.getElementById('score-b').value);
+  const date = document.getElementById('match-date').value;
+
+  if (!p1a || !p1b)             { toast('Please select all players', true); return; }
+  if (!sing && (!p2a || !p2b))  { toast('Please select all players', true); return; }
+  if (isNaN(sA) || isNaN(sB))  { toast('Please enter scores', true); return; }
+  if (sA === sB)                { toast('Scores must differ — no ties!', true); return; }
+
+  const tA  = sing ? [p1a] : [p1a, p2a];
+  const tB  = sing ? [p1b] : [p1b, p2b];
+  const all = [...tA, ...tB];
+  if (new Set(all).size < all.length) { toast("A player can't be on both teams", true); return; }
+
+  const aWon = sA > sB;
+  const wT   = aWon ? tA : tB,  lT = aWon ? tB : tA;
+  const wS   = aWon ? sA : sB,  lS = aWon ? sB : sA;
+
+  const avgW = wT.reduce((s,id) => s + (d.players.find(p=>p.id===id)?.rating || RAW_CENTER), 0) / wT.length;
+  const avgL = lT.reduce((s,id) => s + (d.players.find(p=>p.id===id)?.rating || RAW_CENTER), 0) / lT.length;
+  const delta = calcDelta(avgW, avgL, wS, lS);
+  const rc = {};
+
+  wT.forEach(id => {
+    const p = d.players.find(x => x.id===id);
+    if (p) { p.rating = (p.rating||RAW_CENTER) + delta; p.wins = (p.wins||0)+1; p.totalPoints = (p.totalPoints||0)+wS; rc[id] = delta; }
+  });
+  lT.forEach(id => {
+    const p = d.players.find(x => x.id===id);
+    if (p) { p.rating = (p.rating||RAW_CENTER) - delta; p.losses = (p.losses||0)+1; p.totalPoints = (p.totalPoints||0)+lS; rc[id] = -delta; }
+  });
+
+  d.matches.push({ id: Date.now()+'', format: curFmt, teamA: tA, teamB: tB, scoreA: sA, scoreB: sB, players: all, ratingChanges: rc, date });
+  save(d);
+  toast(`Match recorded! ${aWon?'Team A':'Team B'} wins. Rating change: ±${deltaDisp(delta)}`);
+  document.getElementById('score-a').value = '';
+  document.getElementById('score-b').value = '';
+}
+
+// ─── Add Player Modal ────────────────────────────────────────────────────────
+function openAddPlayer() {
+  document.getElementById('modal').classList.add('open');
+  setTimeout(() => document.getElementById('np-name').focus(), 100);
+}
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal')) {
+    document.getElementById('modal').classList.remove('open');
+    document.getElementById('np-name').value = '';
+  }
+}
+function addPlayer() {
+  const name = document.getElementById('np-name').value.trim();
+  const fmt  = document.getElementById('np-fmt').value;
+  if (!name) { toast('Please enter a name', true); return; }
+  const d = load();
+  if (d.players.find(p => p.name.toLowerCase()===name.toLowerCase())) { toast('Player already exists', true); return; }
+  d.players.push({ id: Date.now()+'', name, format: fmt, rating: RAW_CENTER, wins: 0, losses: 0, totalPoints: 0 });
+  save(d);
+  closeModal();
+  toast(`${name} added! Starting rating: 5.0`);
+  fillSelects(); renderTeamInputs(); renderHome();
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+renderHome();
+renderTeamInputs();
+document.getElementById('match-date').value = new Date().toISOString().split('T')[0];
+</script>
+</body>
+</html>
