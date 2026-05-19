@@ -81,6 +81,7 @@ select:focus,input:focus{border-color:var(--grass)}
 .vsd{display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:22px;color:var(--muted);padding-top:24px}
 .subbtn{width:100%;background:var(--grass);color:#fff;border:none;border-radius:8px;padding:14px;font-family:var(--fd);font-size:20px;letter-spacing:1px;cursor:pointer;margin-top:24px;transition:background .15s}
 .subbtn:hover{background:#27500A}
+.subbtn:disabled{background:var(--muted);cursor:not-allowed}
 .fmttgl{display:flex;gap:8px;margin-bottom:20px}
 .fo{flex:1;padding:12px;border:1.5px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;font-weight:600;font-size:14px;color:var(--muted);background:none;font-family:var(--fb);transition:all .15s}
 .fo.active{border-color:var(--grass);background:var(--grass-pale);color:var(--grass)}
@@ -101,8 +102,12 @@ select:focus,input:focus{border-color:var(--grass)}
 .apl:hover{text-decoration:underline}
 .fbtn{background:none;border:0.5px solid var(--border);border-radius:20px;padding:5px 14px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;font-family:var(--fb);transition:all .15s}
 .fbtn:hover{border-color:var(--grass);color:var(--grass)}
-
-/* ── Admin styles ── */
+/* loading spinner */
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-overlay{text-align:center;padding:60px 20px;color:var(--muted)}
+.loading-overlay .spinner{border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:32px;height:32px}
+/* admin */
 .admin-lock{display:flex;align-items:center;justify-content:center;min-height:60vh}
 .admin-lock-box{background:var(--card);border:0.5px solid var(--border);border-radius:14px;padding:36px;width:360px;max-width:90vw;text-align:center}
 .admin-lock-box .pt{font-size:28px;margin-bottom:8px}
@@ -117,23 +122,20 @@ select:focus,input:focus{border-color:var(--grass)}
 .admin-row-info span{font-size:12px;color:var(--muted)}
 .icon-btn{background:none;border:0.5px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:13px;font-weight:500;font-family:var(--fb);transition:all .15s;white-space:nowrap}
 .icon-btn:hover{border-color:var(--grass);color:var(--grass)}
-.icon-btn.danger:hover{border-color:var(--danger);color:var(--danger)}
 .icon-btn.danger{color:var(--muted)}
-.logout-btn{background:none;border:0.5px solid rgba(255,255,255,0.4);border-radius:6px;padding:5px 12px;color:rgba(255,255,255,0.8);font-family:var(--fb);font-size:13px;cursor:pointer;transition:all .15s}
-.logout-btn:hover{background:rgba(255,255,255,0.1);color:#fff}
-.edit-inline{display:flex;gap:8px;align-items:center;margin-top:6px}
-.edit-inline input{padding:6px 10px;font-size:13px;flex:1}
-
+.icon-btn.danger:hover{border-color:var(--danger);color:var(--danger)}
+.logout-btn{background:rgba(0,0,0,0.15);border:0.5px solid rgba(0,0,0,0.2);border-radius:6px;padding:5px 12px;color:var(--text);font-family:var(--fb);font-size:13px;cursor:pointer;transition:all .15s}
+.logout-btn:hover{background:rgba(0,0,0,0.25)}
 @media(max-width:600px){
   .srow{grid-template-columns:repeat(2,1fr)}
   .pstats{grid-template-columns:repeat(2,1fr)}
   .fr{grid-template-columns:1fr}
   .vsd{padding-top:0}
-  nav{padding:0 12px}
-  .brand{font-size:18px;margin-right:12px}
-  .nb{padding:8px 10px;font-size:13px}
+  nav{padding:0 8px}
+  .brand{font-size:17px;margin-right:8px}
+  .nb{padding:8px 8px;font-size:12px}
   .page{padding:16px 12px}
-  .admin-row{flex-wrap:wrap;gap:8px}
+  .admin-row{flex-wrap:wrap}
 }
 </style>
 </head>
@@ -168,7 +170,7 @@ select:focus,input:focus{border-color:var(--grass)}
       <th>Win %</th>
       <th>Pts Avg</th>
     </tr></thead>
-    <tbody id="rankings-body"></tbody>
+    <tbody id="rankings-body"><tr><td colspan="6"><div class="loading-overlay"><div class="spinner"></div></div></td></tr></tbody>
   </table></div>
 </div>
 
@@ -199,13 +201,12 @@ select:focus,input:focus{border-color:var(--grass)}
       <div class="fg"><label id="lbl-b">Player B Score</label><input type="number" id="score-b" min="0" max="30" placeholder="e.g. 15"></div>
     </div>
     <div class="fg" style="margin-bottom:8px"><label>Date Played</label><input type="text" id="match-date"></div>
-    <button class="subbtn" onclick="submitScore()">RECORD MATCH</button>
+    <button class="subbtn" id="submit-score-btn" onclick="submitScore()">RECORD MATCH</button>
   </div>
 </div>
 
 <!-- ADMIN -->
 <div class="page" id="page-admin">
-  <!-- login screen -->
   <div class="admin-lock" id="admin-lock">
     <div class="admin-lock-box">
       <div class="pt">Admin Access</div>
@@ -215,23 +216,20 @@ select:focus,input:focus{border-color:var(--grass)}
       <div id="admin-pw-err" style="color:var(--danger);font-size:13px;margin-top:10px;display:none">Incorrect password</div>
     </div>
   </div>
-  <!-- admin panel (hidden until logged in) -->
   <div id="admin-panel" style="display:none">
     <div class="ph">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <div><div class="pt">Admin Panel</div><div class="ps">Manage players and match history</div></div>
-        <button class="logout-btn" style="background:rgba(0,0,0,0.15);border-color:rgba(0,0,0,0.2);color:var(--text)" onclick="adminLogout()">Log Out</button>
+        <button class="logout-btn" onclick="adminLogout()">Log Out</button>
       </div>
     </div>
-    <!-- Players -->
     <div class="admin-section">
       <div class="admin-section-hdr">Players</div>
-      <div id="admin-players-list"></div>
+      <div id="admin-players-list"><div class="loading-overlay"><div class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:24px;height:24px"></div></div></div>
     </div>
-    <!-- Match History -->
     <div class="admin-section">
       <div class="admin-section-hdr">Match History</div>
-      <div id="admin-matches-list"></div>
+      <div id="admin-matches-list"><div class="loading-overlay"><div class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:24px;height:24px"></div></div></div>
     </div>
   </div>
 </div>
@@ -250,7 +248,7 @@ select:focus,input:focus{border-color:var(--grass)}
     </div>
     <div class="macts">
       <button class="bsec" onclick="closeModal('modal-addplayer')">Cancel</button>
-      <button class="bpri" onclick="addPlayer()">Add Player</button>
+      <button class="bpri" id="add-player-btn" onclick="addPlayer()">Add Player</button>
     </div>
   </div>
 </div>
@@ -261,7 +259,7 @@ select:focus,input:focus{border-color:var(--grass)}
     <div class="mt2">Edit Player</div>
     <input type="hidden" id="edit-player-id">
     <div class="fg" style="margin-bottom:12px"><label>Name</label><input type="text" id="edit-player-name"></div>
-    <div class="fg" style="margin-bottom:12px"><label>Display Rating (0 – 10)</label><input type="number" id="edit-player-rating" min="0" max="10" step="0.1" placeholder="e.g. 5.0"></div>
+    <div class="fg" style="margin-bottom:12px"><label>Display Rating (0 – 10)</label><input type="number" id="edit-player-rating" min="0" max="10" step="0.1"></div>
     <div class="fg" style="margin-bottom:12px"><label>Wins</label><input type="number" id="edit-player-wins" min="0"></div>
     <div class="fg" style="margin-bottom:12px"><label>Losses</label><input type="number" id="edit-player-losses" min="0"></div>
     <div class="fg"><label>Preferred Format</label>
@@ -273,7 +271,7 @@ select:focus,input:focus{border-color:var(--grass)}
     </div>
     <div class="macts">
       <button class="bsec" onclick="closeModal('modal-editplayer')">Cancel</button>
-      <button class="bpri" onclick="saveEditPlayer()">Save Changes</button>
+      <button class="bpri" id="save-player-btn" onclick="saveEditPlayer()">Save Changes</button>
     </div>
   </div>
 </div>
@@ -288,15 +286,15 @@ select:focus,input:focus{border-color:var(--grass)}
       <div class="fg"><label id="edit-lbl-b">Score B</label><input type="number" id="edit-score-b" min="0" max="30"></div>
     </div>
     <div class="fg" style="margin-top:12px"><label>Date</label><input type="text" id="edit-match-date"></div>
-    <p style="font-size:12px;color:var(--muted);margin-top:10px">Note: editing a score does not recalculate ratings. Use Delete + re-enter if you need ratings recalculated.</p>
+    <p style="font-size:12px;color:var(--muted);margin-top:10px">Note: editing a score does not recalculate ratings. Delete and re-enter the match if ratings need to be recalculated.</p>
     <div class="macts">
       <button class="bsec" onclick="closeModal('modal-editmatch')">Cancel</button>
-      <button class="bpri" onclick="saveEditMatch()">Save Changes</button>
+      <button class="bpri" id="save-match-btn" onclick="saveEditMatch()">Save Changes</button>
     </div>
   </div>
 </div>
 
-<!-- CONFIRM DELETE MODAL -->
+<!-- CONFIRM DELETE -->
 <div class="moverlay" id="modal-confirm" onclick="closeModal('modal-confirm',event)">
   <div class="mbox" style="max-width:360px">
     <div class="mt2">Confirm Delete</div>
@@ -310,11 +308,28 @@ select:focus,input:focus{border-color:var(--grass)}
 
 <div class="toast" id="toast"></div>
 
-<script>
-// ─── Rating scale ─────────────────────────────────────────────────────────────
-// Internal Elo-like rating centered on 1000.
-// Display: 0–10, centered at 5 (raw 1000).
-// display = 5 + (raw − 1000) / 200
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp }         from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, doc, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ── Firebase config ──────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            "AIzaSyBjMKqN6n8bdfoZ157fU71nuzZAvFzwZCI",
+  authDomain:        "fcl-database.firebaseapp.com",
+  databaseURL:       "https://fcl-database-default-rtdb.firebaseio.com",
+  projectId:         "fcl-database",
+  storageBucket:     "fcl-database.firebasestorage.app",
+  messagingSenderId: "80061893239",
+  appId:             "1:80061893239:web:50f652565f1c21955e9472",
+  measurementId:     "G-J3YVSFEE67"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// ── Rating constants ─────────────────────────────────────────────────────────
 const RAW_CENTER = 1000;
 const RAW_SCALE  = 200;
 const K          = 32;
@@ -326,59 +341,67 @@ function toDisp(raw) {
 function dispToRaw(disp) {
   return Math.round((parseFloat(disp) - 5) * RAW_SCALE + RAW_CENTER);
 }
-function deltaDisp(rawDelta) {
-  return (rawDelta / RAW_SCALE).toFixed(2);
+function deltaDisp(d) { return (d / RAW_SCALE).toFixed(2); }
+function initials(n)  { return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
+function expected(rA,rB){ return 1/(1+Math.pow(10,(rB-rA)/400)); }
+function calcDelta(wR,lR,wS,lS){
+  const E=expected(wR,lR), mf=1+Math.log(Math.max(wS-lS,1))*0.2, pb=Math.min(wS/21,1)*0.1;
+  return Math.max(Math.round(K*mf*(1-E)*(1+pb)),1);
 }
 
-// ─── Storage ──────────────────────────────────────────────────────────────────
-function load() {
-  try { return JSON.parse(localStorage.getItem('cornhole_league') || 'null') || { players:[], matches:[] }; }
-  catch { return { players:[], matches:[] }; }
-}
-function save(d) { try { localStorage.setItem('cornhole_league', JSON.stringify(d)); } catch {} }
-
-// ─── Utilities ────────────────────────────────────────────────────────────────
+// ── Toast ────────────────────────────────────────────────────────────────────
 function toast(msg, err) {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.className = 'toast' + (err ? ' err' : '') + ' show';
-  setTimeout(() => t.className = 'toast', 2800);
-}
-function initials(n) { return n.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2); }
-
-// ─── Elo math ─────────────────────────────────────────────────────────────────
-function expected(rA, rB) { return 1 / (1 + Math.pow(10, (rB - rA) / 400)); }
-function calcDelta(wR, lR, wS, lS) {
-  const E  = expected(wR, lR);
-  const mf = 1 + Math.log(Math.max(wS - lS, 1)) * 0.2;
-  const pb = Math.min(wS / 21, 1) * 0.1;
-  return Math.max(Math.round(K * mf * (1 - E) * (1 + pb)), 1);
+  t.className = 'toast'+(err?' err':'')+' show';
+  setTimeout(()=>t.className='toast', 2800);
 }
 
-// ─── Navigation ───────────────────────────────────────────────────────────────
-function showPage(p, btn) {
-  document.querySelectorAll('.page').forEach(e => e.classList.remove('active'));
-  document.querySelectorAll('.nb').forEach(e => e.classList.remove('active'));
-  document.getElementById('page-' + p).classList.add('active');
+// ── In-memory cache (updated by real-time listener) ──────────────────────────
+let players = [];   // array of {id, name, rating, wins, losses, totalPoints, format}
+let matches = [];   // array of {id, format, teamA, teamB, scoreA, scoreB, players, ratingChanges, date}
+
+// ── Real-time listeners ──────────────────────────────────────────────────────
+onSnapshot(collection(db,'players'), snap => {
+  players = snap.docs.map(d=>({id:d.id,...d.data()}));
+  refreshAllViews();
+});
+onSnapshot(collection(db,'matches'), snap => {
+  matches = snap.docs.map(d=>({id:d.id,...d.data()}));
+  matches.sort((a,b)=> (a.date||'') < (b.date||'') ? -1 : 1);
+  refreshAllViews();
+});
+
+function refreshAllViews() {
+  const active = document.querySelector('.page.active')?.id;
+  if (active === 'page-home')   renderHome();
+  if (active === 'page-stats')  { fillSelects(); renderPlayerStats(); }
+  if (active === 'page-scores') { fillSelects(); renderTeamInputs(); }
+  if (active === 'page-admin' && adminAuthed) { renderAdminPlayers(); renderAdminMatches(); }
+}
+
+// ── Navigation ───────────────────────────────────────────────────────────────
+window.showPage = function(p, btn) {
+  document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.nb').forEach(e=>e.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
   if (btn) btn.classList.add('active');
-  if (p === 'home')   renderHome();
-  if (p === 'stats')  { fillSelects(); renderPlayerStats(); }
-  if (p === 'scores') { fillSelects(); renderTeamInputs(); }
-  if (p === 'admin')  renderAdminPage();
-}
+  if (p==='home')   renderHome();
+  if (p==='stats')  { fillSelects(); renderPlayerStats(); }
+  if (p==='scores') { fillSelects(); renderTeamInputs(); }
+  if (p==='admin')  renderAdminPage();
+};
 
-// ─── Home / Rankings ──────────────────────────────────────────────────────────
+// ── Rankings ─────────────────────────────────────────────────────────────────
 function renderHome() {
-  const d      = load();
-  const sorted = [...d.players].sort((a,b) => b.rating - a.rating);
-  const total  = d.players.length;
+  const sorted = [...players].sort((a,b)=>b.rating-a.rating);
   const top    = sorted[0];
-  const avgRaw = total ? d.players.reduce((s,p) => s + (p.rating||RAW_CENTER), 0) / total : RAW_CENTER;
+  const avgRaw = players.length ? players.reduce((s,p)=>s+(p.rating||RAW_CENTER),0)/players.length : RAW_CENTER;
 
   document.getElementById('home-stats').innerHTML = `
-    <div class="sc"><div class="sl">Players</div><div class="sv">${total}</div></div>
-    <div class="sc"><div class="sl">Matches</div><div class="sv">${d.matches.length}</div></div>
-    <div class="sc"><div class="sl">Top Rated</div><div class="sv gold" style="font-size:22px;line-height:1.2">${top ? top.name.split(' ')[0] : '—'}</div></div>
+    <div class="sc"><div class="sl">Players</div><div class="sv">${players.length}</div></div>
+    <div class="sc"><div class="sl">Matches</div><div class="sv">${matches.length}</div></div>
+    <div class="sc"><div class="sl">Top Rated</div><div class="sv gold" style="font-size:22px;line-height:1.2">${top?top.name.split(' ')[0]:'—'}</div></div>
     <div class="sc"><div class="sl">Avg Rating</div><div class="sv g">${toDisp(avgRaw)}</div></div>`;
 
   const tbody = document.getElementById('rankings-body');
@@ -386,10 +409,10 @@ function renderHome() {
     tbody.innerHTML = `<tr><td colspan="6"><div class="es"><p>No players yet — click <strong>+ Add Player</strong> to get started!</p></div></td></tr>`;
     return;
   }
-  tbody.innerHTML = sorted.map((p, i) => {
-    const w = p.wins||0, l = p.losses||0, tot = w+l;
-    const pct = tot ? (w/tot*100) : 0;
-    const avg = tot ? ((p.totalPoints||0)/tot).toFixed(1) : '—';
+  tbody.innerHTML = sorted.map((p,i)=>{
+    const w=p.wins||0,l=p.losses||0,tot=w+l;
+    const pct=tot?(w/tot*100):0;
+    const avg=tot?((p.totalPoints||0)/tot).toFixed(1):'—';
     return `<tr>
       <td><span class="rn ${i<3?'top3':''}">${i+1}</span></td>
       <td><span class="pn" onclick="goPlayer('${p.id}')">${p.name}</span></td>
@@ -401,48 +424,45 @@ function renderHome() {
   }).join('');
 }
 
-// ─── Player Stats ─────────────────────────────────────────────────────────────
-function goPlayer(id) {
-  document.querySelectorAll('.nb').forEach((b,i) => b.classList.toggle('active', i===1));
-  document.querySelectorAll('.page').forEach(e => e.classList.remove('active'));
+// ── Player Stats ─────────────────────────────────────────────────────────────
+window.goPlayer = function(id) {
+  document.querySelectorAll('.nb').forEach((b,i)=>b.classList.toggle('active',i===1));
+  document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
   document.getElementById('page-stats').classList.add('active');
   fillSelects();
   document.getElementById('stats-sel').value = id;
   renderPlayerStats();
-}
+};
 
 function fillSelects() {
-  const d = load();
-  ['stats-sel','sp1a','sp2a','sp1b','sp2b'].forEach(id => {
-    const el = document.getElementById(id); if (!el) return;
-    const cur = el.value;
-    el.innerHTML = '<option value="">— Select —</option>' + d.players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-    if (cur) el.value = cur;
+  ['stats-sel','sp1a','sp2a','sp1b','sp2b'].forEach(id=>{
+    const el=document.getElementById(id); if(!el)return;
+    const cur=el.value;
+    el.innerHTML='<option value="">— Select —</option>'+players.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    if(cur)el.value=cur;
   });
 }
 
 function renderPlayerStats() {
   const id  = document.getElementById('stats-sel').value;
   const box = document.getElementById('stats-content');
-  if (!id) { box.innerHTML = ''; return; }
-  const d = load();
-  const p = d.players.find(x => x.id === id); if (!p) return;
-  const matches = d.matches.filter(m => m.players && m.players.includes(id)).reverse();
-  const w = p.wins||0, l = p.losses||0, tot = w+l;
-  const pct = tot ? Math.round(w/tot*100) : 0;
-  const avg = tot ? ((p.totalPoints||0)/tot).toFixed(1) : '—';
-  const fmt = p.format || 'both';
+  if (!id) { box.innerHTML=''; return; }
+  const p = players.find(x=>x.id===id); if (!p) return;
+  const pm = [...matches].filter(m=>m.players&&m.players.includes(id)).reverse();
+  const w=p.wins||0,l=p.losses||0,tot=w+l;
+  const pct=tot?Math.round(w/tot*100):0;
+  const avg=tot?((p.totalPoints||0)/tot).toFixed(1):'—';
+  const fmt=p.format||'both';
 
-  const rows = matches.map(m => {
-    const isA   = m.teamA.includes(id);
-    const won   = isA ? m.scoreA > m.scoreB : m.scoreB > m.scoreA;
-    const my    = isA ? m.scoreA : m.scoreB;
-    const opp   = isA ? m.scoreB : m.scoreA;
-    const rawD  = m.ratingChanges ? (m.ratingChanges[id] || 0) : 0;
-    const oppIds    = isA ? m.teamB : m.teamA;
-    const oppNames  = oppIds.map(oid => { const op = d.players.find(x => x.id===oid); return op ? op.name.split(' ')[0] : '?'; }).join(' & ');
-    const dd    = Math.abs(parseFloat(deltaDisp(Math.abs(rawD)))).toFixed(2);
-    const dStr  = rawD >= 0 ? `+${dd}` : `−${dd}`;
+  const rows = pm.map(m=>{
+    const isA=m.teamA.includes(id);
+    const won=isA?m.scoreA>m.scoreB:m.scoreB>m.scoreA;
+    const my=isA?m.scoreA:m.scoreB, opp=isA?m.scoreB:m.scoreA;
+    const rawD=m.ratingChanges?(m.ratingChanges[id]||0):0;
+    const oppIds=isA?m.teamB:m.teamA;
+    const oppNames=oppIds.map(oid=>{const op=players.find(x=>x.id===oid);return op?op.name.split(' ')[0]:'?';}).join(' & ');
+    const dd=Math.abs(parseFloat(deltaDisp(Math.abs(rawD)))).toFixed(2);
+    const dStr=rawD>=0?`+${dd}`:`−${dd}`;
     return `<div class="mr">
       <div class="mres ${won?'W':'L'}">${won?'W':'L'}</div>
       <div class="mscore">${my} – ${opp}</div>
@@ -450,14 +470,13 @@ function renderPlayerStats() {
       <div class="md ${rawD>=0?'pos':'neg'}">${dStr}</div>
       <div class="mdate">${m.date||''}</div>
     </div>`;
-  }).join('') || `<div class="es" style="padding:32px"><p>No matches recorded yet.</p></div>`;
+  }).join('')||`<div class="es" style="padding:32px"><p>No matches recorded yet.</p></div>`;
 
-  box.innerHTML = `
+  box.innerHTML=`
     <div class="pp">
       <div class="ptop">
         <div class="av">${initials(p.name)}</div>
-        <div>
-          <div class="pname">${p.name}</div>
+        <div><div class="pname">${p.name}</div>
           <div class="pmeta"><span class="fb2 ${fmt}">${fmt==='both'?'Singles &amp; Doubles':fmt.charAt(0).toUpperCase()+fmt.slice(1)}</span></div>
         </div>
         <div class="prb"><div class="rbn">${toDisp(p.rating)}</div><div class="rbl">Rating</div></div>
@@ -470,32 +489,31 @@ function renderPlayerStats() {
       </div>
     </div>
     <div class="mh">
-      <div class="mhh">Match History <span style="color:var(--muted);font-weight:400;font-size:13px">(${matches.length} games)</span></div>
+      <div class="mhh">Match History <span style="color:var(--muted);font-weight:400;font-size:13px">(${pm.length} games)</span></div>
       ${rows}
     </div>`;
 }
 
-// ─── Enter Score ──────────────────────────────────────────────────────────────
+// ── Enter Score ───────────────────────────────────────────────────────────────
 let curFmt = 'singles';
-function setFormat(f) {
-  curFmt = f;
-  document.getElementById('fmt-singles').classList.toggle('active', f==='singles');
-  document.getElementById('fmt-doubles').classList.toggle('active', f==='doubles');
+window.setFormat = function(f) {
+  curFmt=f;
+  document.getElementById('fmt-singles').classList.toggle('active',f==='singles');
+  document.getElementById('fmt-doubles').classList.toggle('active',f==='doubles');
   renderTeamInputs();
-}
+};
 
 function renderTeamInputs() {
-  const d    = load();
-  const opts = '<option value="">— Select —</option>' + d.players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-  const sing = curFmt === 'singles';
-  document.getElementById('lbl-a').textContent = sing ? 'Player A Score' : 'Team A Score';
-  document.getElementById('lbl-b').textContent = sing ? 'Player B Score' : 'Team B Score';
-  document.getElementById('team-inputs').innerHTML = sing ? `
+  const opts='<option value="">— Select —</option>'+players.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  const sing=curFmt==='singles';
+  document.getElementById('lbl-a').textContent=sing?'Player A Score':'Team A Score';
+  document.getElementById('lbl-b').textContent=sing?'Player B Score':'Team B Score';
+  document.getElementById('team-inputs').innerHTML=sing?`
     <div class="fr" style="align-items:end">
       <div class="fg"><label>Player A</label><select id="sp1a">${opts}</select></div>
       <div class="vsd">VS</div>
       <div class="fg"><label>Player B</label><select id="sp1b">${opts}</select></div>
-    </div>` : `
+    </div>`:`
     <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px">TEAM A</div>
     <div class="fr" style="margin-bottom:20px">
       <div class="fg"><label>Player 1</label><select id="sp1a">${opts}</select></div>
@@ -508,96 +526,110 @@ function renderTeamInputs() {
     </div>`;
 }
 
-function submitScore() {
-  const d    = load();
-  const sing = curFmt === 'singles';
-  const p1a  = document.getElementById('sp1a')?.value;
-  const p1b  = document.getElementById('sp1b')?.value;
-  const p2a  = sing ? null : document.getElementById('sp2a')?.value;
-  const p2b  = sing ? null : document.getElementById('sp2b')?.value;
-  const sA   = parseInt(document.getElementById('score-a').value);
-  const sB   = parseInt(document.getElementById('score-b').value);
-  const date = document.getElementById('match-date').value;
+window.submitScore = async function() {
+  const sing=curFmt==='singles';
+  const p1a=document.getElementById('sp1a')?.value;
+  const p1b=document.getElementById('sp1b')?.value;
+  const p2a=sing?null:document.getElementById('sp2a')?.value;
+  const p2b=sing?null:document.getElementById('sp2b')?.value;
+  const sA=parseInt(document.getElementById('score-a').value);
+  const sB=parseInt(document.getElementById('score-b').value);
+  const date=document.getElementById('match-date').value;
 
-  if (!p1a || !p1b)             { toast('Please select all players', true); return; }
-  if (!sing && (!p2a || !p2b))  { toast('Please select all players', true); return; }
-  if (isNaN(sA) || isNaN(sB))  { toast('Please enter scores', true); return; }
-  if (sA === sB)                { toast('Scores must differ — no ties!', true); return; }
+  if(!p1a||!p1b)            { toast('Please select all players',true); return; }
+  if(!sing&&(!p2a||!p2b))   { toast('Please select all players',true); return; }
+  if(isNaN(sA)||isNaN(sB))  { toast('Please enter scores',true); return; }
+  if(sA===sB)               { toast('Scores must differ — no ties!',true); return; }
 
-  const tA  = sing ? [p1a] : [p1a, p2a];
-  const tB  = sing ? [p1b] : [p1b, p2b];
-  const all = [...tA, ...tB];
-  if (new Set(all).size < all.length) { toast("A player can't be on both teams", true); return; }
+  const tA=sing?[p1a]:[p1a,p2a];
+  const tB=sing?[p1b]:[p1b,p2b];
+  const all=[...tA,...tB];
+  if(new Set(all).size<all.length){ toast("A player can't be on both teams",true); return; }
 
-  const aWon = sA > sB;
-  const wT   = aWon ? tA : tB,  lT = aWon ? tB : tA;
-  const wS   = aWon ? sA : sB,  lS = aWon ? sB : sA;
+  const btn=document.getElementById('submit-score-btn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Saving…';
 
-  const avgW = wT.reduce((s,id) => s + (d.players.find(p=>p.id===id)?.rating||RAW_CENTER), 0) / wT.length;
-  const avgL = lT.reduce((s,id) => s + (d.players.find(p=>p.id===id)?.rating||RAW_CENTER), 0) / lT.length;
-  const delta = calcDelta(avgW, avgL, wS, lS);
-  const rc = {};
+  const aWon=sA>sB;
+  const wT=aWon?tA:tB, lT=aWon?tB:tA;
+  const wS=aWon?sA:sB, lS=aWon?sB:sA;
 
-  wT.forEach(id => {
-    const p = d.players.find(x => x.id===id);
-    if (p) { p.rating = (p.rating||RAW_CENTER)+delta; p.wins=(p.wins||0)+1; p.totalPoints=(p.totalPoints||0)+wS; rc[id]=delta; }
-  });
-  lT.forEach(id => {
-    const p = d.players.find(x => x.id===id);
-    if (p) { p.rating=(p.rating||RAW_CENTER)-delta; p.losses=(p.losses||0)+1; p.totalPoints=(p.totalPoints||0)+lS; rc[id]=-delta; }
-  });
+  const getR=id=>{ const p=players.find(x=>x.id===id); return p?(p.rating||RAW_CENTER):RAW_CENTER; };
+  const avgW=wT.reduce((s,id)=>s+getR(id),0)/wT.length;
+  const avgL=lT.reduce((s,id)=>s+getR(id),0)/lT.length;
+  const delta=calcDelta(avgW,avgL,wS,lS);
+  const rc={};
 
-  d.matches.push({ id:Date.now()+'', format:curFmt, teamA:tA, teamB:tB, scoreA:sA, scoreB:sB, players:all, ratingChanges:rc, date });
-  save(d);
-  toast(`Match recorded! ${aWon?'Team A':'Team B'} wins. Rating change: ±${deltaDisp(delta)}`);
-  document.getElementById('score-a').value = '';
-  document.getElementById('score-b').value = '';
-}
+  try {
+    // Update players
+    for (const id of wT) {
+      const p=players.find(x=>x.id===id); if(!p) continue;
+      rc[id]=delta;
+      await updateDoc(doc(db,'players',id),{
+        rating:(p.rating||RAW_CENTER)+delta,
+        wins:(p.wins||0)+1,
+        totalPoints:(p.totalPoints||0)+wS
+      });
+    }
+    for (const id of lT) {
+      const p=players.find(x=>x.id===id); if(!p) continue;
+      rc[id]=-delta;
+      await updateDoc(doc(db,'players',id),{
+        rating:(p.rating||RAW_CENTER)-delta,
+        losses:(p.losses||0)+1,
+        totalPoints:(p.totalPoints||0)+lS
+      });
+    }
+    // Save match
+    await addDoc(collection(db,'matches'),{
+      format:curFmt, teamA:tA, teamB:tB,
+      scoreA:sA, scoreB:sB, players:all,
+      ratingChanges:rc, date
+    });
+    toast(`Match recorded! ${aWon?'Team A':'Team B'} wins. Rating change: ±${deltaDisp(delta)}`);
+    document.getElementById('score-a').value='';
+    document.getElementById('score-b').value='';
+  } catch(e) {
+    toast('Error saving match: '+e.message, true);
+  }
+  btn.disabled=false; btn.textContent='RECORD MATCH';
+};
 
-// ─── Admin Auth ───────────────────────────────────────────────────────────────
+// ── Admin ────────────────────────────────────────────────────────────────────
 let adminAuthed = false;
 
-function adminLogin() {
-  const val = document.getElementById('admin-pw-input').value;
-  if (val === ADMIN_PASS) {
-    adminAuthed = true;
-    document.getElementById('admin-pw-input').value = '';
-    document.getElementById('admin-pw-err').style.display = 'none';
+window.adminLogin = function() {
+  if(document.getElementById('admin-pw-input').value===ADMIN_PASS){
+    adminAuthed=true;
+    document.getElementById('admin-pw-input').value='';
+    document.getElementById('admin-pw-err').style.display='none';
     renderAdminPage();
   } else {
-    document.getElementById('admin-pw-err').style.display = 'block';
+    document.getElementById('admin-pw-err').style.display='block';
   }
-}
-
-function adminLogout() {
-  adminAuthed = false;
-  document.getElementById('admin-lock').style.display = 'flex';
-  document.getElementById('admin-panel').style.display = 'none';
-}
-
+};
+window.adminLogout = function() {
+  adminAuthed=false;
+  document.getElementById('admin-lock').style.display='flex';
+  document.getElementById('admin-panel').style.display='none';
+};
 function renderAdminPage() {
-  if (!adminAuthed) {
-    document.getElementById('admin-lock').style.display = 'flex';
-    document.getElementById('admin-panel').style.display = 'none';
+  if(!adminAuthed){
+    document.getElementById('admin-lock').style.display='flex';
+    document.getElementById('admin-panel').style.display='none';
     return;
   }
-  document.getElementById('admin-lock').style.display = 'none';
-  document.getElementById('admin-panel').style.display = 'block';
+  document.getElementById('admin-lock').style.display='none';
+  document.getElementById('admin-panel').style.display='block';
   renderAdminPlayers();
   renderAdminMatches();
 }
 
-// ─── Admin: Players ───────────────────────────────────────────────────────────
 function renderAdminPlayers() {
-  const d = load();
-  const box = document.getElementById('admin-players-list');
-  if (!d.players.length) {
-    box.innerHTML = '<div class="es" style="padding:24px"><p>No players yet.</p></div>';
-    return;
-  }
-  const sorted = [...d.players].sort((a,b) => b.rating - a.rating);
-  box.innerHTML = sorted.map(p => {
-    const w = p.wins||0, l = p.losses||0;
+  const box=document.getElementById('admin-players-list');
+  if(!players.length){ box.innerHTML='<div class="es" style="padding:24px"><p>No players yet.</p></div>'; return; }
+  const sorted=[...players].sort((a,b)=>b.rating-a.rating);
+  box.innerHTML=sorted.map(p=>{
+    const w=p.wins||0,l=p.losses||0;
     return `<div class="admin-row">
       <div class="av" style="width:36px;height:36px;font-size:14px;flex-shrink:0">${initials(p.name)}</div>
       <div class="admin-row-info">
@@ -610,79 +642,17 @@ function renderAdminPlayers() {
   }).join('');
 }
 
-function openEditPlayer(id) {
-  const d = load();
-  const p = d.players.find(x => x.id===id); if (!p) return;
-  document.getElementById('edit-player-id').value    = id;
-  document.getElementById('edit-player-name').value  = p.name;
-  document.getElementById('edit-player-rating').value = toDisp(p.rating);
-  document.getElementById('edit-player-wins').value  = p.wins||0;
-  document.getElementById('edit-player-losses').value = p.losses||0;
-  document.getElementById('edit-player-fmt').value   = p.format||'both';
-  openModal('modal-editplayer');
-}
-
-function saveEditPlayer() {
-  const id   = document.getElementById('edit-player-id').value;
-  const name = document.getElementById('edit-player-name').value.trim();
-  const disp = parseFloat(document.getElementById('edit-player-rating').value);
-  const wins = parseInt(document.getElementById('edit-player-wins').value);
-  const losses = parseInt(document.getElementById('edit-player-losses').value);
-  const fmt  = document.getElementById('edit-player-fmt').value;
-
-  if (!name)                       { toast('Name cannot be empty', true); return; }
-  if (isNaN(disp)||disp<0||disp>10){ toast('Rating must be between 0 and 10', true); return; }
-  if (isNaN(wins)||wins<0)         { toast('Invalid wins value', true); return; }
-  if (isNaN(losses)||losses<0)     { toast('Invalid losses value', true); return; }
-
-  const d = load();
-  const p = d.players.find(x => x.id===id); if (!p) return;
-  p.name   = name;
-  p.rating = dispToRaw(disp);
-  p.wins   = wins;
-  p.losses = losses;
-  p.format = fmt;
-  save(d);
-  closeModal('modal-editplayer');
-  toast(`${name} updated!`);
-  renderAdminPlayers();
-  renderHome();
-}
-
-function confirmDeletePlayer(id) {
-  const d = load();
-  const p = d.players.find(x => x.id===id); if (!p) return;
-  document.getElementById('confirm-msg').textContent = `Delete "${p.name}"? Their match history will remain but they'll be removed from the roster and rankings.`;
-  document.getElementById('confirm-ok-btn').onclick = () => { deletePlayer(id); closeModal('modal-confirm'); };
-  openModal('modal-confirm');
-}
-
-function deletePlayer(id) {
-  const d = load();
-  d.players = d.players.filter(p => p.id !== id);
-  save(d);
-  toast('Player deleted');
-  renderAdminPlayers();
-  renderHome();
-}
-
-// ─── Admin: Matches ───────────────────────────────────────────────────────────
 function renderAdminMatches() {
-  const d   = load();
-  const box = document.getElementById('admin-matches-list');
-  if (!d.matches.length) {
-    box.innerHTML = '<div class="es" style="padding:24px"><p>No matches recorded yet.</p></div>';
-    return;
-  }
-  const rev = [...d.matches].reverse();
-  box.innerHTML = rev.map(m => {
-    const getName = id => { const p = d.players.find(x=>x.id===id); return p ? p.name.split(' ')[0] : '?'; };
-    const teamANames = m.teamA.map(getName).join(' & ');
-    const teamBNames = m.teamB.map(getName).join(' & ');
-    const winner = m.scoreA > m.scoreB ? teamANames : teamBNames;
+  const box=document.getElementById('admin-matches-list');
+  if(!matches.length){ box.innerHTML='<div class="es" style="padding:24px"><p>No matches yet.</p></div>'; return; }
+  const getName=id=>{const p=players.find(x=>x.id===id);return p?p.name.split(' ')[0]:'?';};
+  box.innerHTML=[...matches].reverse().map(m=>{
+    const tAN=m.teamA.map(getName).join(' & ');
+    const tBN=m.teamB.map(getName).join(' & ');
+    const winner=m.scoreA>m.scoreB?tAN:tBN;
     return `<div class="admin-row">
       <div class="admin-row-info">
-        <strong>${teamANames} ${m.scoreA} – ${m.scoreB} ${teamBNames}</strong>
+        <strong>${tAN} ${m.scoreA} – ${m.scoreB} ${tBN}</strong>
         <span>${m.date||'No date'} &nbsp;|&nbsp; ${m.format} &nbsp;|&nbsp; Winner: ${winner}</span>
       </div>
       <button class="icon-btn" onclick="openEditMatch('${m.id}')">✏️ Edit</button>
@@ -691,80 +661,120 @@ function renderAdminMatches() {
   }).join('');
 }
 
-function openEditMatch(id) {
-  const d = load();
-  const m = d.matches.find(x => x.id===id); if (!m) return;
-  const getName = pid => { const p = d.players.find(x=>x.id===pid); return p?p.name.split(' ')[0]:'?'; };
-  const tANames = m.teamA.map(getName).join(' & ');
-  const tBNames = m.teamB.map(getName).join(' & ');
-  document.getElementById('edit-match-id').value    = id;
-  document.getElementById('edit-lbl-a').textContent = tANames + ' Score';
-  document.getElementById('edit-lbl-b').textContent = tBNames + ' Score';
-  document.getElementById('edit-score-a').value     = m.scoreA;
-  document.getElementById('edit-score-b').value     = m.scoreB;
-  document.getElementById('edit-match-date').value  = m.date||'';
-  openModal('modal-editmatch');
-}
+// ── Edit / Delete Players ────────────────────────────────────────────────────
+window.openEditPlayer = function(id) {
+  const p=players.find(x=>x.id===id); if(!p) return;
+  document.getElementById('edit-player-id').value=id;
+  document.getElementById('edit-player-name').value=p.name;
+  document.getElementById('edit-player-rating').value=toDisp(p.rating);
+  document.getElementById('edit-player-wins').value=p.wins||0;
+  document.getElementById('edit-player-losses').value=p.losses||0;
+  document.getElementById('edit-player-fmt').value=p.format||'both';
+  openModal('modal-editplayer');
+};
 
-function saveEditMatch() {
-  const id  = document.getElementById('edit-match-id').value;
-  const sA  = parseInt(document.getElementById('edit-score-a').value);
-  const sB  = parseInt(document.getElementById('edit-score-b').value);
-  const dt  = document.getElementById('edit-match-date').value;
-  if (isNaN(sA)||isNaN(sB)) { toast('Please enter valid scores', true); return; }
-  const d = load();
-  const m = d.matches.find(x => x.id===id); if (!m) return;
-  m.scoreA = sA; m.scoreB = sB; m.date = dt;
-  save(d);
-  closeModal('modal-editmatch');
-  toast('Match updated!');
-  renderAdminMatches();
-}
+window.saveEditPlayer = async function() {
+  const id=document.getElementById('edit-player-id').value;
+  const name=document.getElementById('edit-player-name').value.trim();
+  const disp=parseFloat(document.getElementById('edit-player-rating').value);
+  const wins=parseInt(document.getElementById('edit-player-wins').value);
+  const losses=parseInt(document.getElementById('edit-player-losses').value);
+  const fmt=document.getElementById('edit-player-fmt').value;
+  if(!name)                        { toast('Name cannot be empty',true); return; }
+  if(isNaN(disp)||disp<0||disp>10) { toast('Rating must be 0–10',true); return; }
+  if(isNaN(wins)||wins<0)          { toast('Invalid wins',true); return; }
+  if(isNaN(losses)||losses<0)      { toast('Invalid losses',true); return; }
+  const btn=document.getElementById('save-player-btn');
+  btn.disabled=true; btn.textContent='Saving…';
+  try {
+    await updateDoc(doc(db,'players',id),{ name, rating:dispToRaw(disp), wins, losses, format:fmt });
+    closeModal('modal-editplayer');
+    toast(`${name} updated!`);
+  } catch(e){ toast('Error: '+e.message,true); }
+  btn.disabled=false; btn.textContent='Save Changes';
+};
 
-function confirmDeleteMatch(id) {
-  const d = load();
-  const m = d.matches.find(x => x.id===id); if (!m) return;
-  const getName = pid => { const p = d.players.find(x=>x.id===pid); return p?p.name.split(' ')[0]:'?'; };
-  document.getElementById('confirm-msg').textContent = `Delete the match "${m.teamA.map(getName).join(' & ')} ${m.scoreA}–${m.scoreB} ${m.teamB.map(getName).join(' & ')}" on ${m.date||'unknown date'}? Ratings will NOT be automatically reversed.`;
-  document.getElementById('confirm-ok-btn').onclick = () => { deleteMatch(id); closeModal('modal-confirm'); };
+window.confirmDeletePlayer = function(id) {
+  const p=players.find(x=>x.id===id); if(!p) return;
+  document.getElementById('confirm-msg').textContent=`Delete "${p.name}"? They'll be removed from the roster. Their match records will remain.`;
+  document.getElementById('confirm-ok-btn').onclick=()=>{ deletePlayer(id); closeModal('modal-confirm'); };
   openModal('modal-confirm');
+};
+async function deletePlayer(id) {
+  try { await deleteDoc(doc(db,'players',id)); toast('Player deleted'); }
+  catch(e){ toast('Error: '+e.message,true); }
 }
 
-function deleteMatch(id) {
-  const d = load();
-  d.matches = d.matches.filter(m => m.id !== id);
-  save(d);
-  toast('Match deleted');
-  renderAdminMatches();
-  renderHome();
+// ── Edit / Delete Matches ────────────────────────────────────────────────────
+window.openEditMatch = function(id) {
+  const m=matches.find(x=>x.id===id); if(!m) return;
+  const getName=pid=>{const p=players.find(x=>x.id===pid);return p?p.name.split(' ')[0]:'?';};
+  document.getElementById('edit-match-id').value=id;
+  document.getElementById('edit-lbl-a').textContent=m.teamA.map(getName).join(' & ')+' Score';
+  document.getElementById('edit-lbl-b').textContent=m.teamB.map(getName).join(' & ')+' Score';
+  document.getElementById('edit-score-a').value=m.scoreA;
+  document.getElementById('edit-score-b').value=m.scoreB;
+  document.getElementById('edit-match-date').value=m.date||'';
+  openModal('modal-editmatch');
+};
+
+window.saveEditMatch = async function() {
+  const id=document.getElementById('edit-match-id').value;
+  const sA=parseInt(document.getElementById('edit-score-a').value);
+  const sB=parseInt(document.getElementById('edit-score-b').value);
+  const dt=document.getElementById('edit-match-date').value;
+  if(isNaN(sA)||isNaN(sB)){ toast('Please enter valid scores',true); return; }
+  const btn=document.getElementById('save-match-btn');
+  btn.disabled=true; btn.textContent='Saving…';
+  try {
+    await updateDoc(doc(db,'matches',id),{ scoreA:sA, scoreB:sB, date:dt });
+    closeModal('modal-editmatch');
+    toast('Match updated!');
+  } catch(e){ toast('Error: '+e.message,true); }
+  btn.disabled=false; btn.textContent='Save Changes';
+};
+
+window.confirmDeleteMatch = function(id) {
+  const m=matches.find(x=>x.id===id); if(!m) return;
+  const getName=pid=>{const p=players.find(x=>x.id===pid);return p?p.name.split(' ')[0]:'?';};
+  document.getElementById('confirm-msg').textContent=`Delete "${m.teamA.map(getName).join(' & ')} ${m.scoreA}–${m.scoreB} ${m.teamB.map(getName).join(' & ')}" on ${m.date||'unknown date'}? Ratings will NOT be auto-reversed.`;
+  document.getElementById('confirm-ok-btn').onclick=()=>{ deleteMatch(id); closeModal('modal-confirm'); };
+  openModal('modal-confirm');
+};
+async function deleteMatch(id) {
+  try { await deleteDoc(doc(db,'matches',id)); toast('Match deleted'); }
+  catch(e){ toast('Error: '+e.message,true); }
 }
 
-// ─── Modals ───────────────────────────────────────────────────────────────────
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id, e) {
-  if (!e || e.target === document.getElementById(id))
-    document.getElementById(id).classList.remove('open');
-}
-function openAddPlayer() {
-  document.getElementById('np-name').value = '';
+// ── Add Player ───────────────────────────────────────────────────────────────
+window.openAddPlayer = function() {
+  document.getElementById('np-name').value='';
   openModal('modal-addplayer');
-  setTimeout(() => document.getElementById('np-name').focus(), 100);
-}
-function addPlayer() {
-  const name = document.getElementById('np-name').value.trim();
-  const fmt  = document.getElementById('np-fmt').value;
-  if (!name) { toast('Please enter a name', true); return; }
-  const d = load();
-  if (d.players.find(p => p.name.toLowerCase()===name.toLowerCase())) { toast('Player already exists', true); return; }
-  d.players.push({ id:Date.now()+'', name, format:fmt, rating:RAW_CENTER, wins:0, losses:0, totalPoints:0 });
-  save(d);
-  closeModal('modal-addplayer');
-  toast(`${name} added! Starting rating: 5.0`);
-  fillSelects(); renderTeamInputs(); renderHome();
-}
+  setTimeout(()=>document.getElementById('np-name').focus(),100);
+};
+window.addPlayer = async function() {
+  const name=document.getElementById('np-name').value.trim();
+  const fmt=document.getElementById('np-fmt').value;
+  if(!name){ toast('Please enter a name',true); return; }
+  if(players.find(p=>p.name.toLowerCase()===name.toLowerCase())){ toast('Player already exists',true); return; }
+  const btn=document.getElementById('add-player-btn');
+  btn.disabled=true; btn.textContent='Adding…';
+  try {
+    await addDoc(collection(db,'players'),{ name, format:fmt, rating:RAW_CENTER, wins:0, losses:0, totalPoints:0 });
+    closeModal('modal-addplayer');
+    toast(`${name} added! Starting rating: 5.0`);
+  } catch(e){ toast('Error: '+e.message,true); }
+  btn.disabled=false; btn.textContent='Add Player';
+};
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
-renderHome();
+// ── Modals ───────────────────────────────────────────────────────────────────
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+window.closeModal = function(id,e){
+  if(!e||e.target===document.getElementById(id))
+    document.getElementById(id).classList.remove('open');
+};
+
+// ── Init ─────────────────────────────────────────────────────────────────────
 renderTeamInputs();
 document.getElementById('match-date').value = new Date().toISOString().split('T')[0];
 </script>
