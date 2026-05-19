@@ -7,16 +7,16 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--grass:#3B6D11;--grass-light:#639922;--grass-pale:#EAF3DE;--wood:#BA7517;--corn:#FAC775;--bg:#f7f5f0;--card:#ffffff;--text:#2C2C2A;--muted:#888780;--border:rgba(0,0,0,0.1);--danger:#E24B4A;--fd:'Bebas Neue',sans-serif;--fb:'DM Sans',sans-serif;--rad:10px}
+:root{--grass:#3B6D11;--grass-light:#639922;--grass-pale:#EAF3DE;--wood:#BA7517;--wood-pale:#FAEEDA;--corn:#FAC775;--bg:#f7f5f0;--card:#ffffff;--text:#2C2C2A;--muted:#888780;--border:rgba(0,0,0,0.1);--danger:#E24B4A;--fd:'Bebas Neue',sans-serif;--fb:'DM Sans',sans-serif;--rad:10px}
 body{font-family:var(--fb);background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
 nav{background:var(--grass);padding:0 24px;display:flex;align-items:center;height:56px;position:sticky;top:0;z-index:100}
-.brand{font-family:var(--fd);font-size:22px;color:var(--corn);letter-spacing:1px;margin-right:32px;white-space:nowrap}
+.brand{font-family:var(--fd);font-size:22px;color:var(--corn);letter-spacing:1px;margin-right:24px;white-space:nowrap}
 .brand span{color:#fff}
-.nav-links{display:flex;gap:4px;flex:1}
-.nb{background:none;border:none;color:rgba(255,255,255,0.75);font-family:var(--fb);font-size:14px;font-weight:500;padding:8px 16px;border-radius:6px;cursor:pointer;transition:background .15s,color .15s}
+.nav-links{display:flex;gap:2px;flex:1;flex-wrap:wrap}
+.nb{background:none;border:none;color:rgba(255,255,255,0.75);font-family:var(--fb);font-size:13px;font-weight:500;padding:8px 13px;border-radius:6px;cursor:pointer;transition:background .15s,color .15s;white-space:nowrap}
 .nb:hover{background:rgba(255,255,255,0.12);color:#fff}
 .nb.active{background:rgba(255,255,255,0.18);color:#fff}
-.sbadge{margin-left:auto;font-size:12px;font-weight:600;color:var(--corn);background:rgba(0,0,0,0.25);padding:4px 12px;border-radius:20px}
+.sbadge{margin-left:auto;font-size:12px;font-weight:600;color:var(--corn);background:rgba(0,0,0,0.25);padding:4px 12px;border-radius:20px;white-space:nowrap}
 .page{display:none;padding:28px 24px;max-width:900px;margin:0 auto;width:100%}
 .page.active{display:block}
 .ph{margin-bottom:28px}
@@ -48,8 +48,9 @@ nav{background:var(--grass);padding:0 24px;display:flex;align-items:center;heigh
 .wp{font-size:13px;color:var(--muted);min-width:36px}
 .psc{background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad);padding:20px;margin-bottom:20px}
 .psc label{font-size:13px;font-weight:600;color:var(--muted);display:block;margin-bottom:8px}
-select,input[type=text],input[type=number],input[type=password]{width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;color:var(--text);background:#fff;outline:none;transition:border-color .15s}
-select:focus,input:focus{border-color:var(--grass)}
+select,input[type=text],input[type=number],input[type=password],textarea{width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;color:var(--text);background:#fff;outline:none;transition:border-color .15s}
+textarea{resize:vertical;min-height:80px;line-height:1.5}
+select:focus,input:focus,textarea:focus{border-color:var(--grass)}
 .pp{background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad);padding:24px;margin-bottom:20px}
 .ptop{display:flex;align-items:center;gap:20px;margin-bottom:20px}
 .av{width:60px;height:60px;border-radius:50%;background:var(--grass-pale);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:22px;color:var(--grass);flex-shrink:0}
@@ -91,7 +92,7 @@ select:focus,input:focus{border-color:var(--grass)}
 .toast.err{background:var(--danger)}
 .moverlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
 .moverlay.open{opacity:1;pointer-events:auto}
-.mbox{background:var(--card);border-radius:14px;padding:28px;width:420px;max-width:95vw}
+.mbox{background:var(--card);border-radius:14px;padding:28px;width:460px;max-width:95vw;max-height:90vh;overflow-y:auto}
 .mt2{font-family:var(--fd);font-size:24px;margin-bottom:16px}
 .macts{display:flex;gap:10px;margin-top:20px}
 .bsec{flex:1;padding:10px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;font-weight:500;cursor:pointer;background:none;color:var(--text)}
@@ -102,11 +103,10 @@ select:focus,input:focus{border-color:var(--grass)}
 .apl:hover{text-decoration:underline}
 .fbtn{background:none;border:0.5px solid var(--border);border-radius:20px;padding:5px 14px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;font-family:var(--fb);transition:all .15s}
 .fbtn:hover{border-color:var(--grass);color:var(--grass)}
-/* loading spinner */
 .spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-overlay{text-align:center;padding:60px 20px;color:var(--muted)}
-.loading-overlay .spinner{border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:32px;height:32px}
+.loading-overlay .spinner{border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:32px;height:32px;margin:0 auto;display:block}
 /* admin */
 .admin-lock{display:flex;align-items:center;justify-content:center;min-height:60vh}
 .admin-lock-box{background:var(--card);border:0.5px solid var(--border);border-radius:14px;padding:36px;width:360px;max-width:90vw;text-align:center}
@@ -126,16 +126,35 @@ select:focus,input:focus{border-color:var(--grass)}
 .icon-btn.danger:hover{border-color:var(--danger);color:var(--danger)}
 .logout-btn{background:rgba(0,0,0,0.15);border:0.5px solid rgba(0,0,0,0.2);border-radius:6px;padding:5px 12px;color:var(--text);font-family:var(--fb);font-size:13px;cursor:pointer;transition:all .15s}
 .logout-btn:hover{background:rgba(0,0,0,0.25)}
+/* calendar */
+.cal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:4px}
+.cal-card{background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad);overflow:hidden}
+.cal-card-hdr{padding:14px 18px 10px;border-bottom:0.5px solid var(--border)}
+.cal-card-date{font-family:var(--fd);font-size:22px;color:var(--grass);letter-spacing:.5px;line-height:1}
+.cal-card-theme{font-size:15px;font-weight:600;margin-top:2px}
+.cal-card-body{padding:14px 18px}
+.cal-detail{display:flex;gap:10px;margin-bottom:10px;font-size:13px;align-items:flex-start}
+.cal-detail:last-child{margin-bottom:0}
+.cal-detail-icon{font-size:15px;flex-shrink:0;margin-top:1px}
+.cal-detail-label{font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:1px}
+.cal-detail-val{color:var(--text)}
+.cal-upcoming{border-left:3px solid var(--grass)}
+.cal-past{opacity:.7}
+.cal-past .cal-card-date{color:var(--muted)}
+.cal-actions{display:flex;gap:8px;padding:10px 18px;border-top:0.5px solid var(--border)}
+/* score entry hint */
+.format-hint{font-size:12px;color:var(--muted);margin-top:6px;font-style:italic}
 @media(max-width:600px){
   .srow{grid-template-columns:repeat(2,1fr)}
   .pstats{grid-template-columns:repeat(2,1fr)}
   .fr{grid-template-columns:1fr}
   .vsd{padding-top:0}
   nav{padding:0 8px}
-  .brand{font-size:17px;margin-right:8px}
-  .nb{padding:8px 8px;font-size:12px}
+  .brand{font-size:16px;margin-right:8px}
+  .nb{padding:8px 7px;font-size:11px}
   .page{padding:16px 12px}
   .admin-row{flex-wrap:wrap}
+  .cal-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -147,9 +166,10 @@ select:focus,input:focus{border-color:var(--grass)}
     <button class="nb active" onclick="showPage('home',this)">Rankings</button>
     <button class="nb" onclick="showPage('stats',this)">Player Stats</button>
     <button class="nb" onclick="showPage('scores',this)">Enter Score</button>
+    <button class="nb" onclick="showPage('calendar',this)">Calendar</button>
     <button class="nb" onclick="showPage('admin',this)">Admin</button>
   </div>
-  <div class="sbadge">Season 2026</div>
+  <div class="sbadge">Season 2025</div>
 </nav>
 
 <!-- RANKINGS -->
@@ -163,12 +183,7 @@ select:focus,input:focus{border-color:var(--grass)}
   <div class="srow" id="home-stats"></div>
   <div class="tc"><table>
     <thead><tr>
-      <th style="width:40px">#</th>
-      <th>Player</th>
-      <th>Rating</th>
-      <th>W – L</th>
-      <th>Win %</th>
-      <th>Pts Avg</th>
+      <th style="width:40px">#</th><th>Player</th><th>Rating</th><th>W – L</th><th>Win %</th><th>Pts Avg</th>
     </tr></thead>
     <tbody id="rankings-body"><tr><td colspan="6"><div class="loading-overlay"><div class="spinner"></div></div></td></tr></tbody>
   </table></div>
@@ -188,21 +203,29 @@ select:focus,input:focus{border-color:var(--grass)}
 <div class="page" id="page-scores">
   <div class="ph"><div class="pt">Enter Score</div><div class="ps">Record a match result — ratings update automatically</div></div>
   <div class="sf">
-    <div class="fst">Match Format</div>
-    <div class="fmttgl">
-      <button class="fo active" id="fmt-singles" onclick="setFormat('singles')">Singles (1v1)</button>
-      <button class="fo" id="fmt-doubles" onclick="setFormat('doubles')">Doubles (2v2)</button>
-    </div>
     <div class="fst">Teams</div>
     <div id="team-inputs"></div>
     <div class="fst" style="margin-top:24px">Score</div>
     <div class="fr">
-      <div class="fg"><label id="lbl-a">Player A Score</label><input type="number" id="score-a" min="0" max="30" placeholder="e.g. 21"></div>
-      <div class="fg"><label id="lbl-b">Player B Score</label><input type="number" id="score-b" min="0" max="30" placeholder="e.g. 15"></div>
+      <div class="fg"><label id="lbl-a">Team A Score</label><input type="number" id="score-a" min="0" max="30" placeholder="e.g. 21"></div>
+      <div class="fg"><label id="lbl-b">Team B Score</label><input type="number" id="score-b" min="0" max="30" placeholder="e.g. 15"></div>
     </div>
     <div class="fg" style="margin-bottom:8px"><label>Date Played</label><input type="text" id="match-date"></div>
     <button class="subbtn" id="submit-score-btn" onclick="submitScore()">RECORD MATCH</button>
   </div>
+</div>
+
+<!-- CALENDAR -->
+<div class="page" id="page-calendar">
+  <div class="ph">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div><div class="pt">Schedule</div><div class="ps">Upcoming events and weekly details</div></div>
+      <div id="cal-admin-btn" style="display:none">
+        <button class="fbtn" style="background:var(--grass);border-color:var(--grass);color:#fff;font-size:14px" onclick="openAddEvent()">+ Add Event</button>
+      </div>
+    </div>
+  </div>
+  <div id="calendar-content"><div class="loading-overlay"><div class="spinner"></div></div></div>
 </div>
 
 <!-- ADMIN -->
@@ -219,17 +242,17 @@ select:focus,input:focus{border-color:var(--grass)}
   <div id="admin-panel" style="display:none">
     <div class="ph">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-        <div><div class="pt">Admin Panel</div><div class="ps">Manage players and match history</div></div>
+        <div><div class="pt">Admin Panel</div><div class="ps">Manage players, matches and events</div></div>
         <button class="logout-btn" onclick="adminLogout()">Log Out</button>
       </div>
     </div>
     <div class="admin-section">
       <div class="admin-section-hdr">Players</div>
-      <div id="admin-players-list"><div class="loading-overlay"><div class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:24px;height:24px"></div></div></div>
+      <div id="admin-players-list"><div class="loading-overlay"><div class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:24px;height:24px;display:block;margin:0 auto"></div></div></div>
     </div>
     <div class="admin-section">
       <div class="admin-section-hdr">Match History</div>
-      <div id="admin-matches-list"><div class="loading-overlay"><div class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:24px;height:24px"></div></div></div>
+      <div id="admin-matches-list"><div class="loading-overlay"><div class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:24px;height:24px;display:block;margin:0 auto"></div></div></div>
     </div>
   </div>
 </div>
@@ -286,10 +309,29 @@ select:focus,input:focus{border-color:var(--grass)}
       <div class="fg"><label id="edit-lbl-b">Score B</label><input type="number" id="edit-score-b" min="0" max="30"></div>
     </div>
     <div class="fg" style="margin-top:12px"><label>Date</label><input type="text" id="edit-match-date"></div>
-    <p style="font-size:12px;color:var(--muted);margin-top:10px">Note: editing a score does not recalculate ratings. Delete and re-enter the match if ratings need to be recalculated.</p>
+    <p style="font-size:12px;color:var(--muted);margin-top:10px">Note: editing a score does not recalculate ratings. Delete and re-enter if ratings need to be recalculated.</p>
     <div class="macts">
       <button class="bsec" onclick="closeModal('modal-editmatch')">Cancel</button>
       <button class="bpri" id="save-match-btn" onclick="saveEditMatch()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT EVENT MODAL -->
+<div class="moverlay" id="modal-event" onclick="closeModal('modal-event',event)">
+  <div class="mbox">
+    <div class="mt2" id="event-modal-title">Add Event</div>
+    <input type="hidden" id="edit-event-id">
+    <div class="fg" style="margin-bottom:12px"><label>Date (e.g. 2025-07-04)</label><input type="text" id="ev-date" placeholder="YYYY-MM-DD"></div>
+    <div class="fg" style="margin-bottom:12px"><label>Theme / Title</label><input type="text" id="ev-theme" placeholder="e.g. Red White &amp; Brew Night"></div>
+    <div class="fg" style="margin-bottom:12px"><label>Start Time</label><input type="text" id="ev-time" placeholder="e.g. 6:00 PM"></div>
+    <div class="fg" style="margin-bottom:12px"><label>Location</label><input type="text" id="ev-location" placeholder="e.g. Jake's Backyard – 123 Oak St"></div>
+    <div class="fg" style="margin-bottom:12px"><label>What to Bring</label><input type="text" id="ev-bring" placeholder="e.g. A dish to share, lawn chairs, drinks"></div>
+    <div class="fg" style="margin-bottom:12px"><label>Cost / Entry</label><input type="text" id="ev-cost" placeholder="e.g. Free, $5 buy-in"></div>
+    <div class="fg"><label>Extra Notes</label><textarea id="ev-notes" placeholder="Any additional details…"></textarea></div>
+    <div class="macts">
+      <button class="bsec" onclick="closeModal('modal-event')">Cancel</button>
+      <button class="bpri" id="save-event-btn" onclick="saveEvent()">Save Event</button>
     </div>
   </div>
 </div>
@@ -308,13 +350,11 @@ select:focus,input:focus{border-color:var(--grass)}
 
 <div class="toast" id="toast"></div>
 
-<!-- Firebase SDK -->
 <script type="module">
-import { initializeApp }         from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, doc, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy }
+import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// ── Firebase config ──────────────────────────────────────────────────────────
 const firebaseConfig = {
   apiKey:            "AIzaSyBjMKqN6n8bdfoZ157fU71nuzZAvFzwZCI",
   authDomain:        "fcl-database.firebaseapp.com",
@@ -329,91 +369,80 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
 
-// ── Rating constants ─────────────────────────────────────────────────────────
-const RAW_CENTER = 1000;
-const RAW_SCALE  = 200;
-const K          = 32;
+const RAW_CENTER = 1000, RAW_SCALE = 200, K = 32;
 const ADMIN_PASS = '060725';
 
-function toDisp(raw) {
-  return Math.max(0, Math.min(10, 5 + ((raw||RAW_CENTER) - RAW_CENTER) / RAW_SCALE)).toFixed(1);
-}
-function dispToRaw(disp) {
-  return Math.round((parseFloat(disp) - 5) * RAW_SCALE + RAW_CENTER);
-}
-function deltaDisp(d) { return (d / RAW_SCALE).toFixed(2); }
-function initials(n)  { return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
+function toDisp(raw){ return Math.max(0,Math.min(10,5+((raw||RAW_CENTER)-RAW_CENTER)/RAW_SCALE)).toFixed(1); }
+function dispToRaw(d){ return Math.round((parseFloat(d)-5)*RAW_SCALE+RAW_CENTER); }
+function deltaDisp(d){ return (d/RAW_SCALE).toFixed(2); }
+function initials(n){ return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
 function expected(rA,rB){ return 1/(1+Math.pow(10,(rB-rA)/400)); }
 function calcDelta(wR,lR,wS,lS){
-  const E=expected(wR,lR), mf=1+Math.log(Math.max(wS-lS,1))*0.2, pb=Math.min(wS/21,1)*0.1;
+  const E=expected(wR,lR),mf=1+Math.log(Math.max(wS-lS,1))*0.2,pb=Math.min(wS/21,1)*0.1;
   return Math.max(Math.round(K*mf*(1-E)*(1+pb)),1);
 }
 
-// ── Toast ────────────────────────────────────────────────────────────────────
-function toast(msg, err) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast'+(err?' err':'')+' show';
-  setTimeout(()=>t.className='toast', 2800);
+function toast(msg,err){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast'+(err?' err':'')+' show';
+  setTimeout(()=>t.className='toast',2800);
 }
 
-// ── In-memory cache (updated by real-time listener) ──────────────────────────
-let players = [];   // array of {id, name, rating, wins, losses, totalPoints, format}
-let matches = [];   // array of {id, format, teamA, teamB, scoreA, scoreB, players, ratingChanges, date}
+// ── In-memory cache ───────────────────────────────────────────────────────────
+let players=[], matches=[], events=[];
 
-// ── Real-time listeners ──────────────────────────────────────────────────────
-onSnapshot(collection(db,'players'), snap => {
-  players = snap.docs.map(d=>({id:d.id,...d.data()}));
-  refreshAllViews();
+onSnapshot(collection(db,'players'), snap=>{
+  players=snap.docs.map(d=>({id:d.id,...d.data()}));
+  refreshActive();
 });
-onSnapshot(collection(db,'matches'), snap => {
-  matches = snap.docs.map(d=>({id:d.id,...d.data()}));
-  matches.sort((a,b)=> (a.date||'') < (b.date||'') ? -1 : 1);
-  refreshAllViews();
+onSnapshot(collection(db,'matches'), snap=>{
+  matches=snap.docs.map(d=>({id:d.id,...d.data()}));
+  matches.sort((a,b)=>(a.date||'')<(b.date||'')?-1:1);
+  refreshActive();
+});
+onSnapshot(collection(db,'events'), snap=>{
+  events=snap.docs.map(d=>({id:d.id,...d.data()}));
+  events.sort((a,b)=>(a.date||'')<(b.date||'')?-1:1);
+  refreshActive();
 });
 
-function refreshAllViews() {
-  const active = document.querySelector('.page.active')?.id;
-  if (active === 'page-home')   renderHome();
-  if (active === 'page-stats')  { fillSelects(); renderPlayerStats(); }
-  if (active === 'page-scores') { fillSelects(); renderTeamInputs(); }
-  if (active === 'page-admin' && adminAuthed) { renderAdminPlayers(); renderAdminMatches(); }
+function refreshActive(){
+  const id=document.querySelector('.page.active')?.id;
+  if(id==='page-home')     renderHome();
+  if(id==='page-stats')    { fillSelects(); renderPlayerStats(); }
+  if(id==='page-scores')   { fillSelects(); renderTeamInputs(); }
+  if(id==='page-calendar') renderCalendar();
+  if(id==='page-admin' && adminAuthed){ renderAdminPlayers(); renderAdminMatches(); }
 }
 
-// ── Navigation ───────────────────────────────────────────────────────────────
-window.showPage = function(p, btn) {
+// ── Navigation ────────────────────────────────────────────────────────────────
+window.showPage=function(p,btn){
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
   document.querySelectorAll('.nb').forEach(e=>e.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
-  if (btn) btn.classList.add('active');
-  if (p==='home')   renderHome();
-  if (p==='stats')  { fillSelects(); renderPlayerStats(); }
-  if (p==='scores') { fillSelects(); renderTeamInputs(); }
-  if (p==='admin')  renderAdminPage();
+  if(btn)btn.classList.add('active');
+  if(p==='home')     renderHome();
+  if(p==='stats')    { fillSelects(); renderPlayerStats(); }
+  if(p==='scores')   { fillSelects(); renderTeamInputs(); }
+  if(p==='calendar') renderCalendar();
+  if(p==='admin')    renderAdminPage();
 };
 
-// ── Rankings ─────────────────────────────────────────────────────────────────
-function renderHome() {
-  const sorted = [...players].sort((a,b)=>b.rating-a.rating);
-  const top    = sorted[0];
-  const avgRaw = players.length ? players.reduce((s,p)=>s+(p.rating||RAW_CENTER),0)/players.length : RAW_CENTER;
-
-  document.getElementById('home-stats').innerHTML = `
+// ── Rankings ──────────────────────────────────────────────────────────────────
+function renderHome(){
+  const sorted=[...players].sort((a,b)=>b.rating-a.rating);
+  const top=sorted[0];
+  const avgRaw=players.length?players.reduce((s,p)=>s+(p.rating||RAW_CENTER),0)/players.length:RAW_CENTER;
+  document.getElementById('home-stats').innerHTML=`
     <div class="sc"><div class="sl">Players</div><div class="sv">${players.length}</div></div>
     <div class="sc"><div class="sl">Matches</div><div class="sv">${matches.length}</div></div>
     <div class="sc"><div class="sl">Top Rated</div><div class="sv gold" style="font-size:22px;line-height:1.2">${top?top.name.split(' ')[0]:'—'}</div></div>
     <div class="sc"><div class="sl">Avg Rating</div><div class="sv g">${toDisp(avgRaw)}</div></div>`;
-
-  const tbody = document.getElementById('rankings-body');
-  if (!sorted.length) {
-    tbody.innerHTML = `<tr><td colspan="6"><div class="es"><p>No players yet — click <strong>+ Add Player</strong> to get started!</p></div></td></tr>`;
-    return;
-  }
-  tbody.innerHTML = sorted.map((p,i)=>{
-    const w=p.wins||0,l=p.losses||0,tot=w+l;
-    const pct=tot?(w/tot*100):0;
-    const avg=tot?((p.totalPoints||0)/tot).toFixed(1):'—';
-    return `<tr>
+  const tbody=document.getElementById('rankings-body');
+  if(!sorted.length){tbody.innerHTML=`<tr><td colspan="6"><div class="es"><p>No players yet — click <strong>+ Add Player</strong> to get started!</p></div></td></tr>`;return;}
+  tbody.innerHTML=sorted.map((p,i)=>{
+    const w=p.wins||0,l=p.losses||0,tot=w+l,pct=tot?(w/tot*100):0,avg=tot?((p.totalPoints||0)/tot).toFixed(1):'—';
+    return`<tr>
       <td><span class="rn ${i<3?'top3':''}">${i+1}</span></td>
       <td><span class="pn" onclick="goPlayer('${p.id}')">${p.name}</span></td>
       <td><span class="rp">${toDisp(p.rating)}</span></td>
@@ -424,17 +453,17 @@ function renderHome() {
   }).join('');
 }
 
-// ── Player Stats ─────────────────────────────────────────────────────────────
-window.goPlayer = function(id) {
+// ── Player Stats ──────────────────────────────────────────────────────────────
+window.goPlayer=function(id){
   document.querySelectorAll('.nb').forEach((b,i)=>b.classList.toggle('active',i===1));
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
   document.getElementById('page-stats').classList.add('active');
   fillSelects();
-  document.getElementById('stats-sel').value = id;
+  document.getElementById('stats-sel').value=id;
   renderPlayerStats();
 };
 
-function fillSelects() {
+function fillSelects(){
   ['stats-sel','sp1a','sp2a','sp1b','sp2b'].forEach(id=>{
     const el=document.getElementById(id); if(!el)return;
     const cur=el.value;
@@ -443,35 +472,30 @@ function fillSelects() {
   });
 }
 
-function renderPlayerStats() {
-  const id  = document.getElementById('stats-sel').value;
-  const box = document.getElementById('stats-content');
-  if (!id) { box.innerHTML=''; return; }
-  const p = players.find(x=>x.id===id); if (!p) return;
-  const pm = [...matches].filter(m=>m.players&&m.players.includes(id)).reverse();
+function renderPlayerStats(){
+  const id=document.getElementById('stats-sel').value;
+  const box=document.getElementById('stats-content');
+  if(!id){box.innerHTML='';return;}
+  const p=players.find(x=>x.id===id); if(!p)return;
+  const pm=[...matches].filter(m=>m.players&&m.players.includes(id)).reverse();
   const w=p.wins||0,l=p.losses||0,tot=w+l;
-  const pct=tot?Math.round(w/tot*100):0;
-  const avg=tot?((p.totalPoints||0)/tot).toFixed(1):'—';
+  const pct=tot?Math.round(w/tot*100):0, avg=tot?((p.totalPoints||0)/tot).toFixed(1):'—';
   const fmt=p.format||'both';
-
-  const rows = pm.map(m=>{
-    const isA=m.teamA.includes(id);
-    const won=isA?m.scoreA>m.scoreB:m.scoreB>m.scoreA;
-    const my=isA?m.scoreA:m.scoreB, opp=isA?m.scoreB:m.scoreA;
+  const rows=pm.map(m=>{
+    const isA=m.teamA.includes(id),won=isA?m.scoreA>m.scoreB:m.scoreB>m.scoreA;
+    const my=isA?m.scoreA:m.scoreB,opp=isA?m.scoreB:m.scoreA;
     const rawD=m.ratingChanges?(m.ratingChanges[id]||0):0;
     const oppIds=isA?m.teamB:m.teamA;
     const oppNames=oppIds.map(oid=>{const op=players.find(x=>x.id===oid);return op?op.name.split(' ')[0]:'?';}).join(' & ');
     const dd=Math.abs(parseFloat(deltaDisp(Math.abs(rawD)))).toFixed(2);
-    const dStr=rawD>=0?`+${dd}`:`−${dd}`;
-    return `<div class="mr">
+    return`<div class="mr">
       <div class="mres ${won?'W':'L'}">${won?'W':'L'}</div>
       <div class="mscore">${my} – ${opp}</div>
       <div class="mopp">vs ${oppNames} <span class="fb2 ${m.format}" style="margin-left:4px">${m.format}</span></div>
-      <div class="md ${rawD>=0?'pos':'neg'}">${dStr}</div>
+      <div class="md ${rawD>=0?'pos':'neg'}">${rawD>=0?'+':'−'}${dd}</div>
       <div class="mdate">${m.date||''}</div>
     </div>`;
   }).join('')||`<div class="es" style="padding:32px"><p>No matches recorded yet.</p></div>`;
-
   box.innerHTML=`
     <div class="pp">
       <div class="ptop">
@@ -495,109 +519,196 @@ function renderPlayerStats() {
 }
 
 // ── Enter Score ───────────────────────────────────────────────────────────────
-let curFmt = 'singles';
-window.setFormat = function(f) {
-  curFmt=f;
-  document.getElementById('fmt-singles').classList.toggle('active',f==='singles');
-  document.getElementById('fmt-doubles').classList.toggle('active',f==='doubles');
-  renderTeamInputs();
-};
-
-function renderTeamInputs() {
+// Default is doubles. Auto-detect singles if only players 1A and 1B are filled.
+function renderTeamInputs(){
   const opts='<option value="">— Select —</option>'+players.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
-  const sing=curFmt==='singles';
-  document.getElementById('lbl-a').textContent=sing?'Player A Score':'Team A Score';
-  document.getElementById('lbl-b').textContent=sing?'Player B Score':'Team B Score';
-  document.getElementById('team-inputs').innerHTML=sing?`
-    <div class="fr" style="align-items:end">
-      <div class="fg"><label>Player A</label><select id="sp1a">${opts}</select></div>
-      <div class="vsd">VS</div>
-      <div class="fg"><label>Player B</label><select id="sp1b">${opts}</select></div>
-    </div>`:`
+  document.getElementById('team-inputs').innerHTML=`
     <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px">TEAM A</div>
     <div class="fr" style="margin-bottom:20px">
-      <div class="fg"><label>Player 1</label><select id="sp1a">${opts}</select></div>
-      <div class="fg"><label>Player 2</label><select id="sp2a">${opts}</select></div>
+      <div class="fg"><label>Player 1</label><select id="sp1a" onchange="autoDetectFormat()">${opts}</select></div>
+      <div class="fg"><label>Player 2 <span style="font-weight:400;color:var(--muted)">(optional for singles)</span></label><select id="sp2a" onchange="autoDetectFormat()">${opts}</select></div>
     </div>
     <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px">TEAM B</div>
-    <div class="fr">
-      <div class="fg"><label>Player 1</label><select id="sp1b">${opts}</select></div>
-      <div class="fg"><label>Player 2</label><select id="sp2b">${opts}</select></div>
-    </div>`;
+    <div class="fr" style="margin-bottom:4px">
+      <div class="fg"><label>Player 1</label><select id="sp1b" onchange="autoDetectFormat()">${opts}</select></div>
+      <div class="fg"><label>Player 2 <span style="font-weight:400;color:var(--muted)">(optional for singles)</span></label><select id="sp2b" onchange="autoDetectFormat()">${opts}</select></div>
+    </div>
+    <div class="format-hint" id="fmt-hint">Doubles match — leave Player 2s blank for singles</div>`;
 }
 
-window.submitScore = async function() {
-  const sing=curFmt==='singles';
+// Detect format from what's filled in and update the hint + labels
+window.autoDetectFormat=function(){
+  const p2a=document.getElementById('sp2a')?.value;
+  const p2b=document.getElementById('sp2b')?.value;
+  const isSingles=!p2a&&!p2b;
+  const hint=document.getElementById('fmt-hint');
+  if(hint) hint.textContent=isSingles?'Singles match detected':'Doubles match detected';
+  document.getElementById('lbl-a').textContent=isSingles?'Player A Score':'Team A Score';
+  document.getElementById('lbl-b').textContent=isSingles?'Player B Score':'Team B Score';
+};
+
+window.submitScore=async function(){
   const p1a=document.getElementById('sp1a')?.value;
   const p1b=document.getElementById('sp1b')?.value;
-  const p2a=sing?null:document.getElementById('sp2a')?.value;
-  const p2b=sing?null:document.getElementById('sp2b')?.value;
+  const p2a=document.getElementById('sp2a')?.value||null;
+  const p2b=document.getElementById('sp2b')?.value||null;
   const sA=parseInt(document.getElementById('score-a').value);
   const sB=parseInt(document.getElementById('score-b').value);
   const date=document.getElementById('match-date').value;
 
-  if(!p1a||!p1b)            { toast('Please select all players',true); return; }
-  if(!sing&&(!p2a||!p2b))   { toast('Please select all players',true); return; }
-  if(isNaN(sA)||isNaN(sB))  { toast('Please enter scores',true); return; }
-  if(sA===sB)               { toast('Scores must differ — no ties!',true); return; }
+  if(!p1a||!p1b)          {toast('Please select at least one player per team',true);return;}
+  if(isNaN(sA)||isNaN(sB)){toast('Please enter scores',true);return;}
+  if(sA===sB)             {toast('Scores must differ — no ties!',true);return;}
 
-  const tA=sing?[p1a]:[p1a,p2a];
-  const tB=sing?[p1b]:[p1b,p2b];
+  // Auto-detect format: singles if no player 2s, doubles if any player 2 selected
+  const isSingles=!p2a&&!p2b;
+  const fmt=isSingles?'singles':'doubles';
+  const tA=isSingles?[p1a]:[p1a,p2a];
+  const tB=isSingles?[p1b]:[p1b,p2b];
   const all=[...tA,...tB];
-  if(new Set(all).size<all.length){ toast("A player can't be on both teams",true); return; }
+  if(new Set(all).size<all.length){toast("A player can't appear twice",true);return;}
 
   const btn=document.getElementById('submit-score-btn');
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Saving…';
 
-  const aWon=sA>sB;
-  const wT=aWon?tA:tB, lT=aWon?tB:tA;
-  const wS=aWon?sA:sB, lS=aWon?sB:sA;
-
-  const getR=id=>{ const p=players.find(x=>x.id===id); return p?(p.rating||RAW_CENTER):RAW_CENTER; };
+  const aWon=sA>sB,wT=aWon?tA:tB,lT=aWon?tB:tA,wS=aWon?sA:sB,lS=aWon?sB:sA;
+  const getR=id=>{const p=players.find(x=>x.id===id);return p?(p.rating||RAW_CENTER):RAW_CENTER;};
   const avgW=wT.reduce((s,id)=>s+getR(id),0)/wT.length;
   const avgL=lT.reduce((s,id)=>s+getR(id),0)/lT.length;
   const delta=calcDelta(avgW,avgL,wS,lS);
   const rc={};
-
-  try {
-    // Update players
-    for (const id of wT) {
-      const p=players.find(x=>x.id===id); if(!p) continue;
+  try{
+    for(const id of wT){
+      const p=players.find(x=>x.id===id);if(!p)continue;
       rc[id]=delta;
-      await updateDoc(doc(db,'players',id),{
-        rating:(p.rating||RAW_CENTER)+delta,
-        wins:(p.wins||0)+1,
-        totalPoints:(p.totalPoints||0)+wS
-      });
+      await updateDoc(doc(db,'players',id),{rating:(p.rating||RAW_CENTER)+delta,wins:(p.wins||0)+1,totalPoints:(p.totalPoints||0)+wS});
     }
-    for (const id of lT) {
-      const p=players.find(x=>x.id===id); if(!p) continue;
+    for(const id of lT){
+      const p=players.find(x=>x.id===id);if(!p)continue;
       rc[id]=-delta;
-      await updateDoc(doc(db,'players',id),{
-        rating:(p.rating||RAW_CENTER)-delta,
-        losses:(p.losses||0)+1,
-        totalPoints:(p.totalPoints||0)+lS
-      });
+      await updateDoc(doc(db,'players',id),{rating:(p.rating||RAW_CENTER)-delta,losses:(p.losses||0)+1,totalPoints:(p.totalPoints||0)+lS});
     }
-    // Save match
-    await addDoc(collection(db,'matches'),{
-      format:curFmt, teamA:tA, teamB:tB,
-      scoreA:sA, scoreB:sB, players:all,
-      ratingChanges:rc, date
-    });
-    toast(`Match recorded! ${aWon?'Team A':'Team B'} wins. Rating change: ±${deltaDisp(delta)}`);
+    await addDoc(collection(db,'matches'),{format:fmt,teamA:tA,teamB:tB,scoreA:sA,scoreB:sB,players:all,ratingChanges:rc,date});
+    toast(`${fmt.charAt(0).toUpperCase()+fmt.slice(1)} match recorded! ${aWon?'Team A':'Team B'} wins. Rating change: ±${deltaDisp(delta)}`);
     document.getElementById('score-a').value='';
     document.getElementById('score-b').value='';
-  } catch(e) {
-    toast('Error saving match: '+e.message, true);
-  }
+    // reset selects
+    ['sp1a','sp2a','sp1b','sp2b'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    autoDetectFormat();
+  }catch(e){toast('Error saving match: '+e.message,true);}
   btn.disabled=false; btn.textContent='RECORD MATCH';
 };
 
-// ── Admin ────────────────────────────────────────────────────────────────────
-let adminAuthed = false;
+// ── Calendar ──────────────────────────────────────────────────────────────────
+function renderCalendar(){
+  // Show add button only when admin is logged in
+  document.getElementById('cal-admin-btn').style.display=adminAuthed?'block':'none';
+  const box=document.getElementById('calendar-content');
+  if(!events.length){
+    box.innerHTML=`<div class="es"><p>No events scheduled yet.</p>${adminAuthed?'<p style="margin-top:8px;font-size:13px">Use the + Add Event button to create your first event.</p>':''}</div>`;
+    return;
+  }
+  const today=new Date().toISOString().split('T')[0];
+  const upcoming=events.filter(e=>e.date>=today);
+  const past=events.filter(e=>e.date<today).reverse();
 
-window.adminLogin = function() {
+  function eventCard(ev){
+    const isPast=ev.date<today;
+    const dateObj=new Date(ev.date+'T12:00:00');
+    const dateStr=dateObj.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+    const details=[
+      ev.time     ?{icon:'🕕',label:'Start Time',val:ev.time}:null,
+      ev.location ?{icon:'📍',label:'Location',val:ev.location}:null,
+      ev.bring    ?{icon:'🎒',label:'What to Bring',val:ev.bring}:null,
+      ev.cost     ?{icon:'💵',label:'Cost',val:ev.cost}:null,
+      ev.notes    ?{icon:'📋',label:'Notes',val:ev.notes}:null,
+    ].filter(Boolean);
+    return`<div class="cal-card ${isPast?'cal-past':'cal-upcoming'}">
+      <div class="cal-card-hdr">
+        <div class="cal-card-date">${dateStr}</div>
+        ${ev.theme?`<div class="cal-card-theme">${ev.theme}</div>`:''}
+      </div>
+      <div class="cal-card-body">
+        ${details.map(d=>`<div class="cal-detail">
+          <div class="cal-detail-icon">${d.icon}</div>
+          <div><div class="cal-detail-label">${d.label}</div><div class="cal-detail-val">${d.val}</div></div>
+        </div>`).join('')}
+        ${!details.length?'<span style="color:var(--muted);font-size:13px">No details added yet.</span>':''}
+      </div>
+      ${adminAuthed?`<div class="cal-actions">
+        <button class="icon-btn" onclick="openEditEvent('${ev.id}')">✏️ Edit</button>
+        <button class="icon-btn danger" onclick="confirmDeleteEvent('${ev.id}')">🗑 Delete</button>
+      </div>`:''}
+    </div>`;
+  }
+
+  let html='';
+  if(upcoming.length){
+    html+=`<h3 style="font-family:var(--fd);font-size:20px;letter-spacing:.5px;margin-bottom:12px;color:var(--grass)">Upcoming</h3>
+      <div class="cal-grid">${upcoming.map(eventCard).join('')}</div>`;
+  }
+  if(past.length){
+    html+=`<h3 style="font-family:var(--fd);font-size:20px;letter-spacing:.5px;margin:28px 0 12px;color:var(--muted)">Past Events</h3>
+      <div class="cal-grid">${past.map(eventCard).join('')}</div>`;
+  }
+  box.innerHTML=html;
+}
+
+window.openAddEvent=function(){
+  document.getElementById('event-modal-title').textContent='Add Event';
+  document.getElementById('edit-event-id').value='';
+  ['ev-date','ev-theme','ev-time','ev-location','ev-bring','ev-cost','ev-notes'].forEach(id=>document.getElementById(id).value='');
+  openModal('modal-event');
+};
+window.openEditEvent=function(id){
+  const ev=events.find(x=>x.id===id);if(!ev)return;
+  document.getElementById('event-modal-title').textContent='Edit Event';
+  document.getElementById('edit-event-id').value=id;
+  document.getElementById('ev-date').value=ev.date||'';
+  document.getElementById('ev-theme').value=ev.theme||'';
+  document.getElementById('ev-time').value=ev.time||'';
+  document.getElementById('ev-location').value=ev.location||'';
+  document.getElementById('ev-bring').value=ev.bring||'';
+  document.getElementById('ev-cost').value=ev.cost||'';
+  document.getElementById('ev-notes').value=ev.notes||'';
+  openModal('modal-event');
+};
+window.saveEvent=async function(){
+  const id=document.getElementById('edit-event-id').value;
+  const date=document.getElementById('ev-date').value.trim();
+  if(!date){toast('Please enter a date',true);return;}
+  const payload={
+    date,
+    theme:document.getElementById('ev-theme').value.trim(),
+    time:document.getElementById('ev-time').value.trim(),
+    location:document.getElementById('ev-location').value.trim(),
+    bring:document.getElementById('ev-bring').value.trim(),
+    cost:document.getElementById('ev-cost').value.trim(),
+    notes:document.getElementById('ev-notes').value.trim(),
+  };
+  const btn=document.getElementById('save-event-btn');
+  btn.disabled=true;btn.textContent='Saving…';
+  try{
+    if(id) await updateDoc(doc(db,'events',id),payload);
+    else   await addDoc(collection(db,'events'),payload);
+    closeModal('modal-event');
+    toast(id?'Event updated!':'Event added!');
+  }catch(e){toast('Error: '+e.message,true);}
+  btn.disabled=false;btn.textContent='Save Event';
+};
+window.confirmDeleteEvent=function(id){
+  const ev=events.find(x=>x.id===id);if(!ev)return;
+  document.getElementById('confirm-msg').textContent=`Delete the event on ${ev.date}${ev.theme?' ('+ev.theme+')':''}?`;
+  document.getElementById('confirm-ok-btn').onclick=async()=>{
+    try{await deleteDoc(doc(db,'events',id));toast('Event deleted');}catch(e){toast('Error: '+e.message,true);}
+    closeModal('modal-confirm');
+  };
+  openModal('modal-confirm');
+};
+
+// ── Admin ─────────────────────────────────────────────────────────────────────
+let adminAuthed=false;
+window.adminLogin=function(){
   if(document.getElementById('admin-pw-input').value===ADMIN_PASS){
     adminAuthed=true;
     document.getElementById('admin-pw-input').value='';
@@ -607,63 +718,44 @@ window.adminLogin = function() {
     document.getElementById('admin-pw-err').style.display='block';
   }
 };
-window.adminLogout = function() {
+window.adminLogout=function(){
   adminAuthed=false;
   document.getElementById('admin-lock').style.display='flex';
   document.getElementById('admin-panel').style.display='none';
 };
-function renderAdminPage() {
-  if(!adminAuthed){
-    document.getElementById('admin-lock').style.display='flex';
-    document.getElementById('admin-panel').style.display='none';
-    return;
-  }
+function renderAdminPage(){
+  if(!adminAuthed){document.getElementById('admin-lock').style.display='flex';document.getElementById('admin-panel').style.display='none';return;}
   document.getElementById('admin-lock').style.display='none';
   document.getElementById('admin-panel').style.display='block';
-  renderAdminPlayers();
-  renderAdminMatches();
+  renderAdminPlayers(); renderAdminMatches();
 }
-
-function renderAdminPlayers() {
+function renderAdminPlayers(){
   const box=document.getElementById('admin-players-list');
-  if(!players.length){ box.innerHTML='<div class="es" style="padding:24px"><p>No players yet.</p></div>'; return; }
-  const sorted=[...players].sort((a,b)=>b.rating-a.rating);
-  box.innerHTML=sorted.map(p=>{
-    const w=p.wins||0,l=p.losses||0;
-    return `<div class="admin-row">
-      <div class="av" style="width:36px;height:36px;font-size:14px;flex-shrink:0">${initials(p.name)}</div>
-      <div class="admin-row-info">
-        <strong>${p.name}</strong>
-        <span>Rating: ${toDisp(p.rating)} &nbsp;|&nbsp; ${w}W – ${l}L &nbsp;|&nbsp; ${p.format||'both'}</span>
-      </div>
-      <button class="icon-btn" onclick="openEditPlayer('${p.id}')">✏️ Edit</button>
-      <button class="icon-btn danger" onclick="confirmDeletePlayer('${p.id}')">🗑 Delete</button>
-    </div>`;
-  }).join('');
+  if(!players.length){box.innerHTML='<div class="es" style="padding:24px"><p>No players yet.</p></div>';return;}
+  box.innerHTML=[...players].sort((a,b)=>b.rating-a.rating).map(p=>`<div class="admin-row">
+    <div class="av" style="width:36px;height:36px;font-size:14px;flex-shrink:0">${initials(p.name)}</div>
+    <div class="admin-row-info"><strong>${p.name}</strong><span>Rating: ${toDisp(p.rating)} | ${p.wins||0}W – ${p.losses||0}L | ${p.format||'both'}</span></div>
+    <button class="icon-btn" onclick="openEditPlayer('${p.id}')">✏️ Edit</button>
+    <button class="icon-btn danger" onclick="confirmDeletePlayer('${p.id}')">🗑 Delete</button>
+  </div>`).join('');
 }
-
-function renderAdminMatches() {
+function renderAdminMatches(){
   const box=document.getElementById('admin-matches-list');
-  if(!matches.length){ box.innerHTML='<div class="es" style="padding:24px"><p>No matches yet.</p></div>'; return; }
+  if(!matches.length){box.innerHTML='<div class="es" style="padding:24px"><p>No matches yet.</p></div>';return;}
   const getName=id=>{const p=players.find(x=>x.id===id);return p?p.name.split(' ')[0]:'?';};
   box.innerHTML=[...matches].reverse().map(m=>{
-    const tAN=m.teamA.map(getName).join(' & ');
-    const tBN=m.teamB.map(getName).join(' & ');
-    const winner=m.scoreA>m.scoreB?tAN:tBN;
-    return `<div class="admin-row">
-      <div class="admin-row-info">
-        <strong>${tAN} ${m.scoreA} – ${m.scoreB} ${tBN}</strong>
-        <span>${m.date||'No date'} &nbsp;|&nbsp; ${m.format} &nbsp;|&nbsp; Winner: ${winner}</span>
-      </div>
+    const tAN=m.teamA.map(getName).join(' & '),tBN=m.teamB.map(getName).join(' & ');
+    return`<div class="admin-row">
+      <div class="admin-row-info"><strong>${tAN} ${m.scoreA} – ${m.scoreB} ${tBN}</strong>
+        <span>${m.date||'No date'} | ${m.format} | Winner: ${m.scoreA>m.scoreB?tAN:tBN}</span></div>
       <button class="icon-btn" onclick="openEditMatch('${m.id}')">✏️ Edit</button>
       <button class="icon-btn danger" onclick="confirmDeleteMatch('${m.id}')">🗑 Delete</button>
     </div>`;
   }).join('');
 }
 
-// ── Edit / Delete Players ────────────────────────────────────────────────────
-window.openEditPlayer = function(id) {
-  const p=players.find(x=>x.id===id); if(!p) return;
+window.openEditPlayer=function(id){
+  const p=players.find(x=>x.id===id);if(!p)return;
   document.getElementById('edit-player-id').value=id;
   document.getElementById('edit-player-name').value=p.name;
   document.getElementById('edit-player-rating').value=toDisp(p.rating);
@@ -672,42 +764,36 @@ window.openEditPlayer = function(id) {
   document.getElementById('edit-player-fmt').value=p.format||'both';
   openModal('modal-editplayer');
 };
-
-window.saveEditPlayer = async function() {
+window.saveEditPlayer=async function(){
   const id=document.getElementById('edit-player-id').value;
   const name=document.getElementById('edit-player-name').value.trim();
   const disp=parseFloat(document.getElementById('edit-player-rating').value);
   const wins=parseInt(document.getElementById('edit-player-wins').value);
   const losses=parseInt(document.getElementById('edit-player-losses').value);
   const fmt=document.getElementById('edit-player-fmt').value;
-  if(!name)                        { toast('Name cannot be empty',true); return; }
-  if(isNaN(disp)||disp<0||disp>10) { toast('Rating must be 0–10',true); return; }
-  if(isNaN(wins)||wins<0)          { toast('Invalid wins',true); return; }
-  if(isNaN(losses)||losses<0)      { toast('Invalid losses',true); return; }
+  if(!name){toast('Name cannot be empty',true);return;}
+  if(isNaN(disp)||disp<0||disp>10){toast('Rating must be 0–10',true);return;}
+  if(isNaN(wins)||wins<0){toast('Invalid wins',true);return;}
+  if(isNaN(losses)||losses<0){toast('Invalid losses',true);return;}
   const btn=document.getElementById('save-player-btn');
-  btn.disabled=true; btn.textContent='Saving…';
-  try {
-    await updateDoc(doc(db,'players',id),{ name, rating:dispToRaw(disp), wins, losses, format:fmt });
-    closeModal('modal-editplayer');
-    toast(`${name} updated!`);
-  } catch(e){ toast('Error: '+e.message,true); }
-  btn.disabled=false; btn.textContent='Save Changes';
+  btn.disabled=true;btn.textContent='Saving…';
+  try{
+    await updateDoc(doc(db,'players',id),{name,rating:dispToRaw(disp),wins,losses,format:fmt});
+    closeModal('modal-editplayer');toast(`${name} updated!`);
+  }catch(e){toast('Error: '+e.message,true);}
+  btn.disabled=false;btn.textContent='Save Changes';
 };
-
-window.confirmDeletePlayer = function(id) {
-  const p=players.find(x=>x.id===id); if(!p) return;
-  document.getElementById('confirm-msg').textContent=`Delete "${p.name}"? They'll be removed from the roster. Their match records will remain.`;
-  document.getElementById('confirm-ok-btn').onclick=()=>{ deletePlayer(id); closeModal('modal-confirm'); };
+window.confirmDeletePlayer=function(id){
+  const p=players.find(x=>x.id===id);if(!p)return;
+  document.getElementById('confirm-msg').textContent=`Delete "${p.name}"? They'll be removed from the roster. Match records remain.`;
+  document.getElementById('confirm-ok-btn').onclick=async()=>{
+    try{await deleteDoc(doc(db,'players',id));toast('Player deleted');}catch(e){toast('Error: '+e.message,true);}
+    closeModal('modal-confirm');
+  };
   openModal('modal-confirm');
 };
-async function deletePlayer(id) {
-  try { await deleteDoc(doc(db,'players',id)); toast('Player deleted'); }
-  catch(e){ toast('Error: '+e.message,true); }
-}
-
-// ── Edit / Delete Matches ────────────────────────────────────────────────────
-window.openEditMatch = function(id) {
-  const m=matches.find(x=>x.id===id); if(!m) return;
+window.openEditMatch=function(id){
+  const m=matches.find(x=>x.id===id);if(!m)return;
   const getName=pid=>{const p=players.find(x=>x.id===pid);return p?p.name.split(' ')[0]:'?';};
   document.getElementById('edit-match-id').value=id;
   document.getElementById('edit-lbl-a').textContent=m.teamA.map(getName).join(' & ')+' Score';
@@ -717,66 +803,58 @@ window.openEditMatch = function(id) {
   document.getElementById('edit-match-date').value=m.date||'';
   openModal('modal-editmatch');
 };
-
-window.saveEditMatch = async function() {
+window.saveEditMatch=async function(){
   const id=document.getElementById('edit-match-id').value;
   const sA=parseInt(document.getElementById('edit-score-a').value);
   const sB=parseInt(document.getElementById('edit-score-b').value);
   const dt=document.getElementById('edit-match-date').value;
-  if(isNaN(sA)||isNaN(sB)){ toast('Please enter valid scores',true); return; }
+  if(isNaN(sA)||isNaN(sB)){toast('Please enter valid scores',true);return;}
   const btn=document.getElementById('save-match-btn');
-  btn.disabled=true; btn.textContent='Saving…';
-  try {
-    await updateDoc(doc(db,'matches',id),{ scoreA:sA, scoreB:sB, date:dt });
-    closeModal('modal-editmatch');
-    toast('Match updated!');
-  } catch(e){ toast('Error: '+e.message,true); }
-  btn.disabled=false; btn.textContent='Save Changes';
+  btn.disabled=true;btn.textContent='Saving…';
+  try{
+    await updateDoc(doc(db,'matches',id),{scoreA:sA,scoreB:sB,date:dt});
+    closeModal('modal-editmatch');toast('Match updated!');
+  }catch(e){toast('Error: '+e.message,true);}
+  btn.disabled=false;btn.textContent='Save Changes';
 };
-
-window.confirmDeleteMatch = function(id) {
-  const m=matches.find(x=>x.id===id); if(!m) return;
+window.confirmDeleteMatch=function(id){
+  const m=matches.find(x=>x.id===id);if(!m)return;
   const getName=pid=>{const p=players.find(x=>x.id===pid);return p?p.name.split(' ')[0]:'?';};
   document.getElementById('confirm-msg').textContent=`Delete "${m.teamA.map(getName).join(' & ')} ${m.scoreA}–${m.scoreB} ${m.teamB.map(getName).join(' & ')}" on ${m.date||'unknown date'}? Ratings will NOT be auto-reversed.`;
-  document.getElementById('confirm-ok-btn').onclick=()=>{ deleteMatch(id); closeModal('modal-confirm'); };
+  document.getElementById('confirm-ok-btn').onclick=async()=>{
+    try{await deleteDoc(doc(db,'matches',id));toast('Match deleted');}catch(e){toast('Error: '+e.message,true);}
+    closeModal('modal-confirm');
+  };
   openModal('modal-confirm');
 };
-async function deleteMatch(id) {
-  try { await deleteDoc(doc(db,'matches',id)); toast('Match deleted'); }
-  catch(e){ toast('Error: '+e.message,true); }
-}
 
-// ── Add Player ───────────────────────────────────────────────────────────────
-window.openAddPlayer = function() {
+// ── Add Player ────────────────────────────────────────────────────────────────
+window.openAddPlayer=function(){
   document.getElementById('np-name').value='';
   openModal('modal-addplayer');
   setTimeout(()=>document.getElementById('np-name').focus(),100);
 };
-window.addPlayer = async function() {
+window.addPlayer=async function(){
   const name=document.getElementById('np-name').value.trim();
   const fmt=document.getElementById('np-fmt').value;
-  if(!name){ toast('Please enter a name',true); return; }
-  if(players.find(p=>p.name.toLowerCase()===name.toLowerCase())){ toast('Player already exists',true); return; }
+  if(!name){toast('Please enter a name',true);return;}
+  if(players.find(p=>p.name.toLowerCase()===name.toLowerCase())){toast('Player already exists',true);return;}
   const btn=document.getElementById('add-player-btn');
-  btn.disabled=true; btn.textContent='Adding…';
-  try {
-    await addDoc(collection(db,'players'),{ name, format:fmt, rating:RAW_CENTER, wins:0, losses:0, totalPoints:0 });
-    closeModal('modal-addplayer');
-    toast(`${name} added! Starting rating: 5.0`);
-  } catch(e){ toast('Error: '+e.message,true); }
-  btn.disabled=false; btn.textContent='Add Player';
+  btn.disabled=true;btn.textContent='Adding…';
+  try{
+    await addDoc(collection(db,'players'),{name,format:fmt,rating:RAW_CENTER,wins:0,losses:0,totalPoints:0});
+    closeModal('modal-addplayer');toast(`${name} added! Starting rating: 5.0`);
+  }catch(e){toast('Error: '+e.message,true);}
+  btn.disabled=false;btn.textContent='Add Player';
 };
 
-// ── Modals ───────────────────────────────────────────────────────────────────
-function openModal(id){ document.getElementById(id).classList.add('open'); }
-window.closeModal = function(id,e){
-  if(!e||e.target===document.getElementById(id))
-    document.getElementById(id).classList.remove('open');
-};
+// ── Modals ────────────────────────────────────────────────────────────────────
+function openModal(id){document.getElementById(id).classList.add('open');}
+window.closeModal=function(id,e){if(!e||e.target===document.getElementById(id))document.getElementById(id).classList.remove('open');};
 
-// ── Init ─────────────────────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────────────────────
 renderTeamInputs();
-document.getElementById('match-date').value = new Date().toISOString().split('T')[0];
+document.getElementById('match-date').value=new Date().toISOString().split('T')[0];
 </script>
 </body>
 </html>
