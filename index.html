@@ -163,17 +163,17 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
 <nav>
   <div class="brand">CORNHOLE <span>LEAGUE</span></div>
   <div class="nav-links">
-    <button class="nb active" onclick="showPage('home',this)">Rankings</button>
+    <button class="nb" onclick="showPage('home',this)">Rankings</button>
     <button class="nb" onclick="showPage('stats',this)">Player Stats</button>
     <button class="nb" onclick="showPage('scores',this)">Enter Score</button>
-    <button class="nb" onclick="showPage('calendar',this)">Calendar</button>
+    <button class="nb active" onclick="showPage('calendar',this)">Calendar</button>
     <button class="nb" onclick="showPage('admin',this)">Admin</button>
   </div>
-  <div class="sbadge">Season 2025</div>
+  <div class="sbadge">Season 2026</div>
 </nav>
 
 <!-- RANKINGS -->
-<div class="page active" id="page-home">
+<div class="page" id="page-home">
   <div class="ph">
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div><div class="pt">Leaderboard</div><div class="ps">Ratings updated after every match</div></div>
@@ -183,9 +183,9 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
   <div class="srow" id="home-stats"></div>
   <div class="tc"><table>
     <thead><tr>
-      <th style="width:40px">#</th><th>Player</th><th>Rating</th><th>W – L</th><th>Win %</th><th>Pts Avg</th>
+      <th style="width:40px">#</th><th>Player</th><th>Rating</th><th>W – L</th><th>Pts Avg</th>
     </tr></thead>
-    <tbody id="rankings-body"><tr><td colspan="6"><div class="loading-overlay"><div class="spinner"></div></div></td></tr></tbody>
+    <tbody id="rankings-body"><tr><td colspan="5"><div class="loading-overlay"><div class="spinner"></div></div></td></tr></tbody>
   </table></div>
 </div>
 
@@ -216,7 +216,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
 </div>
 
 <!-- CALENDAR -->
-<div class="page" id="page-calendar">
+<div class="page active" id="page-calendar">
   <div class="ph">
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div><div class="pt">Schedule</div><div class="ps">Upcoming events and weekly details</div></div>
@@ -441,13 +441,12 @@ function renderHome(){
   const tbody=document.getElementById('rankings-body');
   if(!sorted.length){tbody.innerHTML=`<tr><td colspan="6"><div class="es"><p>No players yet — click <strong>+ Add Player</strong> to get started!</p></div></td></tr>`;return;}
   tbody.innerHTML=sorted.map((p,i)=>{
-    const w=p.wins||0,l=p.losses||0,tot=w+l,pct=tot?(w/tot*100):0,avg=tot?((p.totalPoints||0)/tot).toFixed(1):'—';
+    const w=p.wins||0,l=p.losses||0,tot=w+l,avg=tot?((p.totalPoints||0)/tot).toFixed(1):'—';
     return`<tr>
       <td><span class="rn ${i<3?'top3':''}">${i+1}</span></td>
       <td><span class="pn" onclick="goPlayer('${p.id}')">${p.name}</span></td>
       <td><span class="rp">${toDisp(p.rating)}</span></td>
       <td style="font-weight:500">${w} – ${l}</td>
-      <td><div class="wb"><div class="wbg"><div class="wbf" style="width:${pct}%"></div></div><span class="wp">${Math.round(pct)}%</span></div></td>
       <td style="color:var(--muted)">${avg}</td>
     </tr>`;
   }).join('');
@@ -459,21 +458,26 @@ window.goPlayer=function(id){
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
   document.getElementById('page-stats').classList.add('active');
   fillSelects();
-  document.getElementById('stats-sel').value=id;
+  const sel=document.getElementById('stats-sel');
+  sel.value=id;
+  // If the option wasn't found yet (players not loaded), retry once data arrives
+  if(sel.value!==id) sel.dataset.pending=id;
   renderPlayerStats();
 };
 
 function fillSelects(){
   ['stats-sel','sp1a','sp2a','sp1b','sp2b'].forEach(id=>{
     const el=document.getElementById(id); if(!el)return;
-    const cur=el.value;
+    const cur=el.value||el.dataset.pending||'';
     el.innerHTML='<option value="">— Select —</option>'+players.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
-    if(cur)el.value=cur;
+    if(cur){el.value=cur;}
+    if(el.value===cur&&cur) delete el.dataset.pending;
   });
 }
 
 function renderPlayerStats(){
-  const id=document.getElementById('stats-sel').value;
+  const sel=document.getElementById('stats-sel');
+  const id=sel.value||sel.dataset.pending||'';
   const box=document.getElementById('stats-content');
   if(!id){box.innerHTML='';return;}
   const p=players.find(x=>x.id===id); if(!p)return;
@@ -599,6 +603,36 @@ window.submitScore=async function(){
   btn.disabled=false; btn.textContent='RECORD MATCH';
 };
 
+// ── RSVP ─────────────────────────────────────────────────────────────────────
+function getRsvp(evId){ try{return localStorage.getItem('rsvp_'+evId)||'none';}catch{return'none';} }
+function getRsvpLabel(evId){
+  const r=getRsvp(evId);
+  if(r==='yes') return '✅ Going';
+  if(r==='no')  return '❌ Not Going';
+  return '🎯 RSVP';
+}
+function getRsvpStyle(evId){
+  const r=getRsvp(evId);
+  if(r==='yes') return 'border-color:var(--grass);color:var(--grass);font-weight:600';
+  if(r==='no')  return 'border-color:var(--danger);color:var(--danger);font-weight:600';
+  return '';
+}
+window.toggleRsvp=function(evId,btn){
+  const cur=getRsvp(evId);
+  let next;
+  if(cur==='none') next='yes';
+  else if(cur==='yes') next='no';
+  else next='none';
+  try{
+    if(next==='none') localStorage.removeItem('rsvp_'+evId);
+    else localStorage.setItem('rsvp_'+evId,next);
+  }catch{}
+  btn.textContent=getRsvpLabel(evId);
+  btn.style.cssText=getRsvpStyle(evId);
+  const msg=next==='yes'?'You\'re going! 🎉':next==='no'?'RSVP removed — maybe next time':'RSVP cleared';
+  toast(msg);
+};
+
 // ── Calendar ──────────────────────────────────────────────────────────────────
 function renderCalendar(){
   // Show add button only when admin is logged in
@@ -611,6 +645,42 @@ function renderCalendar(){
   const today=new Date().toISOString().split('T')[0];
   const upcoming=events.filter(e=>e.date>=today);
   const past=events.filter(e=>e.date<today).reverse();
+
+  function buildGCalUrl(ev){
+    // Build dates: if time is provided parse it, otherwise use all-day
+    let dates;
+    if(ev.time){
+      // Parse time like "6:00 PM" into 24h
+      const m=ev.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      if(m){
+        let h=parseInt(m[1]),min=m[2],ap=m[3].toUpperCase();
+        if(ap==='PM'&&h!==12)h+=12;
+        if(ap==='AM'&&h===12)h=0;
+        const pad=n=>String(n).padStart(2,'0');
+        const base=ev.date.replace(/-/g,'');
+        const start=`${base}T${pad(h)}${pad(parseInt(min))}00`;
+        // default 2 hour event
+        const endH=h+2;
+        const end=`${base}T${pad(endH)}${pad(parseInt(min))}00`;
+        dates=`${start}/${end}`;
+      }else{
+        // fallback all-day
+        const d=ev.date.replace(/-/g,'');
+        dates=`${d}/${d}`;
+      }
+    }else{
+      const d=ev.date.replace(/-/g,'');
+      dates=`${d}/${d}`;
+    }
+    const title=encodeURIComponent(ev.theme||'Cornhole League Night');
+    const loc=encodeURIComponent(ev.location||'');
+    let details='Cornhole League Event';
+    if(ev.bring) details+=`\nWhat to bring: ${ev.bring}`;
+    if(ev.cost)  details+=`\nCost: ${ev.cost}`;
+    if(ev.notes) details+=`\nNotes: ${ev.notes}`;
+    const det=encodeURIComponent(details);
+    return`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&location=${loc}&details=${det}`;
+  }
 
   function eventCard(ev){
     const isPast=ev.date<today;
@@ -635,7 +705,12 @@ function renderCalendar(){
         </div>`).join('')}
         ${!details.length?'<span style="color:var(--muted);font-size:13px">No details added yet.</span>':''}
       </div>
-      ${adminAuthed?`<div class="cal-actions">
+      ${!isPast?`<div class="cal-actions" style="flex-wrap:wrap;gap:8px">
+        <button class="icon-btn rsvp-btn" onclick="toggleRsvp('${ev.id}',this)" data-evid="${ev.id}" style="${getRsvpStyle(ev.id)}">${getRsvpLabel(ev.id)}</button>
+        <a class="icon-btn" href="${buildGCalUrl(ev)}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px">📅 Add to Google Calendar</a>
+        ${adminAuthed?`<button class="icon-btn" onclick="openEditEvent('${ev.id}')">✏️ Edit</button>
+        <button class="icon-btn danger" onclick="confirmDeleteEvent('${ev.id}')">🗑 Delete</button>`:''}
+      </div>`:adminAuthed?`<div class="cal-actions">
         <button class="icon-btn" onclick="openEditEvent('${ev.id}')">✏️ Edit</button>
         <button class="icon-btn danger" onclick="confirmDeleteEvent('${ev.id}')">🗑 Delete</button>
       </div>`:''}
@@ -657,7 +732,10 @@ function renderCalendar(){
 window.openAddEvent=function(){
   document.getElementById('event-modal-title').textContent='Add Event';
   document.getElementById('edit-event-id').value='';
-  ['ev-date','ev-theme','ev-time','ev-location','ev-bring','ev-cost','ev-notes'].forEach(id=>document.getElementById(id).value='');
+  ['ev-theme','ev-bring','ev-cost','ev-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ev-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('ev-time').value='6:00 PM';
+  document.getElementById('ev-location').value='3049 Kentucky Ave S';
   openModal('modal-event');
 };
 window.openEditEvent=function(id){
