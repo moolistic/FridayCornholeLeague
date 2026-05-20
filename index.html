@@ -169,7 +169,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
     <button class="nb active" onclick="showPage('calendar',this)">Calendar</button>
     <button class="nb" onclick="showPage('admin',this)">Admin</button>
   </div>
-  <div class="sbadge">Season 2026</div>
+  <div class="sbadge">Season 2025</div>
 </nav>
 
 <!-- RANKINGS -->
@@ -309,7 +309,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
       <div class="fg"><label id="edit-lbl-b">Score B</label><input type="number" id="edit-score-b" min="0" max="30"></div>
     </div>
     <div class="fg" style="margin-top:12px"><label>Date</label><input type="text" id="edit-match-date"></div>
-    <p style="font-size:12px;color:var(--muted);margin-top:10px">Note: editing a score does not recalculate ratings. Delete and re-enter if ratings need to be recalculated.</p>
+    <p style="font-size:12px;color:var(--muted);margin-top:10px">Rankings and ratings will be fully recalculated from match history after saving.</p>
     <div class="macts">
       <button class="bsec" onclick="closeModal('modal-editmatch')">Cancel</button>
       <button class="bpri" id="save-match-btn" onclick="saveEditMatch()">Save Changes</button>
@@ -870,6 +870,59 @@ window.confirmDeletePlayer=function(id){
   };
   openModal('modal-confirm');
 };
+// ── Rating recalculation from scratch ────────────────────────────────────────
+// Replays every match in chronological order to derive correct ratings,
+// wins, losses, totalPoints for every player. Writes results to Firestore.
+async function recomputeAllRatings(updatedMatches){
+  // Start everyone at baseline
+  const state={};
+  for(const p of players){
+    state[p.id]={rating:RAW_CENTER,wins:0,losses:0,totalPoints:0};
+  }
+  // Replay in date order
+  const ordered=[...updatedMatches].sort((a,b)=>(a.date||'')<(b.date||'')?-1:1);
+  const newRatingChanges={};// matchId -> {playerId: delta}
+  for(const m of ordered){
+    const tA=m.teamA||[],tB=m.teamB||[];
+    const all=[...tA,...tB];
+    if(!tA.length||!tB.length) continue;
+    const getR=id=>state[id]?state[id].rating:RAW_CENTER;
+    const sA=m.scoreA,sB=m.scoreB;
+    if(sA===sB) continue; // skip ties (shouldn't exist)
+    const aWon=sA>sB,wT=aWon?tA:tB,lT=aWon?tB:tA,wS=aWon?sA:sB,lS=aWon?sB:sA;
+    const avgW=wT.reduce((s,id)=>s+getR(id),0)/wT.length;
+    const avgL=lT.reduce((s,id)=>s+getR(id),0)/lT.length;
+    const delta=calcDelta(avgW,avgL,wS,lS);
+    const rc={};
+    for(const id of wT){
+      if(!state[id]) state[id]={rating:RAW_CENTER,wins:0,losses:0,totalPoints:0};
+      state[id].rating+=delta; state[id].wins+=1; state[id].totalPoints+=wS;
+      rc[id]=delta;
+    }
+    for(const id of lT){
+      if(!state[id]) state[id]={rating:RAW_CENTER,wins:0,losses:0,totalPoints:0};
+      state[id].rating-=delta; state[id].losses+=1; state[id].totalPoints+=lS;
+      rc[id]=-delta;
+    }
+    newRatingChanges[m.id]=rc;
+  }
+  // Write updated player stats
+  const writes=[];
+  for(const p of players){
+    const s=state[p.id]||{rating:RAW_CENTER,wins:0,losses:0,totalPoints:0};
+    writes.push(updateDoc(doc(db,'players',p.id),{
+      rating:s.rating,wins:s.wins,losses:s.losses,totalPoints:s.totalPoints
+    }));
+  }
+  // Write updated ratingChanges back to each match
+  for(const m of updatedMatches){
+    if(newRatingChanges[m.id]){
+      writes.push(updateDoc(doc(db,'matches',m.id),{ratingChanges:newRatingChanges[m.id]}));
+    }
+  }
+  await Promise.all(writes);
+}
+
 window.openEditMatch=function(id){
   const m=matches.find(x=>x.id===id);if(!m)return;
   const getName=pid=>{const p=players.find(x=>x.id===pid);return p?p.name.split(' ')[0]:'?';};
@@ -887,20 +940,29 @@ window.saveEditMatch=async function(){
   const sB=parseInt(document.getElementById('edit-score-b').value);
   const dt=document.getElementById('edit-match-date').value;
   if(isNaN(sA)||isNaN(sB)){toast('Please enter valid scores',true);return;}
+  if(sA===sB){toast('Scores must differ — no ties!',true);return;}
   const btn=document.getElementById('save-match-btn');
   btn.disabled=true;btn.textContent='Saving…';
   try{
+    // Apply new scores to the in-memory list for recalculation
+    const updatedMatches=matches.map(m=>m.id===id?{...m,scoreA:sA,scoreB:sB,date:dt}:m);
     await updateDoc(doc(db,'matches',id),{scoreA:sA,scoreB:sB,date:dt});
-    closeModal('modal-editmatch');toast('Match updated!');
+    await recomputeAllRatings(updatedMatches);
+    closeModal('modal-editmatch');toast('Match updated — rankings recalculated!');
   }catch(e){toast('Error: '+e.message,true);}
   btn.disabled=false;btn.textContent='Save Changes';
 };
 window.confirmDeleteMatch=function(id){
   const m=matches.find(x=>x.id===id);if(!m)return;
   const getName=pid=>{const p=players.find(x=>x.id===pid);return p?p.name.split(' ')[0]:'?';};
-  document.getElementById('confirm-msg').textContent=`Delete "${m.teamA.map(getName).join(' & ')} ${m.scoreA}–${m.scoreB} ${m.teamB.map(getName).join(' & ')}" on ${m.date||'unknown date'}? Ratings will NOT be auto-reversed.`;
+  document.getElementById('confirm-msg').textContent=`Delete "${m.teamA.map(getName).join(' & ')} ${m.scoreA}–${m.scoreB} ${m.teamB.map(getName).join(' & ')}" on ${m.date||'unknown date'}? Rankings will be recalculated automatically.`;
   document.getElementById('confirm-ok-btn').onclick=async()=>{
-    try{await deleteDoc(doc(db,'matches',id));toast('Match deleted');}catch(e){toast('Error: '+e.message,true);}
+    try{
+      const remainingMatches=matches.filter(x=>x.id!==id);
+      await deleteDoc(doc(db,'matches',id));
+      await recomputeAllRatings(remainingMatches);
+      toast('Match deleted — rankings recalculated!');
+    }catch(e){toast('Error: '+e.message,true);}
     closeModal('modal-confirm');
   };
   openModal('modal-confirm');
