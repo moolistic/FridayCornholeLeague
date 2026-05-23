@@ -583,9 +583,16 @@ window.submitScore=async function(){
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Saving…';
 
   const aWon=sA>sB,wT=aWon?tA:tB,lT=aWon?tB:tA,wS=aWon?sA:sB,lS=aWon?sB:sA;
-  const getR=id=>{const p=players.find(x=>x.id===id);return p?(p.rating||RAW_CENTER):RAW_CENTER;};
-  const avgW=wT.reduce((s,id)=>s+getR(id),0)/wT.length;
-  const avgL=lT.reduce((s,id)=>s+getR(id),0)/lT.length;
+  const getR=id=>{ //Gets the rating of a player
+    const p=players.find(x=>x.id===id);
+    return p?(p.rating||RAW_CENTER):RAW_CENTER;
+  };
+    const getC=id=>{ //Gets the confidence of a player
+    const p=players.find(x=>x.id===id);
+    return p?((p.losses+p.wins+1)||0):0;
+  };
+  const avgW=wT.reduce((s,id)=>s+getR(id)*getC(id),0)/wT.reduce((s,id)=>s+getC(id),0); //This is where to insert risk
+  const avgL=lT.reduce((s,id)=>s+getR(id)*getC(id),0)/wT.reduce((s,id)=>s+getC(id),0); //
   const delta=calcDelta(avgW,avgL,wS,lS);
   const rc={};
   try{
@@ -599,7 +606,6 @@ window.submitScore=async function(){
       rc[id]=-delta;
       await updateDoc(doc(db,'players',id),{rating:(p.rating||RAW_CENTER)-delta,losses:(p.losses||0)+1,totalPoints:(p.totalPoints||0)+lS});
     }
-    toast(delta);
     await addDoc(collection(db,'matches'),{format:fmt,teamA:tA,teamB:tB,scoreA:sA,scoreB:sB,players:all,ratingChanges:rc,date});
     toast(`${fmt.charAt(0).toUpperCase()+fmt.slice(1)} match recorded! ${aWon?'Team A':'Team B'} wins. Rating change: ±${deltaDisp(delta)}`);
     document.getElementById('score-a').value='';
