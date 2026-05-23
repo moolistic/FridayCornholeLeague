@@ -599,6 +599,7 @@ window.submitScore=async function(){
       rc[id]=-delta;
       await updateDoc(doc(db,'players',id),{rating:(p.rating||RAW_CENTER)-delta,losses:(p.losses||0)+1,totalPoints:(p.totalPoints||0)+lS});
     }
+    toast(delta);
     await addDoc(collection(db,'matches'),{format:fmt,teamA:tA,teamB:tB,scoreA:sA,scoreB:sB,players:all,ratingChanges:rc,date});
     toast(`${fmt.charAt(0).toUpperCase()+fmt.slice(1)} match recorded! ${aWon?'Team A':'Team B'} wins. Rating change: ±${deltaDisp(delta)}`);
     document.getElementById('score-a').value='';
@@ -877,6 +878,8 @@ window.confirmDeletePlayer=function(id){
   };
   openModal('modal-confirm');
 };
+
+  
 // ── Rating recalculation from scratch ────────────────────────────────────────
 // Replays every match in chronological order to derive correct ratings,
 // wins, losses, totalPoints for every player. Writes results to Firestore.
