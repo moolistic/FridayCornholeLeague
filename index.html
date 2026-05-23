@@ -377,9 +377,9 @@ const fullconfident = 20; //20 games played means 100% confidence in score
 
   
 
-function toDisp(raw){ return Math.max(0,Math.min(10,5+((raw||RAW_CENTER)-RAW_CENTER)/RAW_SCALE)).toFixed(1); }
+function toDisp(raw){ return Math.max(0,Math.min(10,5+((raw||RAW_CENTER)-RAW_CENTER)/RAW_SCALE)).toFixed(3); }
 function dispToRaw(d){ return Math.round((parseFloat(d)-5)*RAW_SCALE+RAW_CENTER); }
-function deltaDisp(d){ return (d/RAW_SCALE).toFixed(2); }
+function deltaDisp(d){ return (d/RAW_SCALE).toFixed(3); }
 function initials(n){ return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
 function calcDelta(wR,lR,wS,lS){
   const prob=1/(1+Math.pow(10,(lR-wR)/2)); //Probability of winning
@@ -392,7 +392,7 @@ function calcDelta(wR,lR,wS,lS){
 function toast(msg,err){
   const t=document.getElementById('toast');
   t.textContent=msg; t.className='toast'+(err?' err':'')+' show';
-  setTimeout(()=>t.className='toast',2800);
+  setTimeout(()=>t.className='toast',5000);
 }
 
 // ── In-memory cache ───────────────────────────────────────────────────────────
@@ -498,7 +498,7 @@ function renderPlayerStats(){
     const rawD=m.ratingChanges?(m.ratingChanges[id]||0):0;
     const oppIds=isA?m.teamB:m.teamA;
     const oppNames=oppIds.map(oid=>{const op=players.find(x=>x.id===oid);return op?op.name.split(' ')[0]:'?';}).join(' & ');
-    const dd=Math.abs(parseFloat(deltaDisp(Math.abs(rawD)))).toFixed(2);
+    const dd=Math.abs(parseFloat(deltaDisp(Math.abs(rawD)))).toFixed(3);
     return`<div class="mr">
       <div class="mres ${won?'W':'L'}">${won?'W':'L'}</div>
       <div class="mscore">${my} – ${opp}</div>
