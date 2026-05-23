@@ -371,15 +371,22 @@ const db  = getFirestore(app);
 
 const RAW_CENTER = 5, RAW_SCALE = 1, K = 32;
 const ADMIN_PASS = '060725';
+const marginScale = 12; //Margin of victory score multiplier
+const performanceScale = 0.1; //Performance scale for rating adjustment
+const fullconfident = 20; //20 games played means 100% confidence in score
+
+  
 
 function toDisp(raw){ return Math.max(0,Math.min(10,5+((raw||RAW_CENTER)-RAW_CENTER)/RAW_SCALE)).toFixed(1); }
 function dispToRaw(d){ return Math.round((parseFloat(d)-5)*RAW_SCALE+RAW_CENTER); }
 function deltaDisp(d){ return (d/RAW_SCALE).toFixed(2); }
 function initials(n){ return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
-function expected(rA,rB){ return 1/(1+Math.pow(10,(rB-rA)/2)); }
 function calcDelta(wR,lR,wS,lS){
-  const E=expected(wR,lR),mf=1+Math.log(Math.max(wS-lS,1))*0.2,pb=Math.min(wS/21,1)*0.1;
-  return Math.max(Math.round(K*mf*(1-E)*(1+pb)),1);
+  const prob=1/(1+Math.pow(10,(lR-wR)/2)); //Probability of winning
+  const ExpMargin = Math.min((wR-lR)*marginScale,20);   //expected margin between ranks
+  const mf=0.2*(1-prob);
+  const mf2=((wS-lS)-ExpMargin)/21*performanceScale;
+  return Math.max((mf+mf2).toFixed(3),0.001);
 }
 
 function toast(msg,err){
@@ -563,8 +570,6 @@ window.submitScore=async function(){
   if(!p1a||!p1b)          {toast('Please select at least one player per team',true);return;}
   if(isNaN(sA)||isNaN(sB)){toast('Please enter scores',true);return;}
   if(sA===sB)             {toast('Scores must differ — no ties!',true);return;}
-  if(p1a===p1b)             {toast('Team 1: Duplicate Players',true);return;}
-  if(p2a===p2b)             {toast('Team 2: Duplicate Players',true);return;}
 
   // Auto-detect format: singles if no player 2s, doubles if any player 2 selected
   const isSingles=!p2a&&!p2b;
