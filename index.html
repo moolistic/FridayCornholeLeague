@@ -123,7 +123,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
 .logout-btn{background:rgba(0,0,0,0.15);border:0.5px solid rgba(0,0,0,0.2);border-radius:6px;padding:5px 12px;color:var(--text);font-family:var(--fb);font-size:13px;cursor:pointer;transition:all .15s}
 .logout-btn:hover{background:rgba(0,0,0,0.25)}
 /* calendar */
-.cal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:4px}
+.cal-grid{display:flex;flex-direction:column;gap:12px;margin-top:4px}
 .cal-card{background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad);overflow:hidden}
 .cal-card-hdr{padding:14px 18px 10px;border-bottom:0.5px solid var(--border)}
 .cal-card-date{font-family:var(--fd);font-size:22px;color:var(--grass);letter-spacing:.5px;line-height:1}
@@ -135,6 +135,9 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
 .cal-detail-label{font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:1px}
 .cal-detail-val{color:var(--text)}
 .cal-upcoming{border-left:3px solid var(--grass)}
+.cal-cancelled{border-left:3px solid var(--danger);opacity:.85}
+.cal-cancelled .cal-card-date{color:var(--danger)}
+.cal-cancelled .cal-card-hdr{background:#FFF0F0}
 .cal-past{opacity:.7}
 .cal-past .cal-card-date{color:var(--muted)}
 .cal-actions{display:flex;gap:8px;padding:10px 18px;border-top:0.5px solid var(--border)}
@@ -159,7 +162,6 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
   .nb{padding:8px 7px;font-size:11px}
   .page{padding:16px 12px}
   .admin-row{flex-wrap:wrap}
-  .cal-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -305,9 +307,16 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
   <div class="mbox">
     <div class="mt2" id="event-modal-title">Add Event</div>
     <input type="hidden" id="edit-event-id">
-    <div class="fg" style="margin-bottom:12px"><label>Date (e.g. 2025-07-04)</label><input type="text" id="ev-date" placeholder="YYYY-MM-DD"></div>
+    <div class="fg" style="margin-bottom:8px"><label>Date (e.g. 2025-07-04)</label><input type="text" id="ev-date" placeholder="YYYY-MM-DD"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 10px;background:#FFF0F0;border:0.5px solid rgba(226,75,74,0.25);border-radius:8px">
+      <input type="checkbox" id="ev-cancelled" style="width:16px;height:16px;accent-color:var(--danger);cursor:pointer;flex-shrink:0">
+      <label for="ev-cancelled" style="font-size:13px;font-weight:600;color:var(--danger);cursor:pointer;margin:0">No FCL this date (off week)</label>
+    </div>
     <div class="fg" style="margin-bottom:12px"><label>Theme / Title</label><input type="text" id="ev-theme" placeholder="e.g. Red White &amp; Brew Night"></div>
-    <div class="fg" style="margin-bottom:12px"><label>Start Time</label><input type="text" id="ev-time" placeholder="e.g. 6:00 PM"></div>
+    <div class="fr" style="margin-bottom:12px">
+      <div class="fg"><label>Start Time</label><input type="text" id="ev-time" placeholder="e.g. 6:00 PM"></div>
+      <div class="fg"><label>End Time</label><input type="text" id="ev-endtime" placeholder="e.g. 9:00 PM"></div>
+    </div>
     <div class="fg" style="margin-bottom:12px"><label>Location</label><input type="text" id="ev-location" placeholder="e.g. Jake's Backyard – 123 Oak St"></div>
     <div class="fg" style="margin-bottom:12px"><label>What to Bring</label><input type="text" id="ev-bring" placeholder="e.g. A dish to share, lawn chairs, drinks"></div>
     <div class="fg" style="margin-bottom:12px"><label>Cost / Entry</label><input type="text" id="ev-cost" placeholder="e.g. Free, $5 buy-in"></div>
@@ -661,9 +670,14 @@ function renderCalendar(){
         const pad=n=>String(n).padStart(2,'0');
         const base=ev.date.replace(/-/g,'');
         const start=`${base}T${pad(h)}${pad(parseInt(min))}00`;
-        // default 2 hour event
-        const endH=h+2;
-        const end=`${base}T${pad(endH)}${pad(parseInt(min))}00`;
+      // default 2 hour event or use stored endtime
+      let endH,endMin2;
+      if(ev.endtime){
+        const em=ev.endtime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if(em){let eh=parseInt(em[1]);const eap=em[3].toUpperCase();if(eap==='PM'&&eh!==12)eh+=12;if(eap==='AM'&&eh===12)eh=0;endH=eh;endMin2=em[2];}
+      }
+      if(endH===undefined){endH=h+2;endMin2=min;}
+      const end=`${base}T${pad(endH)}${pad(parseInt(endMin2))}00`;
         dates=`${start}/${end}`;
       }else{
         // fallback all-day
@@ -686,29 +700,35 @@ function renderCalendar(){
 
   function eventCard(ev){
     const isPast=ev.date<today;
+    const isCancelled=!!ev.cancelled;
     const dateObj=new Date(ev.date+'T12:00:00');
     const dateStr=dateObj.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-    const details=[
-      ev.time     ?{icon:'🕕',label:'Start Time',val:ev.time}:null,
-      ev.location ?{icon:'📍',label:'Location',val:ev.location}:null,
-      ev.bring    ?{icon:'🎒',label:'What to Bring',val:ev.bring}:null,
-      ev.cost     ?{icon:'💵',label:'Cost',val:ev.cost}:null,
-      ev.notes    ?{icon:'📋',label:'Notes',val:ev.notes}:null,
+    const timeStr=ev.time&&ev.endtime?`${ev.time} – ${ev.endtime}`:ev.time||null;
+    const details=isCancelled?[]:[
+      timeStr        ?{icon:'🕕',label:'Time',val:timeStr}:null,
+      ev.location    ?{icon:'📍',label:'Location',val:ev.location}:null,
+      ev.bring       ?{icon:'🎒',label:'What to Bring',val:ev.bring}:null,
+      ev.cost        ?{icon:'💵',label:'Cost',val:ev.cost}:null,
+      ev.notes       ?{icon:'📋',label:'Notes',val:ev.notes}:null,
     ].filter(Boolean);
-    return`<div class="cal-card ${isPast?'cal-past':'cal-upcoming'}">
+    const cardClass=isPast?'cal-past':isCancelled?'cal-cancelled':'cal-upcoming';
+    return`<div class="cal-card ${cardClass}">
       <div class="cal-card-hdr">
         <div class="cal-card-date">${dateStr}</div>
-        ${ev.theme?`<div class="cal-card-theme">${ev.theme}</div>`:''}
+        ${isCancelled
+          ? `<div class="cal-card-theme" style="color:var(--danger)">🚫 No FCL This Week</div>`
+          : ev.theme?`<div class="cal-card-theme">${ev.theme}</div>`:''
+        }
       </div>
-      <div class="cal-card-body">
+      ${!isCancelled?`<div class="cal-card-body">
         ${details.map(d=>`<div class="cal-detail">
           <div class="cal-detail-icon">${d.icon}</div>
           <div><div class="cal-detail-label">${d.label}</div><div class="cal-detail-val">${d.val}</div></div>
         </div>`).join('')}
         ${!details.length?'<span style="color:var(--muted);font-size:13px">No details added yet.</span>':''}
-      </div>
+      </div>`:''}
       ${!isPast?`<div class="cal-actions" style="flex-wrap:wrap;gap:8px">
-        <a class="icon-btn" href="${buildGCalUrl(ev)}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px">📅 Add to Google Calendar</a>
+        ${!isCancelled?`<a class="icon-btn" href="${buildGCalUrl(ev)}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px">📅 Add to Google Calendar</a>`:''}
         ${adminAuthed?`<button class="icon-btn" onclick="openEditEvent('${ev.id}')">✏️ Edit</button>
         <button class="icon-btn danger" onclick="confirmDeleteEvent('${ev.id}')">🗑 Delete</button>`:''}
       </div>`:adminAuthed?`<div class="cal-actions">
@@ -735,7 +755,9 @@ window.openAddEvent=function(){
   document.getElementById('edit-event-id').value='';
   ['ev-theme','ev-bring','ev-cost','ev-notes'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('ev-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('ev-cancelled').checked=false;
   document.getElementById('ev-time').value='6:00 PM';
+  document.getElementById('ev-endtime').value='9:00 PM';
   document.getElementById('ev-location').value='3049 Kentucky Ave S';
   openModal('modal-event');
 };
@@ -744,8 +766,10 @@ window.openEditEvent=function(id){
   document.getElementById('event-modal-title').textContent='Edit Event';
   document.getElementById('edit-event-id').value=id;
   document.getElementById('ev-date').value=ev.date||'';
+  document.getElementById('ev-cancelled').checked=!!ev.cancelled;
   document.getElementById('ev-theme').value=ev.theme||'';
   document.getElementById('ev-time').value=ev.time||'';
+  document.getElementById('ev-endtime').value=ev.endtime||'';
   document.getElementById('ev-location').value=ev.location||'';
   document.getElementById('ev-bring').value=ev.bring||'';
   document.getElementById('ev-cost').value=ev.cost||'';
@@ -758,8 +782,10 @@ window.saveEvent=async function(){
   if(!date){toast('Please enter a date',true);return;}
   const payload={
     date,
+    cancelled:document.getElementById('ev-cancelled').checked,
     theme:document.getElementById('ev-theme').value.trim(),
     time:document.getElementById('ev-time').value.trim(),
+    endtime:document.getElementById('ev-endtime').value.trim(),
     location:document.getElementById('ev-location').value.trim(),
     bring:document.getElementById('ev-bring').value.trim(),
     cost:document.getElementById('ev-cost').value.trim(),
