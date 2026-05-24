@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enter Score – Cornhole League</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--grass:#3B6D11;--grass-light:#639922;--grass-pale:#EAF3DE;--wood:#BA7517;--wood-pale:#FAEEDA;--corn:#FAC775;--bg:#f7f5f0;--card:#ffffff;--text:#2C2C2A;--muted:#888780;--border:rgba(0,0,0,0.1);--danger:#E24B4A;--fd:'Bebas Neue',sans-serif;--fb:'DM Sans',sans-serif;--rad:10px}
+body{font-family:var(--fb);background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
+nav{background:var(--grass);padding:0 24px;display:flex;align-items:center;height:56px;position:sticky;top:0;z-index:100}
+.brand{font-family:var(--fd);font-size:22px;color:var(--corn);letter-spacing:1px;margin-right:24px;white-space:nowrap}
+.brand span{color:#fff}
+.nav-links{display:flex;gap:2px;flex:1}
+.nb{background:none;border:none;color:rgba(255,255,255,0.75);font-family:var(--fb);font-size:13px;font-weight:500;padding:8px 13px;border-radius:6px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;transition:background .15s,color .15s}
+.nb:hover{background:rgba(255,255,255,0.12);color:#fff}
+.nb.active{background:rgba(255,255,255,0.18);color:#fff}
+.sbadge{margin-left:auto;font-size:12px;font-weight:600;color:var(--corn);background:rgba(0,0,0,0.25);padding:4px 12px;border-radius:20px;white-space:nowrap}
+.wrap{padding:28px 24px;max-width:900px;margin:0 auto;width:100%}
+.ph{margin-bottom:28px}
+.pt{font-family:var(--fd);font-size:36px;letter-spacing:1px;line-height:1}
+.ps{color:var(--muted);font-size:14px;margin-top:4px}
+select,input[type=text],input[type=number]{width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;color:var(--text);background:#fff;outline:none;transition:border-color .15s}
+select:focus,input:focus{border-color:var(--grass)}
+.sf{background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad);padding:28px}
+.fst{font-family:var(--fd);font-size:20px;letter-spacing:.5px;margin-bottom:16px;padding-bottom:10px;border-bottom:0.5px solid var(--border)}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.fg{display:flex;flex-direction:column;gap:6px}
+.fg label{font-size:13px;font-weight:600;color:var(--muted)}
+.subbtn{width:100%;background:var(--grass);color:#fff;border:none;border-radius:8px;padding:14px;font-family:var(--fd);font-size:20px;letter-spacing:1px;cursor:pointer;margin-top:24px;transition:background .15s}
+.subbtn:hover{background:#27500A}
+.subbtn:disabled{background:var(--muted);cursor:not-allowed}
+.format-hint{font-size:12px;color:var(--muted);margin-top:6px;font-style:italic}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--grass);color:#fff;padding:14px 22px;border-radius:10px;font-weight:600;font-size:14px;transform:translateY(80px);opacity:0;transition:all .3s ease;z-index:9999;pointer-events:none}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.err{background:var(--danger)}
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-msg{color:var(--muted);font-size:14px;padding:12px 0}
+@media(max-width:600px){
+  .fr{grid-template-columns:1fr}
+  nav{padding:0 8px}
+  .brand{font-size:16px;margin-right:8px}
+  .nb{padding:8px 7px;font-size:11px}
+  .wrap{padding:16px 12px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">CORNHOLE <span>LEAGUE</span></div>
+  <div class="nav-links">
+    <a class="nb" href="index.html">Rankings</a>
+    <a class="nb" href="index.html#stats">Player Stats</a>
+    <a class="nb active" href="score.html">Enter Score</a>
+    <a class="nb" href="index.html#calendar">Calendar</a>
+    <a class="nb" href="index.html#admin">Admin</a>
+  </div>
+  <div class="sbadge">Season 2026</div>
+</nav>
+
+<div class="wrap">
+  <div class="ph">
+    <div class="pt">Enter Score</div>
+    <div class="ps">Record a match result — ratings update automatically</div>
+  </div>
+  <div class="sf">
+    <div class="fst">Teams</div>
+    <div id="team-inputs"><div class="loading-msg">Loading players…</div></div>
+    <div class="fst" style="margin-top:24px">Score</div>
+    <div class="fr">
+      <div class="fg"><label id="lbl-a">Team A Score</label><input type="number" id="score-a" min="0" max="30" placeholder="e.g. 21"></div>
+      <div class="fg"><label id="lbl-b">Team B Score</label><input type="number" id="score-b" min="0" max="30" placeholder="e.g. 15"></div>
+    </div>
+    <div class="fg" style="margin-bottom:8px"><label>Date Played</label><input type="text" id="match-date"></div>
+    <button class="subbtn" id="submit-score-btn" onclick="submitScore()">RECORD MATCH</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyBjMKqN6n8bdfoZ157fU71nuzZAvFzwZCI",
+  authDomain:        "fcl-database.firebaseapp.com",
+  databaseURL:       "https://fcl-database-default-rtdb.firebaseio.com",
+  projectId:         "fcl-database",
+  storageBucket:     "fcl-database.firebasestorage.app",
+  messagingSenderId: "80061893239",
+  appId:             "1:80061893239:web:50f652565f1c21955e9472",
+  measurementId:     "G-J3YVSFEE67"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+const RAW_CENTER = 5, RAW_SCALE = 1, K = 32;
+const marginScale = 12; //Margin of victory score multiplier
+const performanceScale = 0.1; //Performance scale for rating adjustment
+const fullconfident = 20; //20 games played means 100% confidence in score
+
+function toDisp(raw){ return Math.max(0,Math.min(10,5+((raw||RAW_CENTER)-RAW_CENTER)/RAW_SCALE)).toFixed(3); }
+function deltaDisp(d){ return (d/RAW_SCALE).toFixed(3); }
+function calcDeltaBreakdown(t1r,t2r,t1s,t2s){
+  const prob=1/(1+Math.pow(10,(t2r-t1r)/2));
+  const ExpMargin=Math.min((t1r-t2r)*marginScale,20);
+  const mf=0.2*((t1s>t2s)?(1-prob):(-prob));
+  const mf2=((t1s-t2s)-ExpMargin)/21*performanceScale;
+  return {mf,mf2};
+}
+function calcDelta(t1r,t2r,t1s,t2s){
+  const prob=1/(1+Math.pow(10,(t2r-t1r)/2));
+  const ExpMargin = Math.min((t1r-t2r)*marginScale,20);
+  const mf =0.2*((t1s>t2s)?(1-prob):(-prob));
+  const mf2=((t1s-t2s)-ExpMargin)/21*performanceScale;
+  console.log("calcDelta: t1r: "+t1r.toFixed(3)+" t2r: "+t2r.toFixed(3)+" t1s: "+t1s+" t2s: "+t2s+" prob: "+prob.toFixed(3)+" ExpMargin: "+ExpMargin.toFixed(1)); 
+  console.log("mf: "+mf.toFixed(3)+" mf2: "+mf2.toFixed(3)  +" expMargin: "+ExpMargin.toFixed(1));
+  return (mf+mf2).toFixed(5); //Returns the rating change for team 1 (team 2 is negative of this)
+  
+}
+
+function toast(msg,err){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast'+(err?' err':'')+' show';
+  setTimeout(()=>t.className='toast',5000);
+}
+
+let players=[];
+
+onSnapshot(collection(db,'players'), snap=>{
+  players=snap.docs.map(d=>({id:d.id,...d.data()}));
+  renderTeamInputs();
+});
+
+function renderTeamInputs(){
+  const opts='<option value="">— Select —</option>'+players.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  document.getElementById('team-inputs').innerHTML=`
+    <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px">TEAM A</div>
+    <div class="fr" style="margin-bottom:20px">
+      <div class="fg"><label>Player 1</label><select id="sp1a" onchange="autoDetectFormat()">${opts}</select></div>
+      <div class="fg"><label>Player 2 <span style="font-weight:400;color:var(--muted)">(optional for singles)</span></label><select id="sp2a" onchange="autoDetectFormat()">${opts}</select></div>
+    </div>
+    <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px">TEAM B</div>
+    <div class="fr" style="margin-bottom:4px">
+      <div class="fg"><label>Player 1</label><select id="sp1b" onchange="autoDetectFormat()">${opts}</select></div>
+      <div class="fg"><label>Player 2 <span style="font-weight:400;color:var(--muted)">(optional for singles)</span></label><select id="sp2b" onchange="autoDetectFormat()">${opts}</select></div>
+    </div>
+    <div class="format-hint" id="fmt-hint">Doubles match — leave Player 2s blank for singles</div>`;
+}
+
+window.autoDetectFormat=function(){
+  const p2a=document.getElementById('sp2a')?.value;
+  const p2b=document.getElementById('sp2b')?.value;
+  const isSingles=!p2a&&!p2b;
+  const hint=document.getElementById('fmt-hint');
+  if(hint) hint.textContent=isSingles?'Singles match detected':'Doubles match detected';
+  document.getElementById('lbl-a').textContent=isSingles?'Player A Score':'Team A Score';
+  document.getElementById('lbl-b').textContent=isSingles?'Player B Score':'Team B Score';
+};
+
+window.submitScore=async function(){
+  const p1a=document.getElementById('sp1a')?.value;
+  const p1b=document.getElementById('sp1b')?.value;
+  const p2a=document.getElementById('sp2a')?.value||null;
+  const p2b=document.getElementById('sp2b')?.value||null;
+  const sA=parseInt(document.getElementById('score-a').value);
+  const sB=parseInt(document.getElementById('score-b').value);
+  const date=document.getElementById('match-date').value;
+
+  if(!p1a||!p1b)          {toast('Please select at least one player per team',true);return;}
+  if(isNaN(sA)||isNaN(sB)){toast('Please enter scores',true);return;}
+  if(sA===sB)             {toast('Scores must differ — no ties!',true);return;}
+
+  const isSingles=!p2a&&!p2b;
+  const fmt=isSingles?'singles':'doubles';
+  const tA=isSingles?[p1a]:[p1a,p2a];
+  const tB=isSingles?[p1b]:[p1b,p2b];
+  const all=[...tA,...tB];
+  if(new Set(all).size<all.length){toast("A player can't appear twice",true);return;}
+
+  const btn=document.getElementById('submit-score-btn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Saving…';
+
+  const getR=id=>{ const p=players.find(x=>x.id===id); return p?(p.rating||RAW_CENTER):RAW_CENTER; };
+  // Caps the confidence weight at 20 games max
+  const getC = id => { 
+    const p = players.find(x => x.id === id); 
+    if (!p) return 0;
+    const totalGames = (p.losses || 0) + (p.wins || 0);
+    return Math.min(totalGames, fullconfident-1)+1;
+  };
+  // Guard against zero confidence sum (prevents NaN)
+  const safeAvg=(team)=>{
+    const cSum=team.reduce((s,id)=>s+getC(id),0);
+    return cSum?team.reduce((s,id)=>s+getR(id)*getC(id),0)/cSum:team.reduce((s,id)=>s+getR(id),0)/team.length;
+  };
+  const p1Risk=(team)=>{
+    if(team.length<2) return 0; // singles: sole player takes full delta
+    return (getC(team[0])/fullconfident)/(getC(team[0])/fullconfident+getC(team[1])/fullconfident);
+  };
+    
+  const avgT1=safeAvg(tA);
+  const avgT2=safeAvg(tB);
+  const riskT1=p1Risk(tA);
+  const riskT2=p1Risk(tB);
+  console.log('p1Risk = ', riskT1, riskT2);
+  const delta=calcDelta(avgT1,avgT2,sA,sB);
+  const {mf:mfA,mf2:mf2A}=calcDeltaBreakdown(avgT1,avgT2,sA,sB);
+  const {mf:mfB,mf2:mf2B}=calcDeltaBreakdown(avgT2,avgT1,sB,sA);
+  const rc={};
+  const bd={};
+  try{
+    let p0=true;
+    for(const id of tA){
+      const p=players.find(x=>x.id===id);if(!p)continue;
+      const riskFactor=p0?1-riskT1:riskT1;
+      rc[id]=delta*riskFactor;
+      bd[id]={mf:mfA*riskFactor, mf2:mf2A*riskFactor};
+      p0=!p0;
+      await updateDoc(doc(db,'players',id),{rating:(p.rating||RAW_CENTER)+parseFloat(rc[id]),wins:(p.wins||0)+1,totalPoints:(p.totalPoints||0)+sA});
+    }
+    p0=true;
+    for(const id of tB){
+      const p=players.find(x=>x.id===id);if(!p)continue;
+      const riskFactor=p0?1-riskT2:riskT2;
+      rc[id]=-delta*riskFactor;
+      bd[id]={mf:mfB*riskFactor, mf2:mf2B*riskFactor};
+      p0=!p0;
+      await updateDoc(doc(db,'players',id),{rating:(p.rating||RAW_CENTER)+parseFloat(rc[id]),losses:(p.losses||0)+1,totalPoints:(p.totalPoints||0)+sB});
+    }
+    await addDoc(collection(db,'matches'),{format:fmt,teamA:tA,teamB:tB,scoreA:sA,scoreB:sB,players:all,ratingChanges:rc,breakdowns:bd,date,timestamp:Date.now()});
+    toast(`${fmt.charAt(0).toUpperCase()+fmt.slice(1)} match recorded! ${sA>sB?'Team A':'Team B'} wins. Rating change: ±${deltaDisp(delta)}`);
+    document.getElementById('score-a').value='';
+    document.getElementById('score-b').value='';
+    ['sp1a','sp2a','sp1b','sp2b'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    autoDetectFormat();
+  }catch(e){toast('Error saving match: '+e.message,true);}
+  btn.disabled=false; btn.textContent='RECORD MATCH';
+};
+
+document.getElementById('match-date').value=new Date().toISOString().split('T')[0];
+</script>
+</body>
+</html>
