@@ -491,14 +491,18 @@ function renderHome(){
 
   const tbody=document.getElementById('rankings-body');
   if(!sorted.length){tbody.innerHTML=`<tr><td colspan="6"><div class="es"><p>No players yet — click <strong>+ Add Player</strong> to get started!</p></div></td></tr>`;return;}
+  // Restore checked state from localStorage
+  let checkedPids=[];
+  try{ checkedPids=JSON.parse(localStorage.getItem('lb_checked')||'[]'); }catch(e){}
+
   tbody.innerHTML=sorted.map((p,i)=>{
     const w=p.wins||0,l=p.losses||0;
-    // totalPoints only counts current-season matches; prior season has no points
     const currentPts=p.totalPoints||0;
     const currentGames=matches.filter(m=>m.players&&m.players.includes(p.id)).length;
     const avg=currentGames?((currentPts)/currentGames).toFixed(1):'—';
+    const isChecked=checkedPids.includes(p.id);
     return`<tr>
-      <td><input type="checkbox" class="lb-check" data-pid="${p.id}"></td>
+      <td><input type="checkbox" class="lb-check" data-pid="${p.id}" ${isChecked?'checked':''} onchange="saveChecked()"></td>
       <td><span class="rn ${i<3?'top3':''}">${i+1}</span></td>
       <td><span class="pn" onclick="goPlayer('${p.id}')">${p.name}</span></td>
       <td><span class="rp">${toDisp(p.rating)}</span></td>
@@ -507,6 +511,11 @@ function renderHome(){
     </tr>`;
   }).join('');
 }
+
+window.saveChecked=function(){
+  const ids=[...document.querySelectorAll('.lb-check:checked')].map(el=>el.dataset.pid);
+  localStorage.setItem('lb_checked',JSON.stringify(ids));
+};
 
 // ── Player Stats ──────────────────────────────────────────────────────────────
 window.goPlayer=function(id){
@@ -1056,13 +1065,12 @@ window.openAddPlayer=function(){
 };
 window.addPlayer=async function(){
   const name=document.getElementById('np-name').value.trim();
-  const fmt=document.getElementById('np-fmt').value;
   if(!name){toast('Please enter a name',true);return;}
   if(players.find(p=>p.name.toLowerCase()===name.toLowerCase())){toast('Player already exists',true);return;}
   const btn=document.getElementById('add-player-btn');
   btn.disabled=true;btn.textContent='Adding…';
   try{
-    await addDoc(collection(db,'players'),{name,format:fmt,rating:RAW_CENTER,wins:0,losses:0,totalPoints:0});
+    await addDoc(collection(db,'players'),{name,rating:RAW_CENTER,wins:0,losses:0,totalPoints:0});
     closeModal('modal-addplayer');toast(`${name} added! Starting rating: 5.0`);
   }catch(e){toast('Error: '+e.message,true);}
   btn.disabled=false;btn.textContent='Add Player';
@@ -1073,7 +1081,21 @@ function openModal(id){document.getElementById(id).classList.add('open');}
 window.closeModal=function(id,e){if(!e||e.target===document.getElementById(id))document.getElementById(id).classList.remove('open');};
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-renderHome();
+// Read hash to deep-link to the right tab when arriving from score.html
+(function(){
+  const hash=(location.hash||'').replace('#','');
+  const validPages=['home','stats','calendar','admin'];
+  const target=validPages.includes(hash)?hash:'home';
+  const labelMap={home:'rankings',stats:'player stats',calendar:'calendar',admin:'admin'};
+  const btn=[...document.querySelectorAll('.nb')].find(b=>
+    b.textContent.trim().toLowerCase()===(labelMap[target]||target));
+  if(target==='home'){
+    renderHome();
+  } else {
+    showPage(target, btn||null);
+  }
+  history.replaceState(null,'',location.pathname);
+})();
 </script>
 </body>
 </html>

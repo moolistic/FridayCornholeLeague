@@ -9,41 +9,113 @@
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--grass:#3B6D11;--grass-light:#639922;--grass-pale:#EAF3DE;--wood:#BA7517;--wood-pale:#FAEEDA;--corn:#FAC775;--bg:#f7f5f0;--card:#ffffff;--text:#2C2C2A;--muted:#888780;--border:rgba(0,0,0,0.1);--danger:#E24B4A;--fd:'Bebas Neue',sans-serif;--fb:'DM Sans',sans-serif;--rad:10px}
 body{font-family:var(--fb);background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
-nav{background:var(--grass);padding:0 24px;display:flex;align-items:center;height:56px;position:sticky;top:0;z-index:100}
-.brand{font-family:var(--fd);font-size:22px;color:var(--corn);letter-spacing:1px;margin-right:24px;white-space:nowrap}
+nav{background:var(--grass);padding:0 16px;display:flex;align-items:center;height:56px;position:sticky;top:0;z-index:100}
+.brand{font-family:var(--fd);font-size:22px;color:var(--corn);letter-spacing:1px;margin-right:16px;white-space:nowrap}
 .brand span{color:#fff}
 .nav-links{display:flex;gap:2px;flex:1}
-.nb{background:none;border:none;color:rgba(255,255,255,0.75);font-family:var(--fb);font-size:13px;font-weight:500;padding:8px 13px;border-radius:6px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;transition:background .15s,color .15s}
+.nb{background:none;border:none;color:rgba(255,255,255,0.75);font-family:var(--fb);font-size:13px;font-weight:500;padding:8px 10px;border-radius:6px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;transition:background .15s,color .15s}
 .nb:hover{background:rgba(255,255,255,0.12);color:#fff}
 .nb.active{background:rgba(255,255,255,0.18);color:#fff}
-.sbadge{margin-left:auto;font-size:12px;font-weight:600;color:var(--corn);background:rgba(0,0,0,0.25);padding:4px 12px;border-radius:20px;white-space:nowrap}
-.wrap{padding:28px 24px;max-width:900px;margin:0 auto;width:100%}
-.ph{margin-bottom:28px}
-.pt{font-family:var(--fd);font-size:36px;letter-spacing:1px;line-height:1}
-.ps{color:var(--muted);font-size:14px;margin-top:4px}
-select,input[type=text],input[type=number]{width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;color:var(--text);background:#fff;outline:none;transition:border-color .15s}
-select:focus,input:focus{border-color:var(--grass)}
-.sf{background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad);padding:28px}
-.fst{font-family:var(--fd);font-size:20px;letter-spacing:.5px;margin-bottom:16px;padding-bottom:10px;border-bottom:0.5px solid var(--border)}
-.fr{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-.fg{display:flex;flex-direction:column;gap:6px}
-.fg label{font-size:13px;font-weight:600;color:var(--muted)}
-.subbtn{width:100%;background:var(--grass);color:#fff;border:none;border-radius:8px;padding:14px;font-family:var(--fd);font-size:20px;letter-spacing:1px;cursor:pointer;margin-top:24px;transition:background .15s}
-.subbtn:hover{background:#27500A}
-.subbtn:disabled{background:var(--muted);cursor:not-allowed}
-.format-hint{font-size:12px;color:var(--muted);margin-top:6px;font-style:italic}
-.toast{position:fixed;bottom:24px;right:24px;background:var(--grass);color:#fff;padding:14px 22px;border-radius:10px;font-weight:600;font-size:14px;transform:translateY(80px);opacity:0;transition:all .3s ease;z-index:9999;pointer-events:none}
-.toast.show{transform:translateY(0);opacity:1}
+.sbadge{margin-left:auto;font-size:12px;font-weight:600;color:var(--corn);background:rgba(0,0,0,0.25);padding:4px 10px;border-radius:20px;white-space:nowrap}
+.wrap{padding:20px 16px;max-width:600px;margin:0 auto;width:100%}
+
+/* Step system */
+.step{display:none}
+.step.active{display:block}
+
+/* Step header */
+.step-header{margin-bottom:20px}
+.step-title{font-family:var(--fd);font-size:32px;letter-spacing:1px;line-height:1}
+.step-sub{color:var(--muted);font-size:14px;margin-top:4px}
+.step-pill{display:inline-flex;align-items:center;gap:6px;background:var(--grass-pale);color:var(--grass);font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
+
+/* Player cards */
+.player-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.player-card{background:var(--card);border:2px solid var(--border);border-radius:12px;padding:14px 12px;cursor:pointer;transition:all .15s;text-align:center;user-select:none;-webkit-tap-highlight-color:transparent;position:relative;min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.player-card:active{transform:scale(0.97)}
+.player-card.selected{border-color:var(--grass);background:var(--grass-pale)}
+.player-card.selected .pc-name{color:var(--grass)}
+.player-card.disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
+.pc-av{width:36px;height:36px;border-radius:50%;background:var(--grass-pale);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:15px;color:var(--grass);margin-bottom:2px}
+.player-card.selected .pc-av{background:var(--grass);color:#fff}
+.pc-name{font-weight:600;font-size:14px;line-height:1.2;color:var(--text)}
+.pc-rating{font-size:11px;color:var(--muted)}
+.pc-check{position:absolute;top:6px;right:8px;font-size:14px;display:none}
+.player-card.selected .pc-check{display:block}
+
+/* Team slot labels */
+.slot-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:8px}
+
+/* Team display in later steps */
+.team-banner{background:var(--card);border:0.5px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:10px}
+.team-banner-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:4px}
+.team-banner-names{font-family:var(--fd);font-size:20px;letter-spacing:.5px;color:var(--text)}
+
+/* VS divider */
+.vs-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.vs-line{flex:1;height:1px;background:var(--border)}
+.vs-badge{font-family:var(--fd);font-size:16px;color:var(--muted);letter-spacing:1px}
+
+/* Winner cards */
+.winner-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0}
+.winner-card{background:var(--card);border:2px solid var(--border);border-radius:12px;padding:18px 12px;cursor:pointer;transition:all .15s;text-align:center;user-select:none;-webkit-tap-highlight-color:transparent}
+.winner-card:active{transform:scale(0.97)}
+.winner-card.selected{border-color:var(--grass);background:var(--grass-pale)}
+.wc-trophy{font-size:28px;margin-bottom:6px}
+.wc-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:4px}
+.winner-card.selected .wc-label{color:var(--grass)}
+.wc-names{font-family:var(--fd);font-size:18px;letter-spacing:.3px;line-height:1.2}
+
+/* Score slider section */
+.score-section{background:var(--card);border:0.5px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
+.score-section-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:12px}
+.score-display{font-family:var(--fd);font-size:72px;color:var(--grass);text-align:center;line-height:1;margin-bottom:8px}
+.score-sub{text-align:center;font-size:13px;color:var(--muted);margin-bottom:16px}
+.score-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.score-btn{background:var(--bg);border:0.5px solid var(--border);border-radius:8px;padding:12px 4px;font-family:var(--fd);font-size:18px;cursor:pointer;text-align:center;transition:all .15s;-webkit-tap-highlight-color:transparent;color:var(--text)}
+.score-btn:active{background:var(--grass-pale);border-color:var(--grass)}
+.score-btn.selected{background:var(--grass-pale);border-color:var(--grass);color:var(--grass)}
+.score-num-input{width:100%;padding:12px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fd);font-size:28px;text-align:center;color:var(--text);background:#fff;outline:none;margin-top:8px}
+.score-num-input:focus{border-color:var(--grass)}
+
+/* Winner result display */
+.result-box{background:var(--grass-pale);border:1px solid rgba(59,109,17,0.2);border-radius:12px;padding:16px 20px;text-align:center;margin-bottom:16px}
+.result-box .rb-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--grass-light);margin-bottom:4px}
+.result-box .rb-score{font-family:var(--fd);font-size:36px;color:var(--grass);letter-spacing:1px}
+
+/* Action buttons */
+.action-btn{width:100%;padding:16px;border:none;border-radius:10px;font-family:var(--fd);font-size:22px;letter-spacing:1px;cursor:pointer;transition:background .15s;margin-bottom:10px;-webkit-tap-highlight-color:transparent}
+.action-btn.primary{background:var(--grass);color:#fff}
+.action-btn.primary:hover{background:#27500A}
+.action-btn.primary:disabled{background:var(--muted);cursor:not-allowed}
+.action-btn.secondary{background:transparent;color:var(--muted);border:0.5px solid var(--border);font-size:16px;padding:12px}
+.action-btn.secondary:hover{border-color:var(--grass);color:var(--grass)}
+
+/* Dropdown fallback */
+.dropdown-toggle{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--grass);font-weight:600;cursor:pointer;margin-bottom:10px}
+.dropdown-toggle svg{transition:transform .2s}
+.dropdown-toggle.open svg{transform:rotate(180deg)}
+.dropdown-fallback{display:none;background:var(--card);border:0.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:12px}
+.dropdown-fallback.open{display:block}
+select.fallback-select{border-radius:0;border:none;border-bottom:0.5px solid var(--border)}
+select.fallback-select:last-child{border-bottom:none}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--grass);color:#fff;padding:14px 22px;border-radius:10px;font-weight:600;font-size:14px;opacity:0;transition:all .3s ease;z-index:9999;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
 .toast.err{background:var(--danger)}
 .spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px}
 @keyframes spin{to{transform:rotate(360deg)}}
-.loading-msg{color:var(--muted);font-size:14px;padding:12px 0}
-@media(max-width:600px){
-  .fr{grid-template-columns:1fr}
-  nav{padding:0 8px}
-  .brand{font-size:16px;margin-right:8px}
-  .nb{padding:8px 7px;font-size:11px}
-  .wrap{padding:16px 12px}
+.loading-msg{color:var(--muted);font-size:14px;padding:20px 0;text-align:center}
+.date-row{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.date-row label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.date-row input{padding:11px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:15px;color:var(--text);background:#fff;outline:none}
+.date-row input:focus{border-color:var(--grass)}
+
+@media(max-width:400px){
+  .player-grid{grid-template-columns:1fr 1fr}
+  .score-btns{grid-template-columns:repeat(4,1fr);gap:6px}
+  .score-btn{padding:10px 2px;font-size:16px}
 }
 </style>
 </head>
@@ -52,37 +124,146 @@ select:focus,input:focus{border-color:var(--grass)}
 <nav>
   <div class="brand">CORNHOLE <span>LEAGUE</span></div>
   <div class="nav-links">
-    <a class="nb" href="index.html">Rankings</a>
-    <a class="nb" href="index.html#stats">Player Stats</a>
-    <a class="nb active" href="score.html">Enter Score</a>
+    <a class="nb" href="index.html#home">Rankings</a>
+    <a class="nb" href="index.html#stats">Stats</a>
+    <a class="nb active" href="score.html">Score</a>
     <a class="nb" href="index.html#calendar">Calendar</a>
-    <a class="nb" href="index.html#admin">Admin</a>
   </div>
-  <div class="sbadge">Season 2026</div>
+  <div class="sbadge">2026</div>
 </nav>
 
 <div class="wrap">
-  <div class="ph">
-    <div class="pt">Enter Score</div>
-    <div class="ps">Record a match result — ratings update automatically</div>
-  </div>
-  <div class="sf">
-    <div class="fst">Teams</div>
-    <div id="team-inputs"><div class="loading-msg">Loading players…</div></div>
-    <div class="fst" style="margin-top:24px">Score</div>
-    <div class="fr">
-      <div class="fg"><label id="lbl-a">Team A Score</label><input type="number" id="score-a" min="0" max="30" placeholder="e.g. 21"></div>
-      <div class="fg"><label id="lbl-b">Team B Score</label><input type="number" id="score-b" min="0" max="30" placeholder="e.g. 15"></div>
+  <!-- STEP 1: Pick Team A Player 1 -->
+  <div class="step active" id="step-1">
+    <div class="step-header">
+      <div class="step-pill">Step 1 of 4</div>
+      <div class="step-title">Team A</div>
+      <div class="step-sub" id="tonight-hint">Tap to select Player 1</div>
     </div>
-    <div class="fg" style="margin-bottom:8px"><label>Date Played</label><input type="text" id="match-date"></div>
-    <button class="subbtn" id="submit-score-btn" onclick="submitScore()">RECORD MATCH</button>
+    <div id="cards-1" class="player-grid"><div class="loading-msg">Loading players…</div></div>
+    <div class="dropdown-toggle" onclick="toggleFallback(1)">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Not listed? Use dropdown
+    </div>
+    <div class="dropdown-fallback" id="fallback-1">
+      <select class="fallback-select" id="sel-1" onchange="selectFromDropdown(1)"><option value="">— Select player —</option></select>
+    </div>
+  </div>
+
+  <!-- STEP 2: Pick Team B Player 1 -->
+  <div class="step" id="step-2">
+    <div class="step-header">
+      <div class="step-pill">Step 2 of 4</div>
+      <div class="step-title">Team B</div>
+      <div class="step-sub">Tap to select Player 1</div>
+    </div>
+    <div id="summary-2" class="team-banner" style="display:none">
+      <div class="team-banner-label">Team A</div>
+      <div class="team-banner-names" id="summary-2-names"></div>
+    </div>
+    <div id="cards-2" class="player-grid"></div>
+    <div class="dropdown-toggle" onclick="toggleFallback(2)">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Not listed? Use dropdown
+    </div>
+    <div class="dropdown-fallback" id="fallback-2">
+      <select class="fallback-select" id="sel-2" onchange="selectFromDropdown(2)"><option value="">— Select player —</option></select>
+    </div>
+    <button class="action-btn secondary" onclick="goBack(1)">← Back</button>
+  </div>
+
+  <!-- STEP 3: Pick Team A Player 2 -->
+  <div class="step" id="step-3">
+    <div class="step-header">
+      <div class="step-pill">Step 3 of 4</div>
+      <div class="step-title">Team A</div>
+      <div class="step-sub">Tap to select Player 2 — or skip for singles</div>
+    </div>
+    <div id="cards-3" class="player-grid"></div>
+    <div class="dropdown-toggle" onclick="toggleFallback(3)">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Not listed? Use dropdown
+    </div>
+    <div class="dropdown-fallback" id="fallback-3">
+      <select class="fallback-select" id="sel-3" onchange="selectFromDropdown(3)"><option value="">— Select player —</option></select>
+    </div>
+    <button class="action-btn primary" id="skip-3-btn" onclick="skipDoubles()">Skip — Singles Match</button>
+    <button class="action-btn secondary" onclick="goBack(2)">← Back</button>
+  </div>
+
+  <!-- STEP 4: Pick Team B Player 2 -->
+  <div class="step" id="step-4">
+    <div class="step-header">
+      <div class="step-pill">Step 4 of 4</div>
+      <div class="step-title">Team B</div>
+      <div class="step-sub">Tap to select Player 2</div>
+    </div>
+    <div id="cards-4" class="player-grid"></div>
+    <div class="dropdown-toggle" onclick="toggleFallback(4)">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Not listed? Use dropdown
+    </div>
+    <div class="dropdown-fallback" id="fallback-4">
+      <select class="fallback-select" id="sel-4" onchange="selectFromDropdown(4)"><option value="">— Select player —</option></select>
+    </div>
+    <button class="action-btn secondary" onclick="goBack(3)">← Back</button>
+  </div>
+
+  <!-- STEP 5: Who won? -->
+  <div class="step" id="step-5">
+    <div class="step-header">
+      <div class="step-pill">Almost there!</div>
+      <div class="step-title">Who Won?</div>
+      <div class="step-sub">Tap the winning team</div>
+    </div>
+    <div class="winner-cards">
+      <div class="winner-card" id="wc-a" onclick="pickWinner('A')">
+        <div class="wc-trophy">🏆</div>
+        <div class="wc-label">Team A</div>
+        <div class="wc-names" id="wc-a-names"></div>
+      </div>
+      <div class="winner-card" id="wc-b" onclick="pickWinner('B')">
+        <div class="wc-trophy">🏆</div>
+        <div class="wc-label">Team B</div>
+        <div class="wc-names" id="wc-b-names"></div>
+      </div>
+    </div>
+    <div style="height:12px"></div>
+    <button class="action-btn secondary" onclick="goBack(4)">← Back</button>
+  </div>
+
+  <!-- STEP 6: Scores -->
+  <div class="step" id="step-6">
+    <div class="step-header">
+      <div class="step-pill">Final Step</div>
+      <div class="step-title">Final Score</div>
+      <div class="step-sub">Enter the score — winner is usually 21</div>
+    </div>
+    <div class="score-section">
+      <div class="score-section-label" id="winner-label">Winner score</div>
+      <div class="score-display" id="winner-score-display">21</div>
+      <div class="score-sub" id="winner-name-sub"></div>
+      <div class="score-btns" id="winner-score-btns"></div>
+    </div>
+    <div class="score-section" style="margin-top:12px">
+      <div class="score-section-label" id="loser-label">Losing team score</div>
+      <div class="score-display" id="score-display">0</div>
+      <div class="score-sub" id="loser-name-sub"></div>
+      <div class="score-btns" id="score-btns"></div>
+    </div>
+    <div class="date-row">
+      <label>Date Played</label>
+      <input type="date" id="match-date">
+    </div>
+    <button class="action-btn primary" id="submit-btn" onclick="submitScore()">RECORD MATCH</button>
+    <button class="action-btn secondary" onclick="goBack(5)">← Back</button>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script type="module">
-import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
@@ -100,151 +281,338 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
 
-const RAW_CENTER = 5, RAW_SCALE = 1, K = 32;
-const marginScale = 12; //Margin of victory score multiplier
-const performanceScale = 0.1; //Performance scale for rating adjustment
-const fullconfident = 20; //20 games played means 100% confidence in score
+const RAW_CENTER = 5, K = 32;
+const marginScale = 12;
+const performanceScale = 0.1;
+const fullconfident = 20;
 
-function toDisp(raw){ return Math.max(0,Math.min(10,5+((raw||RAW_CENTER)-RAW_CENTER)/RAW_SCALE)).toFixed(3); }
-function deltaDisp(d){ return (d/RAW_SCALE).toFixed(3); }
-function calcDeltaBreakdown(t1r,t2r,t1s,t2s){
-  const prob=1/(1+Math.pow(10,(t2r-t1r)/2));
-  const ExpMargin=Math.min((t1r-t2r)*marginScale,20);
-  const mf=0.2*((t1s>t2s)?(1-prob):(-prob));
-  const mf2=((t1s-t2s)-ExpMargin)/21*performanceScale;
-  return {mf,mf2};
-}
-function calcDelta(t1r,t2r,t1s,t2s){
-  const prob=1/(1+Math.pow(10,(t2r-t1r)/2));
-  const ExpMargin = Math.min((t1r-t2r)*marginScale,20);
-  const mf =0.2*((t1s>t2s)?(1-prob):(-prob));
-  const mf2=((t1s-t2s)-ExpMargin)/21*performanceScale;
-  console.log("calcDelta: t1r: "+t1r.toFixed(3)+" t2r: "+t2r.toFixed(3)+" t1s: "+t1s+" t2s: "+t2s+" prob: "+prob.toFixed(3)+" ExpMargin: "+ExpMargin.toFixed(1)); 
-  console.log("mf: "+mf.toFixed(3)+" mf2: "+mf2.toFixed(3)  +" expMargin: "+ExpMargin.toFixed(1));
-  return (mf+mf2).toFixed(5); //Returns the rating change for team 1 (team 2 is negative of this)
-  
-}
+// State
+let players = [];
+let sel = { 1: null, 2: null, 3: null, 4: null }; // slot → player id
+// slots: 1=TeamA P1, 2=TeamB P1, 3=TeamA P2, 4=TeamB P2
+let winner = null; // 'A' or 'B'
+let loserScore = 0;
+let winnerScore = 21;
+let isSingles = false;
+let currentStep = 1;
 
-function toast(msg,err){
-  const t=document.getElementById('toast');
-  t.textContent=msg; t.className='toast'+(err?' err':'')+' show';
-  setTimeout(()=>t.className='toast',5000);
-}
-
-let players=[];
-
-onSnapshot(collection(db,'players'), snap=>{
-  players=snap.docs.map(d=>({id:d.id,...d.data()}));
-  renderTeamInputs();
+// ── Firebase ──────────────────────────────────────────────────────────────────
+onSnapshot(collection(db,'players'), snap => {
+  players = snap.docs.map(d => ({id: d.id, ...d.data()}));
+  renderStep(currentStep);
 });
 
-function renderTeamInputs(){
-  const opts='<option value="">— Select —</option>'+players.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
-  document.getElementById('team-inputs').innerHTML=`
-    <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px">TEAM A</div>
-    <div class="fr" style="margin-bottom:20px">
-      <div class="fg"><label>Player 1</label><select id="sp1a" onchange="autoDetectFormat()">${opts}</select></div>
-      <div class="fg"><label>Player 2 <span style="font-weight:400;color:var(--muted)">(optional for singles)</span></label><select id="sp2a" onchange="autoDetectFormat()">${opts}</select></div>
-    </div>
-    <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px">TEAM B</div>
-    <div class="fr" style="margin-bottom:4px">
-      <div class="fg"><label>Player 1</label><select id="sp1b" onchange="autoDetectFormat()">${opts}</select></div>
-      <div class="fg"><label>Player 2 <span style="font-weight:400;color:var(--muted)">(optional for singles)</span></label><select id="sp2b" onchange="autoDetectFormat()">${opts}</select></div>
-    </div>
-    <div class="format-hint" id="fmt-hint">Doubles match — leave Player 2s blank for singles</div>`;
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function initials(name){ return name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
+function toDisp(raw){ return Math.max(0,Math.min(10,5+((raw||RAW_CENTER)-RAW_CENTER)/1)).toFixed(1); }
+
+function getUsedIds(exceptSlot){
+  return Object.entries(sel).filter(([k])=>parseInt(k)!==exceptSlot).map(([,v])=>v).filter(Boolean);
 }
 
-window.autoDetectFormat=function(){
-  const p2a=document.getElementById('sp2a')?.value;
-  const p2b=document.getElementById('sp2b')?.value;
-  const isSingles=!p2a&&!p2b;
-  const hint=document.getElementById('fmt-hint');
-  if(hint) hint.textContent=isSingles?'Singles match detected':'Doubles match detected';
-  document.getElementById('lbl-a').textContent=isSingles?'Player A Score':'Team A Score';
-  document.getElementById('lbl-b').textContent=isSingles?'Player B Score':'Team B Score';
+function getTeamAName(){
+  const p1 = players.find(x=>x.id===sel[1]);
+  const p2 = sel[3] ? players.find(x=>x.id===sel[3]) : null;
+  if(!p1) return '';
+  return p2 ? p1.name.split(' ')[0]+' & '+p2.name.split(' ')[0] : p1.name.split(' ')[0];
+}
+function getTeamBName(){
+  const p1 = players.find(x=>x.id===sel[2]);
+  const p2 = sel[4] ? players.find(x=>x.id===sel[4]) : null;
+  if(!p1) return '';
+  return p2 ? p1.name.split(' ')[0]+' & '+p2.name.split(' ')[0] : p1.name.split(' ')[0];
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, err){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (err?' err':'') + ' show';
+  setTimeout(() => t.className='toast', 4000);
+}
+
+// ── Step nav ──────────────────────────────────────────────────────────────────
+function showStep(n){
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
+  document.getElementById('step-'+n).classList.add('active');
+  currentStep = n;
+  window.scrollTo({top:0, behavior:'smooth'});
+  renderStep(n);
+}
+
+window.goBack = function(toStep){
+  // Clear selection for the step we're going back to
+  if(toStep===1) { sel[1]=null; }
+  if(toStep===2) { sel[2]=null; }
+  if(toStep===3) { sel[3]=null; isSingles=false; }
+  if(toStep===4) { sel[4]=null; winner=null; }
+  if(toStep===5) { winner=null; }
+  showStep(toStep);
 };
 
-window.submitScore=async function(){
-  const p1a=document.getElementById('sp1a')?.value;
-  const p1b=document.getElementById('sp1b')?.value;
-  const p2a=document.getElementById('sp2a')?.value||null;
-  const p2b=document.getElementById('sp2b')?.value||null;
-  const sA=parseInt(document.getElementById('score-a').value);
-  const sB=parseInt(document.getElementById('score-b').value);
-  const date=document.getElementById('match-date').value;
+// ── Render a step's player cards ──────────────────────────────────────────────
+function renderStep(n){
+  if(n===1){
+    renderCards('cards-1', 1, sel[1]);
+    // Show how many checked-in players are loaded
+    const pool=getCheckedPool();
+    let pids=[];
+    try{ pids=JSON.parse(localStorage.getItem('lb_checked')||'[]'); }catch(e){}
+    const hint=document.getElementById('tonight-hint');
+    if(hint) hint.textContent = pids.length>=2
+      ? `Showing tonight’s ${pool.length} attending players — tap to select`
+      : `Tap to select Player 1`;
+  }
+  if(n===2){
+    const s2 = document.getElementById('summary-2');
+    const s2n = document.getElementById('summary-2-names');
+    if(sel[1]){
+      s2.style.display='block';
+      s2n.textContent = players.find(x=>x.id===sel[1])?.name || '';
+    }
+    renderCards('cards-2', 2, sel[2]);
+  }
+  if(n===3) renderCards('cards-3', 3, sel[3]);
+  if(n===4) renderCards('cards-4', 4, sel[4]);
+  if(n===5) renderWinnerStep();
+  if(n===6) renderScoreStep();
+  // Always sync dropdowns
+  if([1,2,3,4].includes(n)) syncDropdown(n);
+}
 
-  if(!p1a||!p1b)          {toast('Please select at least one player per team',true);return;}
-  if(isNaN(sA)||isNaN(sB)){toast('Please enter scores',true);return;}
-  if(sA===sB)             {toast('Scores must differ — no ties!',true);return;}
+function getCheckedPool(){
+  // Read attending player IDs saved by index.html checkboxes
+  let ids=[];
+  try{ ids=JSON.parse(localStorage.getItem('lb_checked')||'[]'); }catch(e){}
+  // Filter to players we actually have loaded; fall back to top 8 by rating if none checked
+  const checked=players.filter(p=>ids.includes(p.id));
+  if(checked.length>=2) return checked;
+  return [...players].sort((a,b)=>(b.rating||RAW_CENTER)-(a.rating||RAW_CENTER)).slice(0,8);
+}
 
-  const isSingles=!p2a&&!p2b;
-  const fmt=isSingles?'singles':'doubles';
-  const tA=isSingles?[p1a]:[p1a,p2a];
-  const tB=isSingles?[p1b]:[p1b,p2b];
-  const all=[...tA,...tB];
-  if(new Set(all).size<all.length){toast("A player can't appear twice",true);return;}
+function renderCards(containerId, slot, selectedId){
+  const used = getUsedIds(slot);
+  const container = document.getElementById(containerId);
+  if(!players.length){ container.innerHTML='<div class="loading-msg">Loading…</div>'; return; }
+  
+  const top = getCheckedPool();
+  
+  container.innerHTML = top.map(p => {
+    const disabled = used.includes(p.id);
+    const isSelected = p.id === selectedId;
+    return `<div class="player-card${isSelected?' selected':''}${disabled?' disabled':''}" onclick="selectPlayer(${slot},'${p.id}')">
+      <div class="pc-av">${initials(p.name)}</div>
+      <div class="pc-name">${p.name.split(' ')[0]}<br><span style="font-weight:400;color:var(--muted);font-size:11px">${p.name.split(' ').slice(1).join(' ')}</span></div>
+      <div class="pc-rating">${toDisp(p.rating||RAW_CENTER)}</div>
+      <div class="pc-check">✓</div>
+    </div>`;
+  }).join('');
+}
 
-  const btn=document.getElementById('submit-score-btn');
+function syncDropdown(slot){
+  const sel_el = document.getElementById('sel-'+slot);
+  if(!sel_el) return;
+  const used = getUsedIds(slot);
+  const sorted = [...players].sort((a,b)=>a.name.localeCompare(b.name));
+  sel_el.innerHTML = '<option value="">— Select player —</option>' +
+    sorted.map(p=>`<option value="${p.id}"${used.includes(p.id)?' disabled':''}${sel[slot]===p.id?' selected':''}>${p.name}</option>`).join('');
+}
+
+window.selectPlayer = function(slot, id){
+  sel[slot] = id;
+  renderStep(currentStep);
+  // Auto-advance after short delay for visual feedback
+  setTimeout(() => advanceFrom(currentStep), 220);
+};
+
+window.selectFromDropdown = function(slot){
+  const v = document.getElementById('sel-'+slot)?.value;
+  if(!v) return;
+  sel[slot] = v;
+  renderCards('cards-'+slot, slot, v);
+  setTimeout(() => advanceFrom(currentStep), 150);
+};
+
+function advanceFrom(step){
+  if(step===1 && sel[1]) showStep(2);
+  else if(step===2 && sel[2]) showStep(3);
+  else if(step===3 && sel[3]) showStep(4);
+  else if(step===4 && sel[4]) showStep(5);
+}
+
+window.skipDoubles = function(){
+  isSingles = true;
+  sel[3] = null;
+  sel[4] = null;
+  showStep(5);
+};
+
+// ── Fallback dropdown toggle ──────────────────────────────────────────────────
+window.toggleFallback = function(slot){
+  const fb = document.getElementById('fallback-'+slot);
+  const tg = fb.previousElementSibling;
+  fb.classList.toggle('open');
+  tg.classList.toggle('open');
+};
+
+// ── Winner step ───────────────────────────────────────────────────────────────
+function renderWinnerStep(){
+  document.getElementById('wc-a-names').textContent = getTeamAName();
+  document.getElementById('wc-b-names').textContent = getTeamBName();
+  document.getElementById('wc-a').classList.toggle('selected', winner==='A');
+  document.getElementById('wc-b').classList.toggle('selected', winner==='B');
+}
+
+window.pickWinner = function(team){
+  winner = team;
+  renderWinnerStep();
+  setTimeout(()=>showStep(6), 200);
+};
+
+// ── Score step ────────────────────────────────────────────────────────────────
+function renderScoreStep(){
+  const winnerName = winner==='A' ? getTeamAName() : getTeamBName();
+  const loserName  = winner==='A' ? getTeamBName() : getTeamAName();
+  document.getElementById('winner-name-sub').textContent = winnerName;
+  document.getElementById('loser-name-sub').textContent  = loserName;
+  document.getElementById('loser-label').textContent = loserName + ' score';
+  document.getElementById('winner-label').textContent = winnerName + ' score';
+
+  // Winner score buttons: 21 default + common overages
+  const winScores = [15,17,18,19,20,21,22,23,24,25];
+  document.getElementById('winner-score-btns').innerHTML = winScores.map(s =>
+    `<div class="score-btn${winnerScore===s?' selected':''}" onclick="setWinnerScore(${s})">${s}</div>`
+  ).join('') + `<input class="score-num-input" type="number" id="custom-winner-score" min="1" max="50" placeholder="Other" oninput="setWinnerScoreCustom(this.value)" style="grid-column:span 4">`;
+  document.getElementById('winner-score-display').textContent = winnerScore;
+
+  // Loser score buttons
+  const scores = [0,3,5,7,9,11,13,15,17,18,19,20];
+  document.getElementById('score-btns').innerHTML = scores.map(s =>
+    `<div class="score-btn${loserScore===s?' selected':''}" onclick="setLoserScore(${s})">${s}</div>`
+  ).join('') + `<input class="score-num-input" type="number" id="custom-score" min="0" max="50" placeholder="Other" oninput="setLoserScoreCustom(this.value)" style="grid-column:span 4">`;
+  document.getElementById('score-display').textContent = loserScore;
+
+  document.getElementById('match-date').value = new Date().toISOString().split('T')[0];
+}
+
+window.setWinnerScore = function(s){
+  winnerScore = s;
+  document.getElementById('winner-score-display').textContent = s;
+  document.querySelectorAll('#winner-score-btns .score-btn').forEach(b => b.classList.toggle('selected', parseInt(b.textContent)===s));
+  const ci = document.getElementById('custom-winner-score');
+  if(ci) ci.value='';
+};
+
+window.setWinnerScoreCustom = function(v){
+  const n = parseInt(v);
+  if(!isNaN(n) && n>=1){
+    winnerScore = n;
+    document.getElementById('winner-score-display').textContent = n;
+    document.querySelectorAll('#winner-score-btns .score-btn').forEach(b=>b.classList.remove('selected'));
+  }
+};
+
+window.setLoserScore = function(s){
+  loserScore = s;
+  document.getElementById('score-display').textContent = s;
+  document.querySelectorAll('#score-btns .score-btn').forEach(b => b.classList.toggle('selected', parseInt(b.textContent)===s));
+  const ci = document.getElementById('custom-score');
+  if(ci) ci.value='';
+};
+
+window.setLoserScoreCustom = function(v){
+  const n = parseInt(v);
+  if(!isNaN(n) && n>=0){
+    loserScore = n;
+    document.getElementById('score-display').textContent = n;
+    document.querySelectorAll('#score-btns .score-btn').forEach(b=>b.classList.remove('selected'));
+  }
+};
+
+// ── Submit ────────────────────────────────────────────────────────────────────
+const RAW_CENTER2 = 5;
+const marginScale2 = 12;
+const performanceScale2 = 0.1;
+const fullconfident2 = 20;
+
+function calcDelta(t1r,t2r,t1s,t2s){
+  const prob=1/(1+Math.pow(10,(t2r-t1r)/2));
+  const ExpMargin=Math.min((t1r-t2r)*marginScale2,20);
+  const mf=0.2*((t1s>t2s)?(1-prob):(-prob));
+  const mf2=((t1s-t2s)-ExpMargin)/21*performanceScale2;
+  return (mf+mf2).toFixed(5);
+}
+function calcDeltaBreakdown(t1r,t2r,t1s,t2s){
+  const prob=1/(1+Math.pow(10,(t2r-t1r)/2));
+  const ExpMargin=Math.min((t1r-t2r)*marginScale2,20);
+  const mf=0.2*((t1s>t2s)?(1-prob):(-prob));
+  const mf2=((t1s-t2s)-ExpMargin)/21*performanceScale2;
+  return {mf,mf2};
+}
+
+const getR = id => { const p=players.find(x=>x.id===id); return p?(p.rating||RAW_CENTER2):RAW_CENTER2; };
+const getC = id => { const p=players.find(x=>x.id===id); if(!p)return 0; return Math.min((p.losses||0)+(p.wins||0),fullconfident2-1)+1; };
+const safeAvg = team => { const cSum=team.reduce((s,id)=>s+getC(id),0); return cSum?team.reduce((s,id)=>s+getR(id)*getC(id),0)/cSum:team.reduce((s,id)=>s+getR(id),0)/team.length; };
+const p1Risk = team => { if(team.length<2)return 0; return (getC(team[0])/fullconfident2)/(getC(team[0])/fullconfident2+getC(team[1])/fullconfident2); };
+
+window.submitScore = async function(){
+  if(!sel[1]||!sel[2]){ toast('Missing players',true); return; }
+  if(!winner){ toast('Select a winner first',true); return; }
+
+  const p1a = sel[1], p1b = sel[2];
+  const p2a = isSingles ? null : sel[3];
+  const p2b = isSingles ? null : sel[4];
+
+  const tA = isSingles ? [p1a] : [p1a, p2a].filter(Boolean);
+  const tB = isSingles ? [p1b] : [p1b, p2b].filter(Boolean);
+  const all = [...tA,...tB];
+  if(new Set(all).size < all.length){ toast("A player can't appear twice",true); return; }
+
+  const sA = winner==='A' ? winnerScore : loserScore;
+  const sB = winner==='B' ? winnerScore : loserScore;
+  const date = document.getElementById('match-date').value;
+  const fmt  = isSingles ? 'singles' : 'doubles';
+
+  const btn = document.getElementById('submit-btn');
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Saving…';
 
-  const getR=id=>{ const p=players.find(x=>x.id===id); return p?(p.rating||RAW_CENTER):RAW_CENTER; };
-  // Caps the confidence weight at 20 games max
-  const getC = id => { 
-    const p = players.find(x => x.id === id); 
-    if (!p) return 0;
-    const totalGames = (p.losses || 0) + (p.wins || 0);
-    return Math.min(totalGames, fullconfident-1)+1;
-  };
-  // Guard against zero confidence sum (prevents NaN)
-  const safeAvg=(team)=>{
-    const cSum=team.reduce((s,id)=>s+getC(id),0);
-    return cSum?team.reduce((s,id)=>s+getR(id)*getC(id),0)/cSum:team.reduce((s,id)=>s+getR(id),0)/team.length;
-  };
-  const p1Risk=(team)=>{
-    if(team.length<2) return 0; // singles: sole player takes full delta
-    return (getC(team[0])/fullconfident)/(getC(team[0])/fullconfident+getC(team[1])/fullconfident);
-  };
-    
-  const avgT1=safeAvg(tA);
-  const avgT2=safeAvg(tB);
-  const riskT1=p1Risk(tA);
-  const riskT2=p1Risk(tB);
-  console.log('p1Risk = ', riskT1, riskT2);
+  const avgT1=safeAvg(tA), avgT2=safeAvg(tB);
+  const riskT1=p1Risk(tA), riskT2=p1Risk(tB);
   const delta=calcDelta(avgT1,avgT2,sA,sB);
   const {mf:mfA,mf2:mf2A}=calcDeltaBreakdown(avgT1,avgT2,sA,sB);
   const {mf:mfB,mf2:mf2B}=calcDeltaBreakdown(avgT2,avgT1,sB,sA);
-  const rc={};
-  const bd={};
+  const rc={}, bd={};
+
   try{
     let p0=true;
     for(const id of tA){
-      const p=players.find(x=>x.id===id);if(!p)continue;
-      const riskFactor=p0?1-riskT1:riskT1;
-      rc[id]=delta*riskFactor;
-      bd[id]={mf:mfA*riskFactor, mf2:mf2A*riskFactor};
+      const p=players.find(x=>x.id===id); if(!p)continue;
+      const rf=p0?1-riskT1:riskT1;
+      rc[id]=delta*rf; bd[id]={mf:mfA*rf,mf2:mf2A*rf};
       p0=!p0;
-      await updateDoc(doc(db,'players',id),{rating:(p.rating||RAW_CENTER)+parseFloat(rc[id]),wins:(p.wins||0)+1,totalPoints:(p.totalPoints||0)+sA});
+      await updateDoc(doc(db,'players',id),{rating:(p.rating||RAW_CENTER2)+parseFloat(rc[id]),wins:(p.wins||0)+1,totalPoints:(p.totalPoints||0)+sA});
     }
     p0=true;
     for(const id of tB){
-      const p=players.find(x=>x.id===id);if(!p)continue;
-      const riskFactor=p0?1-riskT2:riskT2;
-      rc[id]=-delta*riskFactor;
-      bd[id]={mf:mfB*riskFactor, mf2:mf2B*riskFactor};
+      const p=players.find(x=>x.id===id); if(!p)continue;
+      const rf=p0?1-riskT2:riskT2;
+      rc[id]=-delta*rf; bd[id]={mf:mfB*rf,mf2:mf2B*rf};
       p0=!p0;
-      await updateDoc(doc(db,'players',id),{rating:(p.rating||RAW_CENTER)+parseFloat(rc[id]),losses:(p.losses||0)+1,totalPoints:(p.totalPoints||0)+sB});
+      await updateDoc(doc(db,'players',id),{rating:(p.rating||RAW_CENTER2)+parseFloat(rc[id]),losses:(p.losses||0)+1,totalPoints:(p.totalPoints||0)+sB});
     }
     await addDoc(collection(db,'matches'),{format:fmt,teamA:tA,teamB:tB,scoreA:sA,scoreB:sB,players:all,ratingChanges:rc,breakdowns:bd,date,timestamp:Date.now()});
-    toast(`${fmt.charAt(0).toUpperCase()+fmt.slice(1)} match recorded! ${sA>sB?'Team A':'Team B'} wins. Rating change: ±${deltaDisp(delta)}`);
-    document.getElementById('score-a').value='';
-    document.getElementById('score-b').value='';
-    ['sp1a','sp2a','sp1b','sp2b'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-    autoDetectFormat();
-  }catch(e){toast('Error saving match: '+e.message,true);}
+
+    toast(`${fmt.charAt(0).toUpperCase()+fmt.slice(1)} recorded! ${winner==='A'?getTeamAName():getTeamBName()} wins ${winnerScore}–${loserScore} 🎉`);
+
+    // Reset
+    sel={1:null,2:null,3:null,4:null}; winner=null; loserScore=0; winnerScore=21; isSingles=false;
+    setTimeout(()=>showStep(1), 1200);
+  } catch(e){ toast('Error: '+e.message,true); }
   btn.disabled=false; btn.textContent='RECORD MATCH';
 };
 
-document.getElementById('match-date').value=new Date().toISOString().split('T')[0];
+// Make some functions available globally
+window.renderStep = renderStep;
 </script>
 </body>
 </html>
