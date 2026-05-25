@@ -231,17 +231,16 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
   <div class="ph">
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div><div class="pt">Leaderboard</div><div class="ps">Ratings updated after every match</div></div>
-      <button class="fbtn" style="background:var(--grass);border-color:var(--grass);color:#fff;font-size:14px" onclick="openAddPlayer()">+ Add Player</button>
     </div>
   </div>
   <div class="tc"><table>
     <thead><tr>
-      <th style="width:28px"></th>
-      <th style="width:32px">#</th>
-      <th>Player</th>
-      <th style="width:70px">Rating</th>
-      <th style="width:72px">W – L</th>
-      <th style="width:64px">Avg</th>
+      <th style="width:44px;font-size:11px;color:var(--grass);cursor:pointer;user-select:none" onclick="cycleSort('rsvp')" id="th-rsvp">RSVP <span id="sort-rsvp"></span></th>
+      <th style="width:32px;cursor:pointer;user-select:none" onclick="cycleSort('rank')" id="th-rank"># <span id="sort-rank">▼</span></th>
+      <th style="cursor:pointer;user-select:none" onclick="cycleSort('name')">Player <span id="sort-name"></span></th>
+      <th style="width:70px;cursor:pointer;user-select:none" onclick="cycleSort('rating')">Rating <span id="sort-rating"></span></th>
+      <th style="width:72px;cursor:pointer;user-select:none" onclick="cycleSort('wl')">W – L <span id="sort-wl"></span></th>
+      <th style="width:64px;cursor:pointer;user-select:none" onclick="cycleSort('avg')">Avg <span id="sort-avg"></span></th>
     </tr></thead>
     <tbody id="rankings-body"><tr><td colspan="6"><div class="loading-overlay"><div class="spinner"></div></div></td></tr></tbody>
   </table></div>
@@ -285,7 +284,10 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
     <div class="ph">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <div><div class="pt">Admin Panel</div><div class="ps">Manage players, matches and events</div></div>
-        <button class="logout-btn" onclick="adminLogout()">Log Out</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="fbtn" style="background:var(--grass);border-color:var(--grass);color:#fff;font-size:14px" onclick="openAddPlayer()">+ Add Player</button>
+          <button class="logout-btn" onclick="adminLogout()">Log Out</button>
+        </div>
       </div>
     </div>
     <div class="admin-section">
@@ -578,28 +580,69 @@ function renderMovement(targetDiv){
 }
 
 // ── Rankings ──────────────────────────────────────────────────────────────────
+let rankSortCol='rank', rankSortDir=1; // dir: 1=asc/default, -1=desc
+
+window.cycleSort=function(col){
+  if(rankSortCol===col){
+    rankSortDir*=-1;
+  } else {
+    rankSortCol=col;
+    rankSortDir= col==='rank'?1:-1; // default: rank asc, others desc first
+  }
+  // Update header indicators
+  const cols=['rsvp','rank','name','rating','wl','avg'];
+  cols.forEach(c=>{
+    const el=document.getElementById('sort-'+c);
+    if(!el) return;
+    if(c===rankSortCol) el.textContent=rankSortDir===1?'▲':'▼';
+    else el.textContent='';
+  });
+  renderRankings();
+};
+
 function renderRankings(){
-  const sorted=[...players].sort((a,b)=>b.rating-a.rating);
-  const tbody=document.getElementById('rankings-body');
-  if(!sorted.length){tbody.innerHTML=`<tr><td colspan="6"><div class="es"><p>No players yet.</p></div></td></tr>`;return;}
+  const ratingOrder=[...players].sort((a,b)=>b.rating-a.rating);
+  const ratingRank={};
+  ratingOrder.forEach((p,i)=>ratingRank[p.id]=i+1);
+
   let checkedPids=[];
   try{ checkedPids=JSON.parse(localStorage.getItem('lb_checked')||'[]'); }catch(e){}
 
-  tbody.innerHTML=sorted.map((p,i)=>{
+  const withStats=players.map(p=>{
     const w=p.wins||0,l=p.losses||0;
     const currentPts=p.totalPoints||0;
     const currentGames=matches.filter(m=>m.players&&m.players.includes(p.id)).length;
-    const avg=currentGames?((currentPts)/currentGames).toFixed(1):'—';
+    const avg=currentGames?(currentPts/currentGames):0;
+    const lastName=p.name.split(' ').slice(1).join(' ').toLowerCase();
     const isChecked=checkedPids.includes(p.id);
+    return{p,w,l,avg,currentGames,rk:ratingRank[p.id],lastName,isChecked};
+  });
+
+  withStats.sort((a,b)=>{
+    let v=0;
+    if(rankSortCol==='rank')   v=a.rk-b.rk;
+    else if(rankSortCol==='name')   v=a.lastName.localeCompare(b.lastName)||a.p.name.localeCompare(b.p.name);
+    else if(rankSortCol==='rating') v=b.p.rating-a.p.rating;
+    else if(rankSortCol==='wl')     v=(b.w-b.l)-(a.w-a.l);
+    else if(rankSortCol==='avg')    v=b.avg-a.avg;
+    else if(rankSortCol==='rsvp')   v=(b.isChecked?1:0)-(a.isChecked?1:0);
+    return v*rankSortDir;
+  });
+
+  const tbody=document.getElementById('rankings-body');
+  if(!withStats.length){tbody.innerHTML=`<tr><td colspan="6"><div class="es"><p>No players yet.</p></div></td></tr>`;return;}
+
+  tbody.innerHTML=withStats.map(({p,w,l,avg,currentGames,rk,isChecked})=>{
+    const avgStr=currentGames?avg.toFixed(1):'—';
     const firstName=p.name.split(' ')[0];
     const lastName=p.name.split(' ').slice(1).join(' ');
     return`<tr>
-      <td><input type="checkbox" class="lb-check" data-pid="${p.id}" ${isChecked?'checked':''} onchange="saveChecked()"></td>
-      <td><span class="rn ${i<3?'top3':''}">${i+1}</span></td>
+      <td style="text-align:center"><input type="checkbox" class="lb-check" data-pid="${p.id}" ${isChecked?'checked':''} onchange="saveChecked()"></td>
+      <td><span class="rn ${rk<=3?'top3':''}">${rk}</span></td>
       <td><span class="pn" onclick="goPlayer('${p.id}')">${firstName}${lastName?`<br><span style="font-size:11px;font-weight:400;color:var(--muted)">${lastName}</span>`:''}</span></td>
       <td><span class="rp">${toDisp(p.rating)}</span></td>
       <td style="font-weight:500;white-space:nowrap">${w}–${l}</td>
-      <td style="color:var(--muted)">${avg}</td>
+      <td style="color:var(--muted)">${avgStr}</td>
     </tr>`;
   }).join('');
 }
@@ -672,30 +715,55 @@ window.renderPlayerStats=function renderPlayerStats(){
   for(const [pid,rec] of Object.entries(partnerMap)){
     const g=rec.wins+rec.losses; if(g<MIN_GAMES) continue;
     const p2=rec.wins/g;
-    if(p2>bestPartnerPct){bestPartnerPct=p2;bestPartner=`${pname(pid)} (${Math.round(p2*100)}%)`;}
+    if(p2>bestPartnerPct){bestPartnerPct=p2;bestPartner=`${pname(pid)} (${rec.wins}W–${rec.losses}L)`;}
   }
 
   // Worst partner: most losses with >= MIN_GAMES
   let worstPartner='N/A', worstPartnerLosses=-1;
   for(const [pid,rec] of Object.entries(partnerMap)){
     const g=rec.wins+rec.losses; if(g<MIN_GAMES) continue;
-    if(rec.losses>worstPartnerLosses){worstPartnerLosses=rec.losses;worstPartner=`${pname(pid)} (${rec.losses}L)`;}
+    if(rec.losses>worstPartnerLosses){worstPartnerLosses=rec.losses;worstPartner=`${pname(pid)} (${rec.wins}W–${rec.losses}L)`;}
   }
 
-  // Their #: opponent with best win % for this player, >= MIN_GAMES
-  let theirNum='N/A', theirNumPct=-1;
+  // Got their #: opponent with most wins vs them (wins >= losses, min MIN_GAMES)
+  let theirNum='N/A', theirNumBest=-1;
   for(const [oid,rec] of Object.entries(oppMap)){
     const g=rec.wins+rec.losses; if(g<MIN_GAMES) continue;
-    const p2=rec.wins/g;
-    if(p2>theirNumPct){theirNumPct=p2;theirNum=`${pname(oid)} (${Math.round(p2*100)}%)`;}
+    if(rec.wins<rec.losses) continue; // must have more wins than losses vs this opponent
+    if(rec.wins>theirNumBest){theirNumBest=rec.wins;theirNum=`${pname(oid)} (${rec.wins}W–${rec.losses}L)`;}
   }
 
-  // Gets your goat: opponent with highest loss % for this player, >= MIN_GAMES
-  let goat='N/A', goatPct=-1;
+  // Gets your goat: opponent with most losses vs (losses >= wins, min MIN_GAMES)
+  let goat='N/A', goatLossesBest=-1;
   for(const [oid,rec] of Object.entries(oppMap)){
     const g=rec.wins+rec.losses; if(g<MIN_GAMES) continue;
-    const lossPct=rec.losses/g;
-    if(lossPct>goatPct){goatPct=lossPct;goat=`${pname(oid)} (${Math.round(lossPct*100)}%)`;}
+    if(rec.losses<rec.wins) continue; // must have more losses than wins vs this opponent
+    if(rec.losses>goatLossesBest){goatLossesBest=rec.losses;goat=`${pname(oid)} (${rec.wins}W–${rec.losses}L)`;}
+  }
+
+  // Biggest Win: match with most positive rating delta (only actual wins)
+  // Biggest Loss: match with most negative rating delta (only actual losses)
+  let biggestWinData=null, biggestWinDelta=-Infinity;
+  let biggestLossData=null, biggestLossDelta=Infinity;
+  for(const m of pm){
+    const rawD=m.ratingChanges?(parseFloat(m.ratingChanges[id]||0)):0;
+    const isA=m.teamA.includes(id);
+    const won=isA?m.scoreA>m.scoreB:m.scoreB>m.scoreA;
+    const oppIds=isA?m.teamB:m.teamA;
+    const partnerIds=(isA?m.teamA:m.teamB).filter(x=>x!==id);
+    const oppNames=oppIds.map(oid=>{const op=players.find(x=>x.id===oid);return op?op.name.split(' ')[0]:'?';}).join(' & ');
+    const partnerNames=partnerIds.map(pid2=>{const pp=players.find(x=>x.id===pid2);return pp?pp.name.split(' ')[0]:'?';}).join(' & ');
+    const my=isA?m.scoreA:m.scoreB,oppS=isA?m.scoreB:m.scoreA;
+    const dd=Math.abs(rawD).toFixed(3);
+    if(won && rawD>biggestWinDelta){biggestWinDelta=rawD;biggestWinData={opp:oppNames,partner:partnerNames,my,oppS,dd:'+'+dd,date:m.date||''};}
+    if(!won && rawD<biggestLossDelta){biggestLossDelta=rawD;biggestLossData={opp:oppNames,partner:partnerNames,my,oppS,dd:'−'+dd,date:m.date||''};}
+  }
+  function renderBigCard(d,isWin){
+    if(!d) return `<div style="font-size:14px;font-weight:600;color:var(--muted)">N/A</div>`;
+    const scoreColor=isWin?'var(--grass)':'var(--danger)';
+    return `<div style="font-size:15px;font-weight:700;color:var(--text)">vs ${d.opp}</div>
+      ${d.partner?`<div style="font-size:13px;font-weight:600;color:var(--muted);margin-top:1px">w/ ${d.partner}</div>`:''}
+      <div style="font-size:12px;color:${scoreColor};font-weight:600;margin-top:4px">${d.my}–${d.oppS} &nbsp;·&nbsp; ${d.dd} pts${d.date?` &nbsp;·&nbsp; ${d.date}`:''}</div>`;
   }
 
   // ── Match history rows ──────────────────────────────────────────────────────
@@ -754,12 +822,20 @@ window.renderPlayerStats=function renderPlayerStats(){
             <div style="font-size:14px;font-weight:600;color:var(--text)">${worstPartner}</div>
           </div>
           <div style="background:#E6F1FB;border-radius:8px;padding:12px">
-            <div style="font-size:11px;font-weight:600;color:#185FA5;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">🎯 Their #</div>
+            <div style="font-size:11px;font-weight:600;color:#185FA5;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">🎯 Got Their #</div>
             <div style="font-size:14px;font-weight:600;color:var(--text)">${theirNum}</div>
           </div>
           <div style="background:#FFF3E0;border-radius:8px;padding:12px">
             <div style="font-size:11px;font-weight:600;color:#B45309;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">🐐 Gets Your Goat</div>
             <div style="font-size:14px;font-weight:600;color:var(--text)">${goat}</div>
+          </div>
+          <div style="background:var(--grass-pale);border-radius:8px;padding:12px">
+            <div style="font-size:11px;font-weight:600;color:var(--grass);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">📈 Biggest Win</div>
+            ${renderBigCard(biggestWinData,true)}
+          </div>
+          <div style="background:#FCEBEB;border-radius:8px;padding:12px">
+            <div style="font-size:11px;font-weight:600;color:var(--danger);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">📉 Biggest Loss</div>
+            ${renderBigCard(biggestLossData,false)}
           </div>
         </div>
       </div>
@@ -1007,9 +1083,10 @@ function renderAdminMatches(){
   const getName=id=>{const p=players.find(x=>x.id===id);return p?p.name.split(' ')[0]:'?';};
   box.innerHTML=[...matches].reverse().map(m=>{
     const tAN=m.teamA.map(getName).join(' & '),tBN=m.teamB.map(getName).join(' & ');
+    const enteredByName=m.enteredBy?(getName(m.enteredBy)||'Unknown'):'Unknown';
     return`<div class="admin-row">
       <div class="admin-row-info"><strong>${tAN} ${m.scoreA} – ${m.scoreB} ${tBN}</strong>
-        <span>${m.date||'No date'} | ${m.format} | Winner: ${m.scoreA>m.scoreB?tAN:tBN}</span></div>
+        <span>${m.date||'No date'} | ${m.format} | Winner: ${m.scoreA>m.scoreB?tAN:tBN} | Entered by: ${enteredByName}</span></div>
       <button class="icon-btn" onclick="openEditMatch('${m.id}')">✏️ Edit</button>
       <button class="icon-btn danger" onclick="confirmDeleteMatch('${m.id}')">🗑 Delete</button>
     </div>`;

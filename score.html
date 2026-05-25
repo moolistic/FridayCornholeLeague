@@ -246,6 +246,7 @@ select.fallback-select:last-child{border-bottom:none}
       <button class="action-btn primary" id="singles-btn" onclick="confirmSingles()" style="display:none">Continue — Singles Match</button>
       <button class="action-btn primary" id="continue-btn" onclick="continueToWinner()" style="display:none">Continue →</button>
     </div>
+    <button class="action-btn secondary" id="random-teams-btn" onclick="randomTeams()" style="margin-top:4px;display:none">🎲 Random Teams</button>
     <button class="action-btn secondary" onclick="goBackToRecorder()" style="margin-top:4px">← Back</button>
   </div>
 
@@ -592,6 +593,7 @@ function updatePickActions(){
   const actDiv = document.getElementById('pick-actions');
   const singlesBtn = document.getElementById('singles-btn');
   const contBtn = document.getElementById('continue-btn');
+  const randBtn = document.getElementById('random-teams-btn');
   if(!actDiv) return;
   if(count>=2){
     actDiv.style.display='block';
@@ -600,7 +602,30 @@ function updatePickActions(){
   } else {
     actDiv.style.display='none';
   }
+  // Show random teams button when picks < 4 and there are enough checked players
+  const pool = getCheckedPool();
+  if(randBtn) randBtn.style.display = (count < 4 && pool.length >= 4) ? 'block' : 'none';
 }
+
+window.randomTeams = function(){
+  const pool = getCheckedPool();
+  // Need exactly 4 checked players total for doubles
+  if(pool.length < 4){
+    toast(`Not enough players checked — need 4, only ${pool.length} checked on Rankings tab`, true);
+    return;
+  }
+  // Fill the remaining open slots from pool players not already picked
+  const unpicked = pool.filter(p => !picks.includes(p.id));
+  const needed = 4 - picks.length;
+  if(unpicked.length < needed){
+    toast(`Not enough unchosen checked players to fill ${needed} spot${needed>1?'s':''}`, true);
+    return;
+  }
+  // Shuffle unpicked and take what we need
+  const shuffled = [...unpicked].sort(()=>Math.random()-0.5);
+  for(let i=0;i<needed;i++) picks.push(shuffled[i].id);
+  renderPickStep();
+};
 
 function syncDropdown(slot){
   const sel_el = document.getElementById('sel-'+slot);
@@ -798,7 +823,7 @@ window.submitScore = async function(){
       p0=!p0;
       await updateDoc(doc(db,'players',id),{rating:(p.rating||RAW_CENTER2)+parseFloat(rc[id]),losses:(p.losses||0)+1,totalPoints:(p.totalPoints||0)+sB});
     }
-    await addDoc(collection(db,'matches'),{format:fmt,teamA:tA,teamB:tB,scoreA:sA,scoreB:sB,players:all,ratingChanges:rc,breakdowns:bd,date,timestamp:Date.now()});
+    await addDoc(collection(db,'matches'),{format:fmt,teamA:tA,teamB:tB,scoreA:sA,scoreB:sB,players:all,ratingChanges:rc,breakdowns:bd,date,timestamp:Date.now(),enteredBy:recorderId||null});
 
     toast(`${fmt.charAt(0).toUpperCase()+fmt.slice(1)} recorded! ${winner==='A'?getTeamAName():getTeamBName()} wins ${winnerScore}–${loserScore} 🎉`);
 
