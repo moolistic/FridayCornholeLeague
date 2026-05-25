@@ -9,15 +9,21 @@
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--grass:#3B6D11;--grass-light:#639922;--grass-pale:#EAF3DE;--wood:#BA7517;--wood-pale:#FAEEDA;--corn:#FAC775;--bg:#f7f5f0;--card:#ffffff;--text:#2C2C2A;--muted:#888780;--border:rgba(0,0,0,0.1);--danger:#E24B4A;--fd:'Bebas Neue',sans-serif;--fb:'DM Sans',sans-serif;--rad:10px}
 body{font-family:var(--fb);background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
-nav{background:var(--grass);padding:0 24px;display:flex;align-items:center;height:56px;position:sticky;top:0;z-index:100}
-.brand{font-family:var(--fd);font-size:22px;color:var(--corn);letter-spacing:1px;margin-right:24px;white-space:nowrap}
+nav{background:var(--grass);padding:0 14px;display:flex;align-items:center;height:52px;position:sticky;top:0;z-index:100}
+.brand{font-family:var(--fd);font-size:20px;color:var(--corn);letter-spacing:1px;margin-right:12px;white-space:nowrap}
 .brand span{color:#fff}
 .nav-links{display:flex;gap:2px;flex:1;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .nav-links::-webkit-scrollbar{display:none}
-.nb{background:none;border:none;color:rgba(255,255,255,0.75);font-family:var(--fb);font-size:13px;font-weight:500;padding:8px 13px;border-radius:6px;cursor:pointer;transition:background .15s,color .15s;white-space:nowrap}
+.nb{background:none;border:none;color:rgba(255,255,255,0.75);font-family:var(--fb);font-size:13px;font-weight:500;padding:8px 11px;border-radius:6px;cursor:pointer;transition:background .15s,color .15s;white-space:nowrap}
 .nb:hover{background:rgba(255,255,255,0.12);color:#fff}
 .nb.active{background:rgba(255,255,255,0.18);color:#fff}
-.sbadge{margin-left:auto;font-size:12px;font-weight:600;color:var(--corn);background:rgba(0,0,0,0.25);padding:4px 12px;border-radius:20px;white-space:nowrap}
+/* hamburger */
+.ham-btn{display:none;background:none;border:none;color:#fff;cursor:pointer;padding:6px;border-radius:6px;flex-shrink:0;line-height:1}
+.ham-btn:hover{background:rgba(255,255,255,0.12)}
+.ham-menu{display:none;position:absolute;top:52px;right:0;left:0;background:#2d5610;z-index:300;flex-direction:column;padding:6px 8px;gap:2px;box-shadow:0 4px 16px rgba(0,0,0,0.25)}
+.ham-menu.open{display:flex}
+.ham-menu .nb{text-align:left;width:100%;border-radius:6px;font-size:14px;padding:10px 14px}
+.sbadge{margin-left:auto;font-size:11px;font-weight:600;color:var(--corn);background:rgba(0,0,0,0.25);padding:3px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0}
 .page{display:none;padding:28px 24px;max-width:900px;margin:0 auto;width:100%}
 .page.active{display:block}
 .ph{margin-bottom:28px}
@@ -31,8 +37,8 @@ nav{background:var(--grass);padding:0 24px;display:flex;align-items:center;heigh
 .tc{background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad);overflow:hidden}
 .tc table{width:100%;border-collapse:collapse}
 .tc thead tr{background:var(--grass-pale)}
-.tc th{text-align:left;font-size:12px;font-weight:600;color:var(--grass);text-transform:uppercase;letter-spacing:.5px;padding:10px 16px}
-.tc td{padding:12px 16px;border-top:0.5px solid var(--border);font-size:14px}
+.tc th{text-align:left;font-size:11px;font-weight:600;color:var(--grass);text-transform:uppercase;letter-spacing:.5px;padding:8px 12px}
+.tc td{padding:9px 12px;border-top:0.5px solid var(--border);font-size:13px}
 .tc tbody tr:hover{background:#fafaf8}
 .rn{font-family:var(--fd);font-size:20px;color:var(--muted);min-width:28px;display:inline-block}
 .rn.top3{color:var(--wood)}
@@ -154,34 +160,33 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
 .prior-form .fg{margin-bottom:10px}
 .prior-form .fg:last-child{margin-bottom:0}
 @media(max-width:600px){
-  /* Nav */
-  nav{padding:0 8px}
-  .brand{font-size:15px;margin-right:6px}
-  .nb{padding:7px 6px;font-size:11px}
+  /* Nav — switch to hamburger */
+  nav{padding:0 10px}
+  .nav-links{display:none}
+  .ham-btn{display:flex;align-items:center;justify-content:center}
   .sbadge:last-child{display:none}
-  .sbadge{font-size:11px;padding:3px 8px}
+  .sbadge{font-size:10px;padding:2px 7px}
   /* Page */
-  .page{padding:14px 10px}
-  .pt{font-size:28px}
+  .page{padding:12px 10px}
+  .pt{font-size:26px}
   /* Stats cards */
   .srow{grid-template-columns:repeat(2,1fr)}
   .pstats{grid-template-columns:repeat(2,1fr)}
-  /* Tables: let them scroll horizontally */
+  /* Tables */
   .tc{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .tc table{min-width:380px}
-  .tc th,.tc td{padding:10px 10px;font-size:12px}
-  /* Rankings table: hide checkbox col on mobile */
-  .tc th:first-child,.tc td:first-child{display:none}
+  .tc table{min-width:320px}
+  .tc th,.tc td{padding:7px 8px;font-size:11px}
+  /* Rankings table: keep RSVP col on mobile */
   /* Match history rows */
-  .mr{flex-wrap:wrap;row-gap:4px;padding:10px 12px}
-  .mscore{min-width:50px;font-size:13px}
+  .mr{flex-wrap:wrap;row-gap:4px;padding:8px 10px}
+  .mscore{min-width:44px;font-size:12px}
   .mdate{min-width:auto;font-size:11px}
   .md{min-width:auto}
   /* Player profile */
-  .ptop{gap:12px}
-  .pname{font-size:22px}
-  .rbn{font-size:36px}
-  .av{width:48px;height:48px;font-size:18px}
+  .ptop{gap:10px}
+  .pname{font-size:20px}
+  .rbn{font-size:32px}
+  .av{width:44px;height:44px;font-size:16px}
   /* Forms */
   .fr{grid-template-columns:1fr}
   .vsd{padding-top:0}
@@ -193,37 +198,48 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
   .mbox{padding:20px 16px}
   .fr{grid-template-columns:1fr}
   /* Movement table */
-  #movement-table .tc table{min-width:340px}
+  #movement-table .tc table{min-width:300px}
 }
 </style>
 </head>
 <body>
 
 <nav>
-  <div class="brand">CORNHOLE <span>LEAGUE</span></div>
-  <div class="nav-links">
-    <button class="nb active" onclick="showPage('home',this)">Home</button>
-    <button class="nb" onclick="showPage('calendar',this)">Calendar</button>
-    <button class="nb" onclick="showPage('rankings',this)">Rankings</button>
+  <div class="brand">FC<span>L</span></div>
+  <div class="nav-links" id="nav-links-desktop">
+    <button class="nb active" onclick="showPage('home',this);closeHam()">Home</button>
+    <button class="nb" onclick="showPage('calendar',this);closeHam()">Calendar</button>
+    <button class="nb" onclick="showPage('rankings',this);closeHam()">Rankings</button>
     <a class="nb" href="score.html" style="text-decoration:none">Enter Score</a>
-    <button class="nb" onclick="showPage('stats',this)">Player Stats</button>
-    <button class="nb" onclick="showPage('admin',this)">Admin</button>
+    <button class="nb" onclick="showPage('stats',this);closeHam()">Player Stats</button>
+    <button class="nb" onclick="showPage('admin',this);closeHam()">Admin</button>
   </div>
   <div class="sbadge">Season 2026</div>
-  <div class="sbadge">Ver 1.61</div>
+  <div class="sbadge">Ver 1.63</div>
+  <button class="ham-btn" id="ham-btn" onclick="toggleHam()" aria-label="Menu">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect y="4" width="22" height="2.2" rx="1.1" fill="white"/><rect y="9.9" width="22" height="2.2" rx="1.1" fill="white"/><rect y="15.8" width="22" height="2.2" rx="1.1" fill="white"/></svg>
+  </button>
 </nav>
+<div class="ham-menu" id="ham-menu">
+  <button class="nb" onclick="showPage('home',this);closeHam()">Home</button>
+  <button class="nb" onclick="showPage('calendar',this);closeHam()">Calendar</button>
+  <button class="nb" onclick="showPage('rankings',this);closeHam()">Rankings</button>
+  <a class="nb" href="score.html" style="text-decoration:none">Enter Score</a>
+  <button class="nb" onclick="showPage('stats',this);closeHam()">Player Stats</button>
+  <button class="nb" onclick="showPage('admin',this);closeHam()">Admin</button>
+</div>
 
 <!-- HOME DASHBOARD -->
 <div class="page active" id="page-home">
   <div class="ph">
     <div class="pt">Welcome Back 🌽</div>
-    <div class="ps">Cornhole League — Season 2026</div>
+    <div class="ps">Friday Cornhole League — Season 2026</div>
   </div>
-  <div id="home-events" style="margin-bottom:24px"></div>
-  <div id="home-movement" style="margin-bottom:24px"></div>
-  <div style="text-align:center">
-    <a href="score.html" style="display:inline-block;background:var(--grass);color:#fff;text-decoration:none;padding:16px 40px;border-radius:10px;font-family:var(--fd);font-size:24px;letter-spacing:1px;transition:background .15s" onmouseover="this.style.background='#27500A'" onmouseout="this.style.background='var(--grass)'">🎯 Enter Score</a>
+  <div style="text-align:center;margin-bottom:20px">
+    <a href="score.html" style="display:inline-block;background:var(--grass);color:#fff;text-decoration:none;padding:14px 36px;border-radius:10px;font-family:var(--fd);font-size:22px;letter-spacing:1px;transition:background .15s" onmouseover="this.style.background='#27500A'" onmouseout="this.style.background='var(--grass)'">🎯 Enter Score</a>
   </div>
+  <div id="home-events" style="margin-bottom:20px"></div>
+  <div id="home-movement" style="margin-bottom:20px"></div>
 </div>
 
 <!-- RANKINGS -->
@@ -475,12 +491,31 @@ function refreshActive(){
   if(id==='page-admin' && adminAuthed){ renderAdminPlayers(); renderAdminMatches(); renderAdminPrior(); }
 }
 
+// ── Hamburger menu ────────────────────────────────────────────────────────────
+window.toggleHam=function(){
+  const m=document.getElementById('ham-menu');
+  m.classList.toggle('open');
+};
+window.closeHam=function(){
+  document.getElementById('ham-menu').classList.remove('open');
+};
+document.addEventListener('click',function(e){
+  const menu=document.getElementById('ham-menu');
+  const btn=document.getElementById('ham-btn');
+  if(menu&&btn&&!menu.contains(e.target)&&!btn.contains(e.target)) menu.classList.remove('open');
+});
+
 // ── Navigation ────────────────────────────────────────────────────────────────
 window.showPage=function(p,btn){
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
   document.querySelectorAll('.nb').forEach(e=>e.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
-  if(btn)btn.classList.add('active');
+  if(btn){
+    btn.classList.add('active');
+    // Also mark the matching button in the other nav set
+    const pageLabel=btn.textContent.trim();
+    document.querySelectorAll('.nb').forEach(b=>{if(b.textContent.trim()===pageLabel)b.classList.add('active');});
+  }
   if(p==='home')     renderHome();
   if(p==='rankings') renderRankings();
   if(p==='stats')    { fillSelects(); renderPlayerStats(); }
