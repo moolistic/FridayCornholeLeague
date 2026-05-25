@@ -210,7 +210,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
     <button class="nb" onclick="showPage('admin',this)">Admin</button>
   </div>
   <div class="sbadge">Season 2026</div>
-  <div class="sbadge">Ver 1.5</div>
+  <div class="sbadge">Ver 1.61</div>
 </nav>
 
 <!-- HOME DASHBOARD -->
@@ -642,28 +642,81 @@ window.renderPlayerStats=function renderPlayerStats(){
   const pm=[...matches].filter(m=>m.players&&m.players.includes(id)).reverse();
   const w=p.wins||0,l=p.losses||0,tot=w+l;
   const pct=tot?Math.round(w/tot*100):0;
-  // Pts avg only from current-season matches (prior season had no point tracking)
   const currentPts=p.totalPoints||0;
   const currentGames=pm.length;
   const avg=currentGames?(currentPts/currentGames).toFixed(1):'—';
-  const fmt=p.format||'both';
   const pr=p.priorSeason||null;
+
+  // ── Partner / opponent stats ────────────────────────────────────────────────
+  const MIN_GAMES=3;
+  const partnerMap={};
+  const oppMap={};
+  for(const m of pm){
+    const isA=m.teamA.includes(id);
+    const won=isA?m.scoreA>m.scoreB:m.scoreB>m.scoreA;
+    const myTeam=isA?m.teamA:m.teamB;
+    const theirTeam=isA?m.teamB:m.teamA;
+    for(const pid of myTeam.filter(x=>x!==id)){
+      if(!partnerMap[pid]) partnerMap[pid]={wins:0,losses:0};
+      if(won) partnerMap[pid].wins++; else partnerMap[pid].losses++;
+    }
+    for(const oid of theirTeam){
+      if(!oppMap[oid]) oppMap[oid]={wins:0,losses:0};
+      if(won) oppMap[oid].wins++; else oppMap[oid].losses++;
+    }
+  }
+  const pname=pid=>{const x=players.find(p=>p.id===pid);return x?x.name.split(' ')[0]:'?';};
+
+  // Best partner: highest win % with >= MIN_GAMES
+  let bestPartner='N/A', bestPartnerPct=-1;
+  for(const [pid,rec] of Object.entries(partnerMap)){
+    const g=rec.wins+rec.losses; if(g<MIN_GAMES) continue;
+    const p2=rec.wins/g;
+    if(p2>bestPartnerPct){bestPartnerPct=p2;bestPartner=`${pname(pid)} (${Math.round(p2*100)}%)`;}
+  }
+
+  // Worst partner: most losses with >= MIN_GAMES
+  let worstPartner='N/A', worstPartnerLosses=-1;
+  for(const [pid,rec] of Object.entries(partnerMap)){
+    const g=rec.wins+rec.losses; if(g<MIN_GAMES) continue;
+    if(rec.losses>worstPartnerLosses){worstPartnerLosses=rec.losses;worstPartner=`${pname(pid)} (${rec.losses}L)`;}
+  }
+
+  // Their #: opponent with best win % for this player, >= MIN_GAMES
+  let theirNum='N/A', theirNumPct=-1;
+  for(const [oid,rec] of Object.entries(oppMap)){
+    const g=rec.wins+rec.losses; if(g<MIN_GAMES) continue;
+    const p2=rec.wins/g;
+    if(p2>theirNumPct){theirNumPct=p2;theirNum=`${pname(oid)} (${Math.round(p2*100)}%)`;}
+  }
+
+  // Gets your goat: opponent with highest loss % for this player, >= MIN_GAMES
+  let goat='N/A', goatPct=-1;
+  for(const [oid,rec] of Object.entries(oppMap)){
+    const g=rec.wins+rec.losses; if(g<MIN_GAMES) continue;
+    const lossPct=rec.losses/g;
+    if(lossPct>goatPct){goatPct=lossPct;goat=`${pname(oid)} (${Math.round(lossPct*100)}%)`;}
+  }
+
+  // ── Match history rows ──────────────────────────────────────────────────────
   const rows=pm.map(m=>{
     const isA=m.teamA.includes(id),won=isA?m.scoreA>m.scoreB:m.scoreB>m.scoreA;
     const my=isA?m.scoreA:m.scoreB,opp=isA?m.scoreB:m.scoreA;
     const rawD=m.ratingChanges?(m.ratingChanges[id]||0):0;
     const oppIds=isA?m.teamB:m.teamA;
+    const partnerIds=(isA?m.teamA:m.teamB).filter(x=>x!==id);
     const oppNames=oppIds.map(oid=>{const op=players.find(x=>x.id===oid);return op?op.name.split(' ')[0]:'?';}).join(' & ');
+    const partnerNames=partnerIds.map(pid=>{const pp=players.find(x=>x.id===pid);return pp?pp.name.split(' ')[0]:'?';}).join(' & ');
     const dd=Math.abs(parseFloat(deltaDisp(Math.abs(rawD)))).toFixed(3);
-    // Read true mf/mf2 stored at the time the match was recorded/recalculated
     const bd=m.breakdowns&&m.breakdowns[id];
     const mf=bd?bd.mf:null, mf2=bd?bd.mf2:null;
     const hasBreakdown=mf!==null&&mf2!==null;
     const sign=v=>v>=0?'+':'−';
+    const partnerBit=partnerNames?`<span style="color:var(--muted);font-size:12px">w/ ${partnerNames}</span> `:'';
     return`<div class="mr" style="flex-wrap:wrap;row-gap:4px">
       <div class="mres ${won?'W':'L'}">${won?'W':'L'}</div>
       <div class="mscore">${my} – ${opp}</div>
-      <div class="mopp">vs ${oppNames} <span class="fb2 ${m.format}" style="margin-left:4px">${m.format}</span></div>
+      <div class="mopp">${partnerBit}vs ${oppNames} <span class="fb2 ${m.format}" style="margin-left:4px">${m.format}</span></div>
       <div class="md ${rawD>=0?'pos':'neg'}" style="min-width:auto">${rawD>=0?'+':'−'}${dd}</div>
       <div class="mdate">${m.date||''}</div>
       <div style="width:100%;display:flex;gap:16px;padding-left:40px;font-size:11px;color:var(--muted)">
@@ -675,12 +728,12 @@ window.renderPlayerStats=function renderPlayerStats(){
       </div>
     </div>`;
   }).join('')||`<div class="es" style="padding:32px"><p>No matches recorded yet.</p></div>`;
+
   box.innerHTML=`
     <div class="pp">
       <div class="ptop">
         <div class="av">${initials(p.name)}</div>
-        <div><div class="pname">${p.name}</div>
-        </div>
+        <div><div class="pname">${p.name}</div></div>
         <div class="prb"><div class="rbn">${toDisp(p.rating)}</div><div class="rbl">Rating</div></div>
       </div>
       <div class="pstats">
@@ -688,6 +741,27 @@ window.renderPlayerStats=function renderPlayerStats(){
         <div class="pstat"><div class="psv">${l}</div><div class="psl">Losses</div></div>
         <div class="pstat"><div class="psv">${pct}%</div><div class="psl">Win Rate</div></div>
         <div class="pstat"><div class="psv">${avg}</div><div class="psl">Avg Pts</div></div>
+      </div>
+      <div style="border-top:0.5px solid var(--border);margin-top:16px;padding-top:16px">
+        <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Matchup Stats <span style="font-weight:400;text-transform:none;letter-spacing:0">(min ${MIN_GAMES} games)</span></div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+          <div style="background:var(--grass-pale);border-radius:8px;padding:12px">
+            <div style="font-size:11px;font-weight:600;color:var(--grass);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">🤝 Best Partner</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text)">${bestPartner}</div>
+          </div>
+          <div style="background:#FCEBEB;border-radius:8px;padding:12px">
+            <div style="font-size:11px;font-weight:600;color:var(--danger);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">😬 Worst Partner</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text)">${worstPartner}</div>
+          </div>
+          <div style="background:#E6F1FB;border-radius:8px;padding:12px">
+            <div style="font-size:11px;font-weight:600;color:#185FA5;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">🎯 Their #</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text)">${theirNum}</div>
+          </div>
+          <div style="background:#FFF3E0;border-radius:8px;padding:12px">
+            <div style="font-size:11px;font-weight:600;color:#B45309;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">🐐 Gets Your Goat</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text)">${goat}</div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="mh">

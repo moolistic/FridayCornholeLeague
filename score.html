@@ -154,18 +154,34 @@ select.fallback-select:last-child{border-bottom:none}
 <nav>
   <div class="brand">CORNHOLE <span>LEAGUE</span></div>
   <div class="nav-links">
-    <a class="nb" href="index.html#home">Home</a>
-    <a class="nb" href="index.html#calendar">Calendar</a>
-    <a class="nb" href="index.html#rankings">Rankings</a>
-    <a class="nb active" href="score.html">Score</a>
-    <a class="nb" href="index.html#stats">Player Stats</a>
+    <a class="nb" href="index.html">Home</a>
+    <a class="nb" href="index.html">Calendar</a>
+    <a class="nb" href="index.html">Rankings</a>
+    <a class="nb active" href="score.html">Enter Score</a>
+    <a class="nb" href="index.html">Player Stats</a>
+    <a class="nb" href="index.html">Admin</a>
   </div>
-  <div class="sbadge">2026</div>
+  <div class="sbadge">Season 2026</div>
+  <div class="sbadge">Ver 1.5</div>
 </nav>
 
 <div class="wrap">
+  <!-- STEP 0: Who's entering the score? -->
+  <div class="step active" id="step-0">
+    <div class="step-header">
+      <div class="step-pill">Before We Start</div>
+      <div class="step-title">Who's Entering?</div>
+      <div class="step-sub">Tap your name — you'll be placed on Team A first. Tap again to deselect if you're just recording.</div>
+    </div>
+    <div id="cards-0" class="player-grid"><div class="loading-msg">Loading players…</div></div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:500">Not listed? Use dropdown</div>
+    <div class="dropdown-fallback open" id="fallback-0">
+      <select class="fallback-select" id="sel-0" onchange="selectRecorderFromDropdown()"><option value="">— Select your name —</option></select>
+    </div>
+  </div>
+
   <!-- STEP 1: Pick all players on one screen -->
-  <div class="step active" id="step-1">
+  <div class="step" id="step-1">
     <div class="step-header">
       <div class="step-pill" id="pick-pill">Pick Players</div>
       <div class="step-title">Build Teams</div>
@@ -230,6 +246,7 @@ select.fallback-select:last-child{border-bottom:none}
       <button class="action-btn primary" id="singles-btn" onclick="confirmSingles()" style="display:none">Continue — Singles Match</button>
       <button class="action-btn primary" id="continue-btn" onclick="continueToWinner()" style="display:none">Continue →</button>
     </div>
+    <button class="action-btn secondary" onclick="goBackToRecorder()" style="margin-top:4px">← Back</button>
   </div>
 
   <!-- STEP 2: (unused stubs kept for goBack compat) -->
@@ -328,7 +345,8 @@ let winner = null;
 let loserScore = 0;
 let winnerScore = 21;
 let isSingles = false;
-let currentStep = 1;
+let currentStep = 0;
+let recorderId = null; // null = just recording, otherwise player id
 
 // ── Firebase ──────────────────────────────────────────────────────────────────
 onSnapshot(collection(db,'players'), snap => {
@@ -387,6 +405,7 @@ function showStep(n){
 window.goBack = function(toStep){
   if(toStep===1){
     picks=[]; isSingles=false; winner=null; deriveSel();
+    if(recorderId) picks.push(recorderId);
     showStep(1);
   } else if(toStep===5){
     winner=null; showStep(5);
@@ -395,10 +414,65 @@ window.goBack = function(toStep){
 
 // ── Render ────────────────────────────────────────────────────────────────────────────────────
 function renderStep(n){
+  if(n===0) renderRecorderStep();
   if(n===1) renderPickStep();
   if(n===5) renderWinnerStep();
   if(n===6) renderScoreStep();
 }
+
+
+// ── Recorder step (step 0) ────────────────────────────────────────────────────
+function renderRecorderStep(){
+  const container = document.getElementById('cards-0');
+  if(!players.length){ container.innerHTML='<div class="loading-msg">Loading…</div>'; return; }
+  const pool = getCheckedPool();
+  container.innerHTML = pool.map(p => {
+    const isMe = recorderId === p.id;
+    return `<div class="player-card${isMe?' selected':''}" onclick="toggleRecorder('${p.id}')">
+      <div class="pc-av">${initials(p.name)}</div>
+      <div class="pc-name">${p.name.split(' ')[0]}<br><span style="font-weight:400;color:var(--muted);font-size:11px">${p.name.split(' ').slice(1).join(' ')}</span></div>
+      <div class="pc-rating">${toDisp(p.rating||RAW_CENTER)}</div>
+      <div class="pc-check">✓</div>
+    </div>`;
+  }).join('');
+  // Sync dropdown
+  const selEl = document.getElementById('sel-0');
+  if(selEl){
+    const sorted = [...players].sort((a,b)=>a.name.localeCompare(b.name));
+    selEl.innerHTML = '<option value="">— Select your name —</option>' +
+      sorted.map(p=>`<option value="${p.id}"${recorderId===p.id?' selected':''}>${p.name}</option>`).join('');
+  }
+}
+
+window.toggleRecorder = function(id){
+  if(recorderId === id){
+    recorderId = null;
+    renderRecorderStep();
+  } else {
+    recorderId = id;
+    picks = [recorderId];
+    showStep(1);
+  }
+};
+
+window.selectRecorderFromDropdown = function(){
+  const v = document.getElementById('sel-0')?.value;
+  if(!v) return;
+  recorderId = v;
+  picks = [recorderId];
+  showStep(1);
+};
+
+window.confirmRecorder = function(){
+  picks = [];
+  if(recorderId) picks.push(recorderId);
+  showStep(1);
+};
+
+window.goBackToRecorder = function(){
+  picks=[]; isSingles=false; deriveSel();
+  showStep(0);
+};
 
 // ── Checked pool ────────────────────────────────────────────────────────────────────────────
 function getCheckedPool(){
@@ -558,7 +632,11 @@ window.selectFromDropdown = function(slot){
 window.confirmSingles = function(){
   isSingles = true;
   picks = picks.slice(0,2);
-  deriveSel();
+  // For singles: picks[0]=A1, picks[1]=B1. Override sel directly.
+  sel[1] = picks[0] || null;
+  sel[2] = picks[1] || null;
+  sel[3] = null;
+  sel[4] = null;
   showStep(5);
 };
 
@@ -725,8 +803,8 @@ window.submitScore = async function(){
     toast(`${fmt.charAt(0).toUpperCase()+fmt.slice(1)} recorded! ${winner==='A'?getTeamAName():getTeamBName()} wins ${winnerScore}–${loserScore} 🎉`);
 
     // Reset
-    picks=[]; sel={1:null,2:null,3:null,4:null}; winner=null; loserScore=0; winnerScore=21; isSingles=false;
-    setTimeout(()=>showStep(1), 1200);
+    picks=[]; sel={1:null,2:null,3:null,4:null}; winner=null; loserScore=0; winnerScore=21; isSingles=false; recorderId=null;
+    setTimeout(()=>showStep(0), 1200);
   } catch(e){ toast('Error: '+e.message,true); }
   btn.disabled=false; btn.textContent='RECORD MATCH';
 };
