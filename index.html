@@ -246,7 +246,14 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
 <div class="page" id="page-rankings">
   <div class="ph">
     <div style="display:flex;align-items:center;justify-content:space-between">
-      <div><div class="pt">Leaderboard</div><div class="ps">Ratings updated after every match</div></div>
+      <div>
+        <div class="pt">Leaderboard</div>
+        <div class="ps">Season <span id="season-year-label"></span> · min 3 games to rank · <span style="color:var(--muted)">LT = Lifetime</span></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--grass);cursor:pointer;user-select:none;flex-shrink:0">
+        <input type="checkbox" id="lb-lifetime-toggle" onchange="renderRankings()" style="width:16px;height:16px;accent-color:var(--grass)">
+        Lifetime
+      </label>
     </div>
   </div>
   <div class="tc"><table>
@@ -254,9 +261,9 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
       <th style="width:44px;font-size:11px;color:var(--grass);cursor:pointer;user-select:none" onclick="cycleSort('rsvp')" id="th-rsvp">RSVP <span id="sort-rsvp"></span></th>
       <th style="width:32px;cursor:pointer;user-select:none" onclick="cycleSort('rank')" id="th-rank"># <span id="sort-rank">▼</span></th>
       <th style="cursor:pointer;user-select:none" onclick="cycleSort('name')">Player <span id="sort-name"></span></th>
-      <th style="width:70px;cursor:pointer;user-select:none" onclick="cycleSort('rating')">Rating <span id="sort-rating"></span></th>
+      <th style="width:90px;cursor:pointer;user-select:none" onclick="cycleSort('rating')">Rating <span id="sort-rating"></span></th>
       <th style="width:72px;cursor:pointer;user-select:none" onclick="cycleSort('wl')">W – L <span id="sort-wl"></span></th>
-      <th style="width:64px;cursor:pointer;user-select:none" onclick="cycleSort('avg')">Avg <span id="sort-avg"></span></th>
+      <th style="width:56px;cursor:pointer;user-select:none" onclick="cycleSort('games')">GP <span id="sort-games"></span></th>
     </tr></thead>
     <tbody id="rankings-body"><tr><td colspan="6"><div class="loading-overlay"><div class="spinner"></div></div></td></tr></tbody>
   </table></div>
@@ -307,6 +314,13 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
       </div>
     </div>
     <div class="admin-section">
+      <div class="admin-section-hdr">Season Management</div>
+      <div style="padding:14px 20px;display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:13px;color:var(--muted)">Start a new season by resetting all season ratings to the baseline. <strong>Lifetime ratings are preserved.</strong> Use at the beginning of each calendar year.</div>
+        <button class="fbtn" style="background:var(--danger);border-color:var(--danger);color:#fff;max-width:280px" onclick="confirmSeasonReset()">⚠️ Reset Season Ratings</button>
+      </div>
+    </div>
+    <div class="admin-section">
       <div class="admin-section-hdr">Players</div>
       <div id="admin-players-list"><div class="loading-overlay"><div class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:24px;height:24px;display:block;margin:0 auto"></div></div></div>
     </div>
@@ -316,7 +330,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
     </div>
     <div class="admin-section">
       <div class="admin-section-hdr">Prior Season Data</div>
-      <div style="padding:12px 20px 4px;font-size:13px;color:var(--muted)">Add last year's rank, wins, and losses to a player's profile. These games are counted in W–L records but excluded from points average since scores weren't tracked.</div>
+      <div style="padding:12px 20px 4px;font-size:13px;color:var(--muted)">A player's prior season end rating feeds into their <strong>Lifetime rating only</strong>. Season rating always starts at 5.00 for everyone regardless of prior history.</div>
       <div id="admin-prior-list"><div class="loading-overlay"><div class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:24px;height:24px;display:block;margin:0 auto"></div></div></div>
     </div>
   </div>
@@ -561,12 +575,30 @@ function renderHome(){
 }
 
 function renderMovement(targetDiv){
-  const sorted=[...players].sort((a,b)=>b.rating-a.rating);
+  const curYear=new Date().getFullYear();
   const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-6);
   const cutoffStr=cutoff.toISOString().split('T')[0];
   const recentMatches=matches.filter(m=>m.date&&m.date>=cutoffStr);
   if(!recentMatches.length||!players.length){targetDiv.innerHTML='';return;}
 
+  // Season rank: qualified players (≥3 season games) by p.rating
+  const seasonGameCount={};
+  for(const m of matches){
+    const yr=m.date?parseInt(m.date.split('-')[0]):null;
+    if(yr!==curYear) continue;
+    for(const id of (m.players||[])) seasonGameCount[id]=(seasonGameCount[id]||0)+1;
+  }
+  const MIN_SEASON=3;
+  const seasonSorted=[...players].filter(p=>(seasonGameCount[p.id]||0)>=MIN_SEASON).sort((a,b)=>b.rating-a.rating);
+  const seasonRankMap={};
+  seasonSorted.forEach((p,i)=>seasonRankMap[p.id]=i+1);
+
+  // Lifetime rank: all players by lifetimeRating
+  const ltSorted=[...players].sort((a,b)=>(b.lifetimeRating||b.rating||RAW_CENTER)-(a.lifetimeRating||a.rating||RAW_CENTER));
+  const ltRankMap={};
+  ltSorted.forEach((p,i)=>ltRankMap[p.id]=i+1);
+
+  // Rating before recent matches (season rating)
   const ratingBefore={};
   for(const p of players) ratingBefore[p.id]=p.rating||RAW_CENTER;
   for(const m of recentMatches){
@@ -575,15 +607,20 @@ function renderMovement(targetDiv){
       if(ratingBefore[pid]!==undefined) ratingBefore[pid]-=parseFloat(delta);
     }
   }
-  const activePids=new Set(recentMatches.flatMap(m=>[...(m.teamA||[]),...(m.teamB||[])]));
-  const rankNow={};
-  sorted.forEach((p,i)=>rankNow[p.id]=i+1);
-  const sortedBefore=[...players].sort((a,b)=>(ratingBefore[b.id]||RAW_CENTER)-(ratingBefore[a.id]||RAW_CENTER));
-  const rankBefore={};
-  sortedBefore.forEach((p,i)=>rankBefore[p.id]=i+1);
 
-  const mvRows=sorted.filter(p=>activePids.has(p.id)).map(p=>{
-    const rn=rankNow[p.id], rb=rankBefore[p.id], diff=rb-rn;
+  // Season rank before recent matches
+  const seasonSortedBefore=[...players]
+    .filter(p=>(seasonGameCount[p.id]||0)>=MIN_SEASON)
+    .sort((a,b)=>(ratingBefore[b.id]||RAW_CENTER)-(ratingBefore[a.id]||RAW_CENTER));
+  const seasonRankBefore={};
+  seasonSortedBefore.forEach((p,i)=>seasonRankBefore[p.id]=i+1);
+
+  const activePids=new Set(recentMatches.flatMap(m=>[...(m.teamA||[]),...(m.teamB||[])]));
+
+  const mvRows=seasonSorted.filter(p=>activePids.has(p.id)).map(p=>{
+    const rn=seasonRankMap[p.id]||'—';
+    const rb=seasonRankBefore[p.id];
+    const diff=rb&&rn?(rb-rn):0;
     let netDelta=0;
     for(const m of recentMatches){
       if(m.ratingChanges&&m.ratingChanges[p.id]!==undefined) netDelta+=parseFloat(m.ratingChanges[p.id]);
@@ -593,8 +630,10 @@ function renderMovement(targetDiv){
     const arrow=diff>0?`<span class="mv-up">▲${diff}</span>`:diff<0?`<span class="mv-dn">▼${Math.abs(diff)}</span>`:`<span class="mv-nc">–</span>`;
     const deltaStr=(netDelta>=0?'+':'')+netDelta.toFixed(3);
     const deltaClass=netDelta>=0?'mv-up':'mv-dn';
+    const ltRk=ltRankMap[p.id]||'—';
+    const rnDisplay=typeof rn==='number'?`<span class="rn ${rn<=3?'top3':''}">${rn}</span><div style="font-size:9px;color:var(--muted);text-align:center;margin-top:1px">LT#${ltRk}</div>`:`<span style="color:var(--muted)">—</span>`;
     return`<tr>
-      <td><span class="rn ${rn<=3?'top3':''}">${rn}</span></td>
+      <td style="vertical-align:middle">${rnDisplay}</td>
       <td><span class="pn" onclick="goPlayer('${p.id}')">${p.name}</span></td>
       <td>${arrow}</td>
       <td><span class="rp">${toDisp(p.rating)}</span></td>
@@ -603,11 +642,12 @@ function renderMovement(targetDiv){
     </tr>`;
   }).join('');
 
+  if(!mvRows){targetDiv.innerHTML='';return;}
   targetDiv.innerHTML=`<div>
     <div style="font-family:var(--fd);font-size:22px;letter-spacing:.5px;margin-bottom:10px;color:var(--text)">Recent Movement <span style="font-size:14px;font-weight:400;font-family:var(--fb);color:var(--muted);letter-spacing:0">last 6 days</span></div>
     <div class="tc"><table>
       <thead><tr>
-        <th style="width:40px">#</th><th>Player</th><th>Rank Δ</th><th>Rating</th><th>Rating Δ</th><th>Record</th>
+        <th style="width:44px">#</th><th>Player</th><th>Rank Δ</th><th>Rating</th><th>Rating Δ</th><th>Record</th>
       </tr></thead>
       <tbody>${mvRows}</tbody>
     </table></div>
@@ -615,72 +655,135 @@ function renderMovement(targetDiv){
 }
 
 // ── Rankings ──────────────────────────────────────────────────────────────────
-let rankSortCol='rank', rankSortDir=1; // dir: 1=asc/default, -1=desc
+let rankSortCol='rank', rankSortDir=1;
 
 window.cycleSort=function(col){
-  if(rankSortCol===col){
-    rankSortDir*=-1;
-  } else {
-    rankSortCol=col;
-    rankSortDir= col==='rank'?1:-1; // default: rank asc, others desc first
-  }
-  // Update header indicators
-  const cols=['rsvp','rank','name','rating','wl','avg'];
+  if(rankSortCol===col){ rankSortDir*=-1; }
+  else { rankSortCol=col; rankSortDir=col==='rank'?1:-1; }
+  const cols=['rsvp','rank','name','rating','wl','games'];
   cols.forEach(c=>{
-    const el=document.getElementById('sort-'+c);
-    if(!el) return;
-    if(c===rankSortCol) el.textContent=rankSortDir===1?'▲':'▼';
-    else el.textContent='';
+    const el=document.getElementById('sort-'+c); if(!el)return;
+    el.textContent=c===rankSortCol?(rankSortDir===1?'▲':'▼'):'';
   });
   renderRankings();
 };
 
 function renderRankings(){
-  const ratingOrder=[...players].sort((a,b)=>b.rating-a.rating);
-  const ratingRank={};
-  ratingOrder.forEach((p,i)=>ratingRank[p.id]=i+1);
+  const curYear=new Date().getFullYear();
+  const MIN_GAMES=3;
+  const ltMode=document.getElementById('lb-lifetime-toggle')?.checked||false;
+
+  // Season W/L/games from current-year match docs
+  const seasonGamesMap={}, seasonWinsMap={}, seasonLossesMap={};
+  for(const m of matches){
+    const yr=m.date?parseInt(m.date.split('-')[0]):null;
+    if(yr!==curYear) continue;
+    const won=m.scoreA>m.scoreB;
+    for(const id of (m.teamA||[])){
+      seasonGamesMap[id]=(seasonGamesMap[id]||0)+1;
+      if(won) seasonWinsMap[id]=(seasonWinsMap[id]||0)+1;
+      else seasonLossesMap[id]=(seasonLossesMap[id]||0)+1;
+    }
+    for(const id of (m.teamB||[])){
+      seasonGamesMap[id]=(seasonGamesMap[id]||0)+1;
+      if(!won) seasonWinsMap[id]=(seasonWinsMap[id]||0)+1;
+      else seasonLossesMap[id]=(seasonLossesMap[id]||0)+1;
+    }
+  }
+
+  // Lifetime W/L = all match docs + prior season
+  const ltWinsMap={}, ltLossesMap={};
+  for(const m of matches){
+    const won=m.scoreA>m.scoreB;
+    for(const id of (m.teamA||[])){
+      if(won) ltWinsMap[id]=(ltWinsMap[id]||0)+1;
+      else ltLossesMap[id]=(ltLossesMap[id]||0)+1;
+    }
+    for(const id of (m.teamB||[])){
+      if(!won) ltWinsMap[id]=(ltWinsMap[id]||0)+1;
+      else ltLossesMap[id]=(ltLossesMap[id]||0)+1;
+    }
+  }
+  for(const p of players){
+    const pr=p.priorSeason||{};
+    if(pr.wins)   ltWinsMap[p.id]  =(ltWinsMap[p.id]  ||0)+(pr.wins||0);
+    if(pr.losses) ltLossesMap[p.id]=(ltLossesMap[p.id]||0)+(pr.losses||0);
+  }
 
   let checkedPids=[];
   try{ checkedPids=JSON.parse(localStorage.getItem('lb_checked')||'[]'); }catch(e){}
 
   const withStats=players.map(p=>{
-    const w=p.wins||0,l=p.losses||0;
-    const currentPts=p.totalPoints||0;
-    const currentGames=matches.filter(m=>m.players&&m.players.includes(p.id)).length;
-    const avg=currentGames?(currentPts/currentGames):0;
+    const sg=seasonGamesMap[p.id]||0;
+    const lg=p.lifetimeGames||0;
+    const gamesForMode=ltMode?lg:sg;
+    const qualified=gamesForMode>=MIN_GAMES;
+    const mainRating=ltMode?(p.lifetimeRating||p.rating||RAW_CENTER):(p.rating||RAW_CENTER);
+    const altRating=ltMode?(p.rating||RAW_CENTER):(p.lifetimeRating||p.rating||RAW_CENTER);
+    const w=ltMode?(ltWinsMap[p.id]||0):(seasonWinsMap[p.id]||0);
+    const l=ltMode?(ltLossesMap[p.id]||0):(seasonLossesMap[p.id]||0);
     const lastName=p.name.split(' ').slice(1).join(' ').toLowerCase();
     const isChecked=checkedPids.includes(p.id);
-    return{p,w,l,avg,currentGames,rk:ratingRank[p.id],lastName,isChecked};
+    return{p,w,l,sg,lg,gamesForMode,qualified,mainRating,altRating,lastName,isChecked};
   });
 
+  // Primary rank (mode's rating), qualified only
+  const qualList=withStats.filter(x=>x.qualified).sort((a,b)=>b.mainRating-a.mainRating);
+  const primaryRankMap={};
+  qualList.forEach((x,i)=>primaryRankMap[x.p.id]=i+1);
+
+  // Alt rank (opposite rating), all players
+  const altSorted=[...withStats].sort((a,b)=>b.altRating-a.altRating);
+  const altRankMap={};
+  altSorted.forEach((x,i)=>altRankMap[x.p.id]=i+1);
+
+  withStats.forEach(x=>{ x.primaryRk=primaryRankMap[x.p.id]||null; x.altRk=altRankMap[x.p.id]; });
+
   withStats.sort((a,b)=>{
+    if(rankSortCol==='rank'){
+      if(a.qualified!==b.qualified) return(b.qualified?1:-1)*rankSortDir;
+      if(a.qualified) return(a.primaryRk-b.primaryRk)*rankSortDir;
+      return(b.mainRating-a.mainRating)*rankSortDir;
+    }
     let v=0;
-    if(rankSortCol==='rank')   v=a.rk-b.rk;
-    else if(rankSortCol==='name')   v=a.lastName.localeCompare(b.lastName)||a.p.name.localeCompare(b.p.name);
-    else if(rankSortCol==='rating') v=b.p.rating-a.p.rating;
+    if(rankSortCol==='name')   v=a.lastName.localeCompare(b.lastName)||a.p.name.localeCompare(b.p.name);
+    else if(rankSortCol==='rating') v=b.mainRating-a.mainRating;
     else if(rankSortCol==='wl')     v=(b.w-b.l)-(a.w-a.l);
-    else if(rankSortCol==='avg')    v=b.avg-a.avg;
+    else if(rankSortCol==='games')  v=b.gamesForMode-a.gamesForMode;
     else if(rankSortCol==='rsvp')   v=(b.isChecked?1:0)-(a.isChecked?1:0);
     return v*rankSortDir;
   });
 
+  const sub=document.querySelector('#page-rankings .ps');
+  if(sub) sub.innerHTML=ltMode
+    ?`Lifetime Rankings · min ${MIN_GAMES} games · <span style="color:var(--grass);font-weight:600">Lifetime mode</span>`
+    :`Season ${curYear} · min ${MIN_GAMES} games · <span style="color:var(--muted)">${ltMode?'S = Season':'LT = Lifetime'}</span>`;
+
   const tbody=document.getElementById('rankings-body');
   if(!withStats.length){tbody.innerHTML=`<tr><td colspan="6"><div class="es"><p>No players yet.</p></div></td></tr>`;return;}
 
-  tbody.innerHTML=withStats.map(({p,w,l,avg,currentGames,rk,isChecked})=>{
-    const avgStr=currentGames?avg.toFixed(1):'—';
+  let lastWasQualified=null;
+  tbody.innerHTML=withStats.map(({p,w,l,gamesForMode,qualified,primaryRk,altRk,mainRating,altRating,isChecked})=>{
     const firstName=p.name.split(' ')[0];
-    const lastName=p.name.split(' ').slice(1).join(' ');
-    return`<tr>
+    const lastName2=p.name.split(' ').slice(1).join(' ');
+    const rkDisp=qualified?`<span class="rn ${primaryRk<=3?'top3':''}">${primaryRk}</span>`:`<span style="color:var(--muted);font-size:12px">—</span>`;
+    const mainDisp=`<span class="rp" style="${!qualified?'color:var(--muted)':''}">${toDisp(mainRating)}</span>`;
+    const altLabel=ltMode?'S':'LT';
+    const altDisp=`<div style="font-size:10px;color:var(--muted);margin-top:1px">${altLabel}: ${toDisp(altRating)} <span style="font-size:9px;opacity:.7">#${altRk}</span></div>`;
+    const divider=(!qualified&&lastWasQualified===true)
+      ?`<tr><td colspan="6" style="padding:4px 8px;background:var(--bg)"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);opacity:.7">Below — fewer than ${MIN_GAMES} ${ltMode?'lifetime':'season'} games</div></td></tr>`:'';
+    lastWasQualified=qualified;
+    return`${divider}<tr style="${!qualified?'opacity:.6':''}">
       <td style="text-align:center"><input type="checkbox" class="lb-check" data-pid="${p.id}" ${isChecked?'checked':''} onchange="saveChecked()"></td>
-      <td><span class="rn ${rk<=3?'top3':''}">${rk}</span></td>
-      <td><span class="pn" onclick="goPlayer('${p.id}')">${firstName}${lastName?`<br><span style="font-size:11px;font-weight:400;color:var(--muted)">${lastName}</span>`:''}</span></td>
-      <td><span class="rp">${toDisp(p.rating)}</span></td>
+      <td>${rkDisp}</td>
+      <td><span class="pn" onclick="goPlayer('${p.id}')">${firstName}${lastName2?`<br><span style="font-size:11px;font-weight:400;color:var(--muted)">${lastName2}</span>`:''}</span></td>
+      <td>${mainDisp}${altDisp}</td>
       <td style="font-weight:500;white-space:nowrap">${w}–${l}</td>
-      <td style="color:var(--muted)">${avgStr}</td>
+      <td style="color:var(--muted)">${gamesForMode}</td>
     </tr>`;
   }).join('');
 }
+
 
 window.saveChecked=function(){
   const ids=[...document.querySelectorAll('.lb-check:checked')].map(el=>el.dataset.pid);
@@ -717,117 +820,130 @@ window.renderPlayerStats=function renderPlayerStats(){
   const box=document.getElementById('stats-content');
   if(!id){box.innerHTML='';return;}
   const p=players.find(x=>x.id===id); if(!p)return;
-  const pm=[...matches].filter(m=>m.players&&m.players.includes(id)).reverse();
-  const w=p.wins||0,l=p.losses||0,tot=w+l;
-  const pct=tot?Math.round(w/tot*100):0;
-  const currentPts=p.totalPoints||0;
-  const currentGames=pm.length;
-  const avg=currentGames?(currentPts/currentGames).toFixed(1):'—';
-  const pr=p.priorSeason||null;
 
-  // ── Partner / opponent stats ────────────────────────────────────────────────
+  const curYear=new Date().getFullYear();
+  const allMatches=[...matches].filter(m=>m.players&&m.players.includes(id)).reverse();
+  // Season matches = current year only
+  const pm=allMatches.filter(m=>m.date&&m.date.startsWith(curYear+''));
+  // Lifetime = all matches
+  const pmAll=allMatches;
+
+  // Season stats — current year matches only
+  const seasonWins=pm.filter(m=>{const isA=m.teamA.includes(id);return isA?m.scoreA>m.scoreB:m.scoreB>m.scoreA;}).length;
+  const seasonLosses=pm.length-seasonWins;
+  const seasonTot=seasonWins+seasonLosses;
+  const pct=seasonTot?Math.round(seasonWins/seasonTot*100):0;
+  const currentGames=pm.length;
+  const seasonPts=pm.reduce((s,m)=>{const isA=m.teamA.includes(id);return s+(isA?m.scoreA:m.scoreB);},0);
+  const avgSeason=currentGames?(seasonPts/currentGames).toFixed(1):'—';
+
+  // Lifetime stats — all match docs + prior season wins/losses
+  const ltGames=pmAll.length;
+  const ltWinsFromMatches=pmAll.filter(m=>{const isA=m.teamA.includes(id);return isA?m.scoreA>m.scoreB:m.scoreB>m.scoreA;}).length;
+  const ltLossesFromMatches=ltGames-ltWinsFromMatches;
+  const priorW=(p.priorSeason&&p.priorSeason.wins)||0;
+  const priorL=(p.priorSeason&&p.priorSeason.losses)||0;
+  const ltWins=ltWinsFromMatches+priorW;
+  const ltLosses=ltLossesFromMatches+priorL;
+  const ltTot=ltWins+ltLosses;
+  const ltPct=ltTot?Math.round(ltWins/ltTot*100):0;
+  const ltPts=pmAll.reduce((s,m)=>{const isA=m.teamA.includes(id);return s+(isA?m.scoreA:m.scoreB);},0);
+  const avgLt=ltGames?(ltPts/ltGames).toFixed(1):'—';
+  const ltRating=p.lifetimeRating!==undefined?p.lifetimeRating:(p.rating||RAW_CENTER);
+
+  const pr=p.priorSeason||null;
   const MIN_GAMES=3;
-  const partnerMap={};
-  const oppMap={};
-  for(const m of pm){
+
+  // Partner / opponent maps (all-time)
+  const partnerMap={}, oppMap={};
+  for(const m of pmAll){
     const isA=m.teamA.includes(id);
     const won=isA?m.scoreA>m.scoreB:m.scoreB>m.scoreA;
-    const myTeam=isA?m.teamA:m.teamB;
-    const theirTeam=isA?m.teamB:m.teamA;
-    for(const pid of myTeam.filter(x=>x!==id)){
+    for(const pid of (isA?m.teamA:m.teamB).filter(x=>x!==id)){
       if(!partnerMap[pid]) partnerMap[pid]={wins:0,losses:0};
       if(won) partnerMap[pid].wins++; else partnerMap[pid].losses++;
     }
-    for(const oid of theirTeam){
+    for(const oid of (isA?m.teamB:m.teamA)){
       if(!oppMap[oid]) oppMap[oid]={wins:0,losses:0};
       if(won) oppMap[oid].wins++; else oppMap[oid].losses++;
     }
   }
   const pname=pid=>{const x=players.find(p=>p.id===pid);return x?x.name.split(' ')[0]:'?';};
 
-  // Best partner: highest win % with >= MIN_GAMES
   let bestPartner='N/A', bestPartnerPct=-1;
   for(const [pid,rec] of Object.entries(partnerMap)){
     const g=rec.wins+rec.losses; if(g<MIN_GAMES) continue;
     const p2=rec.wins/g;
     if(p2>bestPartnerPct){bestPartnerPct=p2;bestPartner=`${pname(pid)} (${rec.wins}W–${rec.losses}L)`;}
   }
-
-  // Worst partner: most losses with >= MIN_GAMES
   let worstPartner='N/A', worstPartnerLosses=-1;
   for(const [pid,rec] of Object.entries(partnerMap)){
     const g=rec.wins+rec.losses; if(g<MIN_GAMES) continue;
     if(rec.losses>worstPartnerLosses){worstPartnerLosses=rec.losses;worstPartner=`${pname(pid)} (${rec.wins}W–${rec.losses}L)`;}
   }
-
-  // Got their #: opponent with most wins vs them (wins >= losses, min MIN_GAMES)
   let theirNum='N/A', theirNumBest=-1;
   for(const [oid,rec] of Object.entries(oppMap)){
     const g=rec.wins+rec.losses; if(g<MIN_GAMES) continue;
-    if(rec.wins<rec.losses) continue; // must have more wins than losses vs this opponent
+    if(rec.wins<rec.losses) continue;
     if(rec.wins>theirNumBest){theirNumBest=rec.wins;theirNum=`${pname(oid)} (${rec.wins}W–${rec.losses}L)`;}
   }
-
-  // Gets your goat: opponent with most losses vs (losses >= wins, min MIN_GAMES)
   let goat='N/A', goatLossesBest=-1;
   for(const [oid,rec] of Object.entries(oppMap)){
     const g=rec.wins+rec.losses; if(g<MIN_GAMES) continue;
-    if(rec.losses<rec.wins) continue; // must have more losses than wins vs this opponent
+    if(rec.losses<rec.wins) continue;
     if(rec.losses>goatLossesBest){goatLossesBest=rec.losses;goat=`${pname(oid)} (${rec.wins}W–${rec.losses}L)`;}
   }
 
-  // Biggest Win: match with most positive rating delta (only actual wins)
-  // Biggest Loss: match with most negative rating delta (only actual losses)
+  // Biggest win/loss using SEASON ratingChanges
   let biggestWinData=null, biggestWinDelta=-Infinity;
   let biggestLossData=null, biggestLossDelta=Infinity;
-  for(const m of pm){
+  for(const m of pmAll){
     const rawD=m.ratingChanges?(parseFloat(m.ratingChanges[id]||0)):0;
     const isA=m.teamA.includes(id);
     const won=isA?m.scoreA>m.scoreB:m.scoreB>m.scoreA;
-    const oppIds=isA?m.teamB:m.teamA;
-    const partnerIds=(isA?m.teamA:m.teamB).filter(x=>x!==id);
-    const oppNames=oppIds.map(oid=>{const op=players.find(x=>x.id===oid);return op?op.name.split(' ')[0]:'?';}).join(' & ');
-    const partnerNames=partnerIds.map(pid2=>{const pp=players.find(x=>x.id===pid2);return pp?pp.name.split(' ')[0]:'?';}).join(' & ');
-    const my=isA?m.scoreA:m.scoreB,oppS=isA?m.scoreB:m.scoreA;
-    const dd=Math.abs(rawD).toFixed(3);
-    if(won && rawD>biggestWinDelta){biggestWinDelta=rawD;biggestWinData={opp:oppNames,partner:partnerNames,my,oppS,dd:'+'+dd,date:m.date||''};}
-    if(!won && rawD<biggestLossDelta){biggestLossDelta=rawD;biggestLossData={opp:oppNames,partner:partnerNames,my,oppS,dd:'−'+dd,date:m.date||''};}
+    const oppNames=(isA?m.teamB:m.teamA).map(oid=>{const op=players.find(x=>x.id===oid);return op?op.name.split(' ')[0]:'?';}).join(' & ');
+    const partnerNames=(isA?m.teamA:m.teamB).filter(x=>x!==id).map(pid2=>{const pp=players.find(x=>x.id===pid2);return pp?pp.name.split(' ')[0]:'?';}).join(' & ');
+    const my=isA?m.scoreA:m.scoreB, oppS=isA?m.scoreB:m.scoreA;
+    if(won && rawD>biggestWinDelta){biggestWinDelta=rawD;biggestWinData={opp:oppNames,partner:partnerNames,my,oppS,dd:'+'+(Math.abs(rawD).toFixed(3)),date:m.date||''};}
+    if(!won && rawD<biggestLossDelta){biggestLossDelta=rawD;biggestLossData={opp:oppNames,partner:partnerNames,my,oppS,dd:'−'+(Math.abs(rawD).toFixed(3)),date:m.date||''};}
   }
   function renderBigCard(d,isWin){
     if(!d) return `<div style="font-size:14px;font-weight:600;color:var(--muted)">N/A</div>`;
-    const scoreColor=isWin?'var(--grass)':'var(--danger)';
+    const sc=isWin?'var(--grass)':'var(--danger)';
     return `<div style="font-size:15px;font-weight:700;color:var(--text)">vs ${d.opp}</div>
       ${d.partner?`<div style="font-size:13px;font-weight:600;color:var(--muted);margin-top:1px">w/ ${d.partner}</div>`:''}
-      <div style="font-size:12px;color:${scoreColor};font-weight:600;margin-top:4px">${d.my}–${d.oppS} &nbsp;·&nbsp; ${d.dd} pts${d.date?` &nbsp;·&nbsp; ${d.date}`:''}</div>`;
+      <div style="font-size:12px;color:${sc};font-weight:600;margin-top:4px">${d.my}–${d.oppS} · ${d.dd} pts${d.date?` · ${d.date}`:''}</div>`;
   }
 
-  // ── Match history rows ──────────────────────────────────────────────────────
-  const rows=pm.map(m=>{
-    const isA=m.teamA.includes(id),won=isA?m.scoreA>m.scoreB:m.scoreB>m.scoreA;
-    const my=isA?m.scoreA:m.scoreB,opp=isA?m.scoreB:m.scoreA;
-    const rawD=m.ratingChanges?(m.ratingChanges[id]||0):0;
-    const oppIds=isA?m.teamB:m.teamA;
-    const partnerIds=(isA?m.teamA:m.teamB).filter(x=>x!==id);
-    const oppNames=oppIds.map(oid=>{const op=players.find(x=>x.id===oid);return op?op.name.split(' ')[0]:'?';}).join(' & ');
-    const partnerNames=partnerIds.map(pid=>{const pp=players.find(x=>x.id===pid);return pp?pp.name.split(' ')[0]:'?';}).join(' & ');
-    const dd=Math.abs(parseFloat(deltaDisp(Math.abs(rawD)))).toFixed(3);
+  // Match history rows — both season + lifetime deltas
+  const rows=pmAll.map(m=>{
+    const isA=m.teamA.includes(id), won=isA?m.scoreA>m.scoreB:m.scoreB>m.scoreA;
+    const my=isA?m.scoreA:m.scoreB, opp2=isA?m.scoreB:m.scoreA;
+    const rawDS=m.ratingChanges?(parseFloat(m.ratingChanges[id]||0)):0;
+    const rawDL=m.lifetimeRatingChanges?(parseFloat(m.lifetimeRatingChanges[id]||0)):null;
+    const isThisYear=m.date&&m.date.startsWith(curYear+'');
+    const oppNames=(isA?m.teamB:m.teamA).map(oid=>{const op=players.find(x=>x.id===oid);return op?op.name.split(' ')[0]:'?';}).join(' & ');
+    const partnerNames=(isA?m.teamA:m.teamB).filter(x=>x!==id).map(pid=>{const pp=players.find(x=>x.id===pid);return pp?pp.name.split(' ')[0]:'?';}).join(' & ');
     const bd=m.breakdowns&&m.breakdowns[id];
-    const mf=bd?bd.mf:null, mf2=bd?bd.mf2:null;
-    const hasBreakdown=mf!==null&&mf2!==null;
+    const bdL=m.lifetimeBreakdowns&&m.lifetimeBreakdowns[id];
     const sign=v=>v>=0?'+':'−';
     const partnerBit=partnerNames?`<span style="color:var(--muted);font-size:12px">w/ ${partnerNames}</span> `:'';
+    const seasonTag=isThisYear?`<span style="font-size:10px;font-weight:700;background:var(--grass-pale);color:var(--grass);padding:2px 6px;border-radius:10px;margin-left:4px">Season</span>`:'';
+    const seasonDeltaStr=`${rawDS>=0?'+':'−'}${Math.abs(rawDS).toFixed(3)}`;
+    const ltDeltaStr=rawDL!==null?`${rawDL>=0?'+':'−'}${Math.abs(rawDL).toFixed(3)}`:null;
     return`<div class="mr" style="flex-wrap:wrap;row-gap:4px">
       <div class="mres ${won?'W':'L'}">${won?'W':'L'}</div>
-      <div class="mscore">${my} – ${opp}</div>
-      <div class="mopp">${partnerBit}vs ${oppNames} <span class="fb2 ${m.format}" style="margin-left:4px">${m.format}</span></div>
-      <div class="md ${rawD>=0?'pos':'neg'}" style="min-width:auto">${rawD>=0?'+':'−'}${dd}</div>
+      <div class="mscore">${my} – ${opp2}</div>
+      <div class="mopp">${partnerBit}vs ${oppNames} <span class="fb2 ${m.format}" style="margin-left:4px">${m.format}</span>${seasonTag}</div>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:72px">
+        <div class="md ${rawDS>=0?'pos':'neg'}" style="min-width:auto;font-size:13px" title="Season Δ">S: ${seasonDeltaStr}</div>
+        ${ltDeltaStr?`<div class="md ${rawDL>=0?'pos':'neg'}" style="min-width:auto;font-size:11px;opacity:.75" title="Lifetime Δ">LT: ${ltDeltaStr}</div>`:''}
+      </div>
       <div class="mdate">${m.date||''}</div>
       <div style="width:100%;display:flex;gap:16px;padding-left:40px;font-size:11px;color:var(--muted)">
-        ${hasBreakdown
-          ? `<span>Base Pts: <strong style="color:${mf>=0?'var(--grass)':'var(--danger)'}">${sign(mf)}${Math.abs(mf).toFixed(3)}</strong></span>
-             <span>Performance Pts: <strong style="color:${mf2>=0?'var(--grass)':'var(--danger)'}">${sign(mf2)}${Math.abs(mf2).toFixed(3)}</strong></span>`
-          : `<span style="font-style:italic">Breakdown available after next recalculation</span>`
-        }
+        ${bd?`<span>Season — Base: <strong style="color:${bd.mf>=0?'var(--grass)':'var(--danger)'}">${sign(bd.mf)}${Math.abs(bd.mf).toFixed(3)}</strong> Perf: <strong style="color:${bd.mf2>=0?'var(--grass)':'var(--danger)'}">${sign(bd.mf2)}${Math.abs(bd.mf2).toFixed(3)}</strong></span>`:''}
+        ${bdL?`<span>Lifetime — Base: <strong style="color:${bdL.mf>=0?'var(--grass)':'var(--danger)'}">${sign(bdL.mf)}${Math.abs(bdL.mf).toFixed(3)}</strong> Perf: <strong style="color:${bdL.mf2>=0?'var(--grass)':'var(--danger)'}">${sign(bdL.mf2)}${Math.abs(bdL.mf2).toFixed(3)}</strong></span>`:''}
+        ${!bd&&!bdL?`<span style="font-style:italic">Breakdown available after next recalculation</span>`:''}
       </div>
     </div>`;
   }).join('')||`<div class="es" style="padding:32px"><p>No matches recorded yet.</p></div>`;
@@ -837,16 +953,37 @@ window.renderPlayerStats=function renderPlayerStats(){
       <div class="ptop">
         <div class="av">${initials(p.name)}</div>
         <div><div class="pname">${p.name}</div></div>
-        <div class="prb"><div class="rbn">${toDisp(p.rating)}</div><div class="rbl">Rating</div></div>
+        <div class="prb"><div class="rbn">${toDisp(p.rating)}</div><div class="rbl">Season</div></div>
       </div>
-      <div class="pstats">
-        <div class="pstat"><div class="psv">${w}</div><div class="psl">Wins</div></div>
-        <div class="pstat"><div class="psv">${l}</div><div class="psl">Losses</div></div>
-        <div class="pstat"><div class="psv">${pct}%</div><div class="psl">Win Rate</div></div>
-        <div class="pstat"><div class="psv">${avg}</div><div class="psl">Avg Pts</div></div>
+
+      <!-- Season stats (large) -->
+      <div style="margin-bottom:4px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--grass);margin-bottom:8px">📅 Season ${curYear}</div>
+        <div class="pstats">
+          <div class="pstat"><div class="psv">${seasonWins}</div><div class="psl">Wins</div></div>
+          <div class="pstat"><div class="psv">${seasonLosses}</div><div class="psl">Losses</div></div>
+          <div class="pstat"><div class="psv">${pct}%</div><div class="psl">Win Rate</div></div>
+          <div class="pstat"><div class="psv">${avgSeason}</div><div class="psl">Avg Pts</div></div>
+        </div>
       </div>
+
+      <!-- Lifetime stats (smaller) -->
+      <div style="background:var(--bg);border-radius:10px;padding:12px 14px;margin-top:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)">🏆 Lifetime</div>
+          <div style="font-family:var(--fd);font-size:20px;color:var(--muted)">${toDisp(ltRating)}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+          ${[['Wins',ltWins],['Losses',ltLosses],['Win %',ltPct+'%'],['Avg',avgLt]].map(([lbl,val])=>`
+            <div style="text-align:center">
+              <div style="font-size:16px;font-weight:700;color:var(--text)">${val}</div>
+              <div style="font-size:10px;color:var(--muted);font-weight:500">${lbl}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+
       <div style="border-top:0.5px solid var(--border);margin-top:16px;padding-top:16px">
-        <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Matchup Stats <span style="font-weight:400;text-transform:none;letter-spacing:0">(min ${MIN_GAMES} games)</span></div>
+        <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Matchup Stats <span style="font-weight:400;text-transform:none;letter-spacing:0">(min ${MIN_GAMES} games · all-time)</span></div>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
           <div style="background:var(--grass-pale);border-radius:8px;padding:12px">
             <div style="font-size:11px;font-weight:600;color:var(--grass);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">🤝 Best Partner</div>
@@ -876,8 +1013,8 @@ window.renderPlayerStats=function renderPlayerStats(){
       </div>
     </div>
     <div class="mh">
-      <div class="mhh">Match History <span style="color:var(--muted);font-weight:400;font-size:13px">(${pm.length} games)</span></div>
-      ${pr&&(pr.endRating!=null||pr.wins||pr.losses)?`<div style="padding:10px 20px;background:var(--grass-pale);border-top:0.5px solid var(--border);font-size:13px;color:var(--grass)">📋 <strong>Prior Season:</strong> ${pr.endRating!=null?`Ended at ${pr.endRating} · `:''}${pr.wins||0}W – ${pr.losses||0}L <span style="color:var(--muted)">(points not tracked)</span></div>`:''}
+      <div class="mhh">Match History <span style="color:var(--muted);font-weight:400;font-size:13px">(${pmAll.length} games · ${pm.length} this season)</span></div>
+      ${pr&&(pr.endRating!=null||pr.wins||pr.losses)?`<div style="padding:10px 20px;background:var(--grass-pale);border-top:0.5px solid var(--border);font-size:13px;color:var(--grass)">📋 <strong>Prior Season:</strong> ${pr.endRating!=null?`Ended at ${pr.endRating} · `:''}${pr.wins||0}W – ${pr.losses||0}L <span style="color:var(--muted)">(lifetime base only)</span></div>`:''}
       ${rows}
     </div>`;
 }
@@ -1096,6 +1233,24 @@ window.adminLogout=function(){
   document.getElementById('admin-lock').style.display='flex';
   document.getElementById('admin-panel').style.display='none';
 };
+window.confirmSeasonReset=function(){
+  const yr=new Date().getFullYear()+1;
+  document.getElementById('confirm-msg').textContent=`Reset all season ratings to baseline for the ${yr} season? Lifetime ratings will NOT be affected. This cannot be undone.`;
+  document.getElementById('confirm-ok-btn').onclick=async()=>{
+    closeModal('modal-confirm');
+    await resetSeasonRatings();
+  };
+  openModal('modal-confirm');
+};
+async function resetSeasonRatings(){
+  try{
+    toast('Resetting season ratings…');
+    for(const p of players){
+      await updateDoc(doc(db,'players',p.id),{rating:RAW_CENTER,wins:0,losses:0,totalPoints:0,seasonGames:0,seasonYear:new Date().getFullYear()+1});
+    }
+    toast('Season reset complete! All ratings back to baseline.');
+  }catch(e){ toast('Error: '+e.message,true); }
+}
 function renderAdminPage(){
   if(!adminAuthed){document.getElementById('admin-lock').style.display='flex';document.getElementById('admin-panel').style.display='none';return;}
   document.getElementById('admin-lock').style.display='none';
@@ -1105,12 +1260,14 @@ function renderAdminPage(){
 function renderAdminPlayers(){
   const box=document.getElementById('admin-players-list');
   if(!players.length){box.innerHTML='<div class="es" style="padding:24px"><p>No players yet.</p></div>';return;}
-  box.innerHTML=[...players].sort((a,b)=>b.rating-a.rating).map(p=>`<div class="admin-row">
+  box.innerHTML=[...players].sort((a,b)=>b.rating-a.rating).map(p=>{
+    const lt=p.lifetimeRating!==undefined?toDisp(p.lifetimeRating):toDisp(p.rating);
+    return`<div class="admin-row">
     <div class="av" style="width:36px;height:36px;font-size:14px;flex-shrink:0">${initials(p.name)}</div>
-    <div class="admin-row-info"><strong>${p.name}</strong><span>Rating: ${toDisp(p.rating)} | ${p.wins||0}W – ${p.losses||0}L | ${p.format||'both'}</span></div>
+    <div class="admin-row-info"><strong>${p.name}</strong><span>Season: ${toDisp(p.rating)} | Lifetime: ${lt} | All-time W–L: ${p.wins||0}–${p.losses||0} | ${p.format||'both'}</span></div>
     <button class="icon-btn" onclick="openEditPlayer('${p.id}')">✏️ Edit</button>
     <button class="icon-btn danger" onclick="confirmDeletePlayer('${p.id}')">🗑 Delete</button>
-  </div>`).join('');
+  </div>`;}).join('');
 }
 function renderAdminMatches(){
   const box=document.getElementById('admin-matches-list');
@@ -1145,7 +1302,7 @@ function renderAdminPrior(){
           <div class="fg"><label>Wins</label><input type="number" id="prior-wins-${p.id}" min="0" placeholder="0" value="${pr.wins||''}"></div>
           <div class="fg"><label>Losses</label><input type="number" id="prior-losses-${p.id}" min="0" placeholder="0" value="${pr.losses||''}"></div>
         </div>
-        <p style="font-size:11px;color:var(--muted);margin:8px 0 10px">This season's results will add or subtract from last year's ending rating. Wins/losses are included in overall record; points are not tracked for prior season games.</p>
+        <p style="font-size:11px;color:var(--muted);margin:8px 0 10px">End-of-season rating is used as the starting point for this player's <strong>Lifetime rating</strong> only. Their season rating will still start at 5.00. Wins/losses are included in overall W–L record.</p>
         <button class="icon-btn" style="background:var(--grass);color:#fff;border-color:var(--grass)" onclick="savePriorSeason('${p.id}')">💾 Save</button>
         ${pr.endRating!=null?`<span style="font-size:12px;color:var(--muted);margin-left:10px">Saved: Rating ${pr.endRating} | ${pr.wins||0}W – ${pr.losses||0}L</span>`:''}
       </div>
@@ -1215,94 +1372,117 @@ window.confirmDeletePlayer=function(id){
 
   
 // ── Rating recalculation from scratch ────────────────────────────────────────
-// Replays every match in chronological order to derive correct ratings,
-// wins, losses, totalPoints for every player. Writes results to Firestore.
+// Runs TWO independent Elo replays with independent confidence counters:
+//   Season  — rating seeds at RAW_CENTER, confidence (games) starts at 0
+//   Lifetime — rating seeds from priorSeason.endRating, confidence seeds from prior season games
 async function recomputeAllRatings(updatedMatches){
-  // Start each player at their prior-season ending rating (if set), else the default center
-  const state={};
+  const seasonState={}, ltState={};
   for(const p of players){
     const pr=p.priorSeason||{};
-    // endRating is stored as a display value (0–10); convert to raw
-    const baseRating=pr.endRating!=null?dispToRaw(pr.endRating):RAW_CENTER;
-    const priorWins=pr.wins||0, priorLosses=pr.losses||0;
-    state[p.id]={rating:baseRating,wins:priorWins,losses:priorLosses,totalPoints:0};
+    const priorGames=(pr.wins||0)+(pr.losses||0); // prior season game count for lifetime confidence
+    const ltBase=pr.endRating!=null?dispToRaw(pr.endRating):RAW_CENTER;
+    // Season: rating=baseline, confidence games=0 (fresh start)
+    seasonState[p.id]={rating:RAW_CENTER, games:0, wins:0, losses:0, totalPoints:0};
+    // Lifetime: rating=prior end, confidence games=prior games played
+    ltState[p.id]   ={rating:ltBase,      games:priorGames, wins:priorGames, losses:0, totalPoints:0};
+    // Note: lt wins/losses stored separately; games is the confidence counter
   }
-  // Replay in date order
+
   const ordered=[...updatedMatches].sort((a,b)=>{
     if(a.timestamp&&b.timestamp) return a.timestamp-b.timestamp;
     return (a.date||'')<(b.date||'')?-1:(a.date||'')>(b.date||'')?1:0;
   });
-  const newRatingChanges={};// matchId -> {playerId: delta}
-  const newBreakdowns={};  // matchId -> {playerId: {mf, mf2}}
-  for(const m of ordered){
-    const tA=m.teamA||[],tB=m.teamB||[];
-    const sA=m.scoreA,sB=m.scoreB;
-    if(!tA.length||!tB.length) continue;
-  // Use in-progress simulated state, not current Firestore values
-  const getR=id=>state[id]?state[id].rating:RAW_CENTER;
 
-  // Caps the confidence weight at 20 games max, using games played so far in replay
-  const getC = id => { 
-    if (!state[id]) return 0;
-    const totalGames = (state[id].losses || 0) + (state[id].wins || 0);
-    return Math.min(totalGames, fullconfident-1)+1;
-  };
-  
-  // Guard against zero confidence sum (prevents NaN)
-  const safeAvg=(team)=>{
-    const cSum=team.reduce((s,id)=>s+getC(id),0);
-    return cSum?team.reduce((s,id)=>s+getR(id)*getC(id),0)/cSum:team.reduce((s,id)=>s+getR(id),0)/team.length;
-  };
-  const p1Risk=(team)=>{
-    if(team.length<2) return 0; // singles: sole player takes full delta
-    return (getC(team[0])/fullconfident)/(getC(team[0])/fullconfident+getC(team[1])/fullconfident);
-  };
-    
-  const avgT1=safeAvg(tA);
-  const avgT2=safeAvg(tB);
-  const riskT1=p1Risk(tA);
-  const riskT2=p1Risk(tB);
-  //console.log('p1Risk = ', riskT1, riskT2, 'avg = ', avgT1, avgT2, 'scores = ', sA, sB);
-    const delta=calcDelta(avgT1,avgT2,sA,sB);
-    //console.log('delta = ', delta);
-    // True mf/mf2 breakdown for team A perspective (team B is mirrored)
-    const {mf:mfA,mf2:mf2A}=calcDeltaBreakdown(avgT1,avgT2,sA,sB);
-    const {mf:mfB,mf2:mf2B}=calcDeltaBreakdown(avgT2,avgT1,sB,sA);
-    const rc={};
-    const bd={}; // breakdown per player
+  const newSeasonChanges={}, newLtChanges={}, newBreakdowns={}, newLtBreakdowns={};
+
+  function ensureState(id, sMap, lMap){
+    if(!sMap[id]){
+      sMap[id]={rating:RAW_CENTER, games:0, wins:0, losses:0, totalPoints:0};
+    }
+    if(!lMap[id]){
+      const pf=players.find(x=>x.id===id), pr2=(pf&&pf.priorSeason)||{};
+      const ltBase2=pr2.endRating!=null?dispToRaw(pr2.endRating):RAW_CENTER;
+      const priorGames2=(pr2.wins||0)+(pr2.losses||0);
+      lMap[id]={rating:ltBase2, games:priorGames2, wins:priorGames2, losses:0, totalPoints:0};
+    }
+  }
+
+  function replayTeams(tA, tB, sA, sB, sMap, lMap){
+    // Season: confidence from season games only (sMap[id].games)
+    const getRS=id=>sMap[id]?sMap[id].rating:RAW_CENTER;
+    const getCS=id=>sMap[id]?Math.min(sMap[id].games, fullconfident-1)+1:1;
+    const safeAvgS=team=>{const c=team.reduce((s,id)=>s+getCS(id),0);return c?team.reduce((s,id)=>s+getRS(id)*getCS(id),0)/c:team.reduce((s,id)=>s+getRS(id),0)/team.length;};
+    const p1RiskS=team=>{if(team.length<2)return 0;return(getCS(team[0])/fullconfident)/((getCS(team[0])+getCS(team[1]))/fullconfident);};
+    const avgSA=safeAvgS(tA), avgSB=safeAvgS(tB);
+    const riskSA=p1RiskS(tA), riskSB=p1RiskS(tB);
+    const deltaS=calcDelta(avgSA,avgSB,sA,sB);
+    const {mf:mfSA,mf2:mf2SA}=calcDeltaBreakdown(avgSA,avgSB,sA,sB);
+    const {mf:mfSB,mf2:mf2SB}=calcDeltaBreakdown(avgSB,avgSA,sB,sA);
+
+    // Lifetime: confidence from lifetime games (prior + all matches so far in lMap)
+    const getRL=id=>lMap[id]?lMap[id].rating:RAW_CENTER;
+    const getCL=id=>lMap[id]?Math.min(lMap[id].games, fullconfident-1)+1:1;
+    const safeAvgL=team=>{const c=team.reduce((s,id)=>s+getCL(id),0);return c?team.reduce((s,id)=>s+getRL(id)*getCL(id),0)/c:team.reduce((s,id)=>s+getRL(id),0)/team.length;};
+    const p1RiskL=team=>{if(team.length<2)return 0;return(getCL(team[0])/fullconfident)/((getCL(team[0])+getCL(team[1]))/fullconfident);};
+    const avgLA=safeAvgL(tA), avgLB=safeAvgL(tB);
+    const riskLA=p1RiskL(tA), riskLB=p1RiskL(tB);
+    const deltaL=calcDelta(avgLA,avgLB,sA,sB);
+    const {mf:mfLA,mf2:mf2LA}=calcDeltaBreakdown(avgLA,avgLB,sA,sB);
+    const {mf:mfLB,mf2:mf2LB}=calcDeltaBreakdown(avgLB,avgLA,sB,sA);
+
+    const rcS={}, rcL={}, bdS={}, bdL={};
     let p0=true;
     for(const id of tA){
-      if(!state[id]){const pf=players.find(x=>x.id===id),pr=(pf&&pf.priorSeason)||{};state[id]={rating:pr.endRating!=null?dispToRaw(pr.endRating):RAW_CENTER,wins:pr.wins||0,losses:pr.losses||0,totalPoints:0};}
-      const riskFactor=p0?1-riskT1:riskT1;
-      rc[id]=delta*riskFactor;
-      bd[id]={mf:mfA*riskFactor, mf2:mf2A*riskFactor};
-      state[id].rating+=parseFloat(rc[id]); state[id].wins+=1; state[id].totalPoints+=sA;
+      const rfS=p0?1-riskSA:riskSA, rfL=p0?1-riskLA:riskLA;
+      rcS[id]=deltaS*rfS; rcL[id]=deltaL*rfL;
+      bdS[id]={mf:mfSA*rfS,mf2:mf2SA*rfS}; bdL[id]={mf:mfLA*rfL,mf2:mf2LA*rfL};
+      sMap[id].rating+=parseFloat(rcS[id]); lMap[id].rating+=parseFloat(rcL[id]);
+      sMap[id].games+=1; lMap[id].games+=1;
+      sMap[id].wins+=1; lMap[id].wins+=1;
+      sMap[id].totalPoints+=sA; lMap[id].totalPoints+=sA;
       p0=!p0;
     }
     p0=true;
     for(const id of tB){
-      if(!state[id]){const pf=players.find(x=>x.id===id),pr=(pf&&pf.priorSeason)||{};state[id]={rating:pr.endRating!=null?dispToRaw(pr.endRating):RAW_CENTER,wins:pr.wins||0,losses:pr.losses||0,totalPoints:0};}
-      const riskFactor=p0?1-riskT2:riskT2;
-      rc[id]=-delta*riskFactor;
-      bd[id]={mf:mfB*riskFactor, mf2:mf2B*riskFactor};
-      state[id].rating+=parseFloat(rc[id]); state[id].losses+=1; state[id].totalPoints+=sB;
+      const rfS=p0?1-riskSB:riskSB, rfL=p0?1-riskLB:riskLB;
+      rcS[id]=-deltaS*rfS; rcL[id]=-deltaL*rfL;
+      bdS[id]={mf:mfSB*rfS,mf2:mf2SB*rfS}; bdL[id]={mf:mfLB*rfL,mf2:mf2LB*rfL};
+      sMap[id].rating+=parseFloat(rcS[id]); lMap[id].rating+=parseFloat(rcL[id]);
+      sMap[id].games+=1; lMap[id].games+=1;
+      sMap[id].losses+=1; lMap[id].losses+=1;
+      sMap[id].totalPoints+=sB; lMap[id].totalPoints+=sB;
       p0=!p0;
     }
-    newRatingChanges[m.id]=rc;
-    newBreakdowns[m.id]=bd;
+    return{rcS,rcL,bdS,bdL};
   }
-  // Write updated player stats
+
+  for(const m of ordered){
+    const tA=m.teamA||[], tB=m.teamB||[];
+    if(!tA.length||!tB.length) continue;
+    for(const id of [...tA,...tB]) ensureState(id, seasonState, ltState);
+    const{rcS,rcL,bdS,bdL}=replayTeams(tA,tB,m.scoreA,m.scoreB,seasonState,ltState);
+    newSeasonChanges[m.id]=rcS; newLtChanges[m.id]=rcL;
+    newBreakdowns[m.id]=bdS; newLtBreakdowns[m.id]=bdL;
+  }
+
   const writes=[];
   for(const p of players){
-    const s=state[p.id]||{rating:RAW_CENTER,wins:0,losses:0,totalPoints:0};
+    const ss=seasonState[p.id]||{rating:RAW_CENTER,games:0,wins:0,losses:0,totalPoints:0};
+    const ls=ltState[p.id]||{rating:RAW_CENTER,games:0,wins:0,losses:0,totalPoints:0};
     writes.push(updateDoc(doc(db,'players',p.id),{
-      rating:s.rating,wins:s.wins,losses:s.losses,totalPoints:s.totalPoints
+      rating:ss.rating, lifetimeRating:ls.rating,
+      seasonGames:ss.games, lifetimeGames:ls.games,
+      wins:ss.wins, losses:ss.losses, totalPoints:ss.totalPoints
     }));
   }
-  // Write updated ratingChanges and breakdowns back to each match
   for(const m of updatedMatches){
-    if(newRatingChanges[m.id]){
-      writes.push(updateDoc(doc(db,'matches',m.id),{ratingChanges:newRatingChanges[m.id],breakdowns:newBreakdowns[m.id]||{}}));
+    if(newSeasonChanges[m.id]){
+      writes.push(updateDoc(doc(db,'matches',m.id),{
+        ratingChanges:newSeasonChanges[m.id],
+        lifetimeRatingChanges:newLtChanges[m.id],
+        breakdowns:newBreakdowns[m.id]||{},
+        lifetimeBreakdowns:newLtBreakdowns[m.id]||{}
+      }));
     }
   }
   await Promise.all(writes);
@@ -1378,6 +1558,8 @@ window.closeModal=function(id,e){if(!e||e.target===document.getElementById(id))d
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 (function(){
+  const yrEl=document.getElementById('season-year-label');
+  if(yrEl) yrEl.textContent=new Date().getFullYear();
   const hash=(location.hash||'').replace('#','');
   const validPages=['home','rankings','stats','calendar','admin'];
   const target=validPages.includes(hash)?hash:'home';

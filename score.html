@@ -795,10 +795,17 @@ function calcDeltaBreakdown(t1r,t2r,t1s,t2s){
   return {mf,mf2};
 }
 
-const getR = id => { const p=players.find(x=>x.id===id); return p?(p.rating||RAW_CENTER2):RAW_CENTER2; };
-const getC = id => { const p=players.find(x=>x.id===id); if(!p)return 0; return Math.min((p.losses||0)+(p.wins||0),fullconfident2-1)+1; };
-const safeAvg = team => { const cSum=team.reduce((s,id)=>s+getC(id),0); return cSum?team.reduce((s,id)=>s+getR(id)*getC(id),0)/cSum:team.reduce((s,id)=>s+getR(id),0)/team.length; };
-const p1Risk = team => { if(team.length<2)return 0; return (getC(team[0])/fullconfident2)/(getC(team[0])/fullconfident2+getC(team[1])/fullconfident2); };
+// Season confidence: p.seasonGames (starts at 0 each season)
+const getRS = id => { const p=players.find(x=>x.id===id); return p?(p.rating||RAW_CENTER2):RAW_CENTER2; };
+const getCS = id => { const p=players.find(x=>x.id===id); if(!p)return 1; return Math.min(p.seasonGames||0, fullconfident2-1)+1; };
+const safeAvgS = team => { const c=team.reduce((s,id)=>s+getCS(id),0); return c?team.reduce((s,id)=>s+getRS(id)*getCS(id),0)/c:team.reduce((s,id)=>s+getRS(id),0)/team.length; };
+const p1RiskS = team => { if(team.length<2)return 0; return (getCS(team[0])/fullconfident2)/((getCS(team[0])+getCS(team[1]))/fullconfident2); };
+
+// Lifetime confidence: p.lifetimeGames (seeds from prior season games)
+const getRL = id => { const p=players.find(x=>x.id===id); return p?(p.lifetimeRating||p.rating||RAW_CENTER2):RAW_CENTER2; };
+const getCL = id => { const p=players.find(x=>x.id===id); if(!p)return 1; return Math.min(p.lifetimeGames||0, fullconfident2-1)+1; };
+const safeAvgL = team => { const c=team.reduce((s,id)=>s+getCL(id),0); return c?team.reduce((s,id)=>s+getRL(id)*getCL(id),0)/c:team.reduce((s,id)=>s+getRL(id),0)/team.length; };
+const p1RiskL = team => { if(team.length<2)return 0; return (getCL(team[0])/fullconfident2)/((getCL(team[0])+getCL(team[1]))/fullconfident2); };
 
 window.submitScore = async function(){
   if(!sel[1]||!sel[2]){ toast('Missing players',true); return; }
@@ -821,35 +828,73 @@ window.submitScore = async function(){
   const btn = document.getElementById('submit-btn');
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Saving…';
 
-  const avgT1=safeAvg(tA), avgT2=safeAvg(tB);
-  const riskT1=p1Risk(tA), riskT2=p1Risk(tB);
-  const delta=calcDelta(avgT1,avgT2,sA,sB);
-  const {mf:mfA,mf2:mf2A}=calcDeltaBreakdown(avgT1,avgT2,sA,sB);
-  const {mf:mfB,mf2:mf2B}=calcDeltaBreakdown(avgT2,avgT1,sB,sA);
-  const rc={}, bd={};
+  // ── Season delta (independent from lifetime) ──────────────────────────────
+  const avgSA=safeAvgS(tA), avgSB=safeAvgS(tB);
+  const riskSA=p1RiskS(tA), riskSB=p1RiskS(tB);
+  const deltaS=calcDelta(avgSA,avgSB,sA,sB);
+  const {mf:mfSA,mf2:mf2SA}=calcDeltaBreakdown(avgSA,avgSB,sA,sB);
+  const {mf:mfSB,mf2:mf2SB}=calcDeltaBreakdown(avgSB,avgSA,sB,sA);
+
+  // ── Lifetime delta (independent from season) ──────────────────────────────
+  const avgLA=safeAvgL(tA), avgLB=safeAvgL(tB);
+  const riskLA=p1RiskL(tA), riskLB=p1RiskL(tB);
+  const deltaL=calcDelta(avgLA,avgLB,sA,sB);
+  const {mf:mfLA,mf2:mf2LA}=calcDeltaBreakdown(avgLA,avgLB,sA,sB);
+  const {mf:mfLB,mf2:mf2LB}=calcDeltaBreakdown(avgLB,avgLA,sB,sA);
+
+  const rcS={}, rcL={}, bdS={}, bdL={};
 
   try{
+    const curYear = new Date().getFullYear();
     let p0=true;
     for(const id of tA){
       const p=players.find(x=>x.id===id); if(!p)continue;
-      const rf=p0?1-riskT1:riskT1;
-      rc[id]=delta*rf; bd[id]={mf:mfA*rf,mf2:mf2A*rf};
+      const rfS=p0?1-riskSA:riskSA, rfL=p0?1-riskLA:riskLA;
+      rcS[id]=parseFloat((deltaS*rfS).toFixed(5));
+      rcL[id]=parseFloat((deltaL*rfL).toFixed(5));
+      bdS[id]={mf:mfSA*rfS,mf2:mf2SA*rfS};
+      bdL[id]={mf:mfLA*rfL,mf2:mf2LA*rfL};
       p0=!p0;
-      await updateDoc(doc(db,'players',id),{rating:(p.rating||RAW_CENTER2)+parseFloat(rc[id]),wins:(p.wins||0)+1,totalPoints:(p.totalPoints||0)+sA});
+      await updateDoc(doc(db,'players',id),{
+        rating:(p.rating||RAW_CENTER2)+rcS[id],
+        lifetimeRating:(p.lifetimeRating||p.rating||RAW_CENTER2)+rcL[id],
+        wins:(p.wins||0)+1,
+        totalPoints:(p.totalPoints||0)+sA,
+        seasonGames:(p.seasonGames||0)+1,
+        lifetimeGames:(p.lifetimeGames||0)+1,
+        seasonYear:curYear
+      });
     }
     p0=true;
     for(const id of tB){
       const p=players.find(x=>x.id===id); if(!p)continue;
-      const rf=p0?1-riskT2:riskT2;
-      rc[id]=-delta*rf; bd[id]={mf:mfB*rf,mf2:mf2B*rf};
+      const rfS=p0?1-riskSB:riskSB, rfL=p0?1-riskLB:riskLB;
+      rcS[id]=parseFloat((-deltaS*rfS).toFixed(5));
+      rcL[id]=parseFloat((-deltaL*rfL).toFixed(5));
+      bdS[id]={mf:mfSB*rfS,mf2:mf2SB*rfS};
+      bdL[id]={mf:mfLB*rfL,mf2:mf2LB*rfL};
       p0=!p0;
-      await updateDoc(doc(db,'players',id),{rating:(p.rating||RAW_CENTER2)+parseFloat(rc[id]),losses:(p.losses||0)+1,totalPoints:(p.totalPoints||0)+sB});
+      await updateDoc(doc(db,'players',id),{
+        rating:(p.rating||RAW_CENTER2)+rcS[id],
+        lifetimeRating:(p.lifetimeRating||p.rating||RAW_CENTER2)+rcL[id],
+        losses:(p.losses||0)+1,
+        totalPoints:(p.totalPoints||0)+sB,
+        seasonGames:(p.seasonGames||0)+1,
+        lifetimeGames:(p.lifetimeGames||0)+1,
+        seasonYear:curYear
+      });
     }
-    await addDoc(collection(db,'matches'),{format:fmt,teamA:tA,teamB:tB,scoreA:sA,scoreB:sB,players:all,ratingChanges:rc,breakdowns:bd,date,timestamp:Date.now(),enteredBy:recorderId||null});
+    await addDoc(collection(db,'matches'),{
+      format:fmt, teamA:tA, teamB:tB, scoreA:sA, scoreB:sB, players:all,
+      ratingChanges:rcS,            // season deltas
+      lifetimeRatingChanges:rcL,    // lifetime deltas
+      breakdowns:bdS,               // season breakdowns
+      lifetimeBreakdowns:bdL,       // lifetime breakdowns
+      date, timestamp:Date.now(), enteredBy:recorderId||null
+    });
 
     toast(`${fmt.charAt(0).toUpperCase()+fmt.slice(1)} recorded! ${winner==='A'?getTeamAName():getTeamBName()} wins ${winnerScore}–${loserScore} 🎉`);
 
-    // Reset
     picks=[]; sel={1:null,2:null,3:null,4:null}; winner=null; loserScore=0; winnerScore=21; isSingles=false; recorderId=null;
     setTimeout(()=>showStep(0), 1200);
   } catch(e){ toast('Error: '+e.message,true); }
