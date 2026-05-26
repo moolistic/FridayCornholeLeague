@@ -66,7 +66,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
 .prb{margin-left:auto;text-align:right}
 .rbn{font-family:var(--fd);font-size:44px;color:var(--grass);line-height:1}
 .rbl{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
-.pstats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;min-width:0}
+.pstats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .pstat{text-align:center}
 .psv{font-family:var(--fd);font-size:24px;color:var(--text)}
 .psl{font-size:12px;color:var(--muted)}
@@ -171,7 +171,6 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
   .pt{font-size:26px}
   /* Stats cards */
   .srow{grid-template-columns:repeat(2,1fr)}
-  .pstats{grid-template-columns:repeat(2,1fr)}
   /* Tables */
   .tc{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .tc table{min-width:320px}
@@ -215,7 +214,6 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
     <button class="nb" onclick="showPage('admin',this);closeHam()">Admin</button>
   </div>
   <div class="sbadge">Season 2026</div>
-  <div class="sbadge">Ver 1.7</div>
   <button class="ham-btn" id="ham-btn" onclick="toggleHam()" aria-label="Menu">
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect y="4" width="22" height="2.2" rx="1.1" fill="white"/><rect y="9.9" width="22" height="2.2" rx="1.1" fill="white"/><rect y="15.8" width="22" height="2.2" rx="1.1" fill="white"/></svg>
   </button>
@@ -325,6 +323,11 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
       <div class="admin-section-hdr">Match History</div>
       <div id="admin-matches-list"><div class="loading-overlay"><div class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:24px;height:24px;display:block;margin:0 auto"></div></div></div>
     </div>
+    <div class="admin-section">
+      <div class="admin-section-hdr">Prior Season Data</div>
+      <div style="padding:12px 20px 4px;font-size:13px;color:var(--muted)">A player's prior season end rating feeds into their <strong>Lifetime rating only</strong>. Season rating always starts at 5.00 for everyone regardless of prior history.</div>
+      <div id="admin-prior-list"><div class="loading-overlay"><div class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:24px;height:24px;display:block;margin:0 auto"></div></div></div>
+    </div>
   </div>
 </div>
 
@@ -349,16 +352,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
     <div class="fg" style="margin-bottom:12px"><label>Display Rating (0 – 10)</label><input type="number" id="edit-player-rating" min="0" max="10" step="0.1"></div>
     <div class="fg" style="margin-bottom:12px"><label>Wins</label><input type="number" id="edit-player-wins" min="0"></div>
     <div class="fg" style="margin-bottom:12px"><label>Losses</label><input type="number" id="edit-player-losses" min="0"></div>
-    <div class="fg" style="margin-bottom:16px"><label>Format</label><select id="edit-player-fmt"><option value="singles">Singles</option><option value="doubles">Doubles</option><option value="both">Both</option></select></div>
-    <div style="border-top:0.5px solid var(--border);padding-top:14px;margin-bottom:4px">
-      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Prior Season Data</div>
-      <div class="fr" style="margin-bottom:8px;gap:12px">
-        <div class="fg"><label>End-of-Season Rating (0–10)</label><input type="number" id="prior-rating-modal" min="0" max="10" step="0.001" placeholder="e.g. 5.750"></div>
-        <div class="fg"><label>Wins</label><input type="number" id="prior-wins-modal" min="0" placeholder="0"></div>
-        <div class="fg"><label>Losses</label><input type="number" id="prior-losses-modal" min="0" placeholder="0"></div>
-      </div>
-      <p style="font-size:11px;color:var(--muted);margin-bottom:0">Seeds the <strong>Lifetime rating</strong> baseline. Season rating always starts at 5.00.</p>
-    </div>
+    <div class="fg" style="margin-bottom:12px"><label>Format</label><select id="edit-player-fmt"><option value="singles">Singles</option><option value="doubles">Doubles</option><option value="both">Both</option></select></div>
     <div class="macts">
       <button class="bsec" onclick="closeModal('modal-editplayer')">Cancel</button>
       <button class="bpri" id="save-player-btn" onclick="saveEditPlayer()">Save Changes</button>
@@ -864,6 +858,14 @@ window.renderPlayerStats=function renderPlayerStats(){
   const avgLt=ltGames?(ltPts/ltGames).toFixed(1):'—';
   const ltRating=p.lifetimeRating!==undefined?p.lifetimeRating:(p.rating||RAW_CENTER);
 
+  // Handicap: margin vs a 5.000 opponent
+  const sRaw=p.rating||RAW_CENTER;
+  const lRaw=ltRating||RAW_CENTER;
+  const sHcpRaw=Math.min(Math.abs(sRaw-RAW_CENTER)*marginScale,20)*(sRaw>=RAW_CENTER?1:-1);
+  const lHcpRaw=Math.min(Math.abs(lRaw-RAW_CENTER)*marginScale,20)*(lRaw>=RAW_CENTER?1:-1);
+  const sHcpNum=Math.round(sHcpRaw*10)/10;
+  const lHcpNum=Math.round(lHcpRaw*10)/10;
+
   const pr=p.priorSeason||null;
   const MIN_GAMES=3;
 
@@ -941,26 +943,18 @@ window.renderPlayerStats=function renderPlayerStats(){
     const bdL=m.lifetimeBreakdowns&&m.lifetimeBreakdowns[id];
     const sign=v=>v>=0?'+':'−';
     const partnerBit=partnerNames?`<span style="color:var(--muted);font-size:12px">w/ ${partnerNames}</span> `:'';
-    const fmtAbbr=m.format==='singles'?'S':m.format==='doubles'?'D':m.format;
+    const seasonTag=isThisYear?`<span style="font-size:10px;font-weight:700;background:var(--grass-pale);color:var(--grass);padding:2px 6px;border-radius:10px;margin-left:4px">Season</span>`:'';
     const seasonDeltaStr=`${rawDS>=0?'+':'−'}${Math.abs(rawDS).toFixed(3)}`;
     const ltDeltaStr=rawDL!==null?`${rawDL>=0?'+':'−'}${Math.abs(rawDL).toFixed(3)}`:null;
-    // Format date as "Mon Day" (e.g. "May 9"), with year badge if current season
-    let dateDisp='';
-    if(m.date){
-      const [dy,dm,dd]=m.date.split('-');
-      const d=new Date(parseInt(dy),parseInt(dm)-1,parseInt(dd));
-      dateDisp=d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-    }
-    const yearTag=isThisYear?`<span style="font-size:10px;font-weight:700;background:var(--grass-pale);color:var(--grass);padding:1px 5px;border-radius:8px;display:block;margin-top:2px;white-space:nowrap">${curYear}</span>`:'';
     return`<div class="mr" style="flex-wrap:wrap;row-gap:4px">
       <div class="mres ${won?'W':'L'}">${won?'W':'L'}</div>
       <div class="mscore">${my} – ${opp2}</div>
-      <div class="mopp">${partnerBit}vs ${oppNames} <span class="fb2 ${m.format}" style="margin-left:4px">${fmtAbbr}</span></div>
+      <div class="mopp">${partnerBit}vs ${oppNames} <span class="fb2 ${m.format}" style="margin-left:4px">${m.format}</span>${seasonTag}</div>
       <div style="display:flex;flex-direction:column;gap:2px;min-width:72px">
         <div class="md ${rawDS>=0?'pos':'neg'}" style="min-width:auto;font-size:13px" title="Season Δ">S: ${seasonDeltaStr}</div>
         ${ltDeltaStr?`<div class="md ${rawDL>=0?'pos':'neg'}" style="min-width:auto;font-size:11px;opacity:.75" title="Lifetime Δ">LT: ${ltDeltaStr}</div>`:''}
       </div>
-      <div class="mdate" style="text-align:right">${dateDisp}${yearTag}</div>
+      <div class="mdate">${m.date||''}</div>
       <div style="width:100%;display:flex;flex-direction:column;gap:4px;padding-left:40px;font-size:11px;color:var(--muted)">
         ${bd?`<span>Season — Base: <strong style="color:${bd.mf>=0?'var(--grass)':'var(--danger)'}">${sign(bd.mf)}${Math.abs(bd.mf).toFixed(3)}</strong> Perf: <strong style="color:${bd.mf2>=0?'var(--grass)':'var(--danger)'}">${sign(bd.mf2)}${Math.abs(bd.mf2).toFixed(3)}</strong></span>`:''}
         ${bdL?`<span>Lifetime — Base: <strong style="color:${bdL.mf>=0?'var(--grass)':'var(--danger)'}">${sign(bdL.mf)}${Math.abs(bdL.mf).toFixed(3)}</strong> Perf: <strong style="color:${bdL.mf2>=0?'var(--grass)':'var(--danger)'}">${sign(bdL.mf2)}${Math.abs(bdL.mf2).toFixed(3)}</strong></span>`:''}
@@ -980,26 +974,30 @@ window.renderPlayerStats=function renderPlayerStats(){
       <!-- Season stats (large) -->
       <div style="margin-bottom:4px">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--grass);margin-bottom:8px">📅 Season ${curYear}</div>
-        <div class="pstats" style="gap:6px">
-          <div class="pstat"><div class="psv" style="font-size:20px">${seasonWins}</div><div class="psl">Wins</div></div>
-          <div class="pstat"><div class="psv" style="font-size:20px">${seasonLosses}</div><div class="psl">Losses</div></div>
-          <div class="pstat"><div class="psv" style="font-size:20px">${pct}%</div><div class="psl">Win Rate</div></div>
-          <div class="pstat"><div class="psv" style="font-size:20px">${avgSeason}</div><div class="psl">Avg Pts</div></div>
+        <div style="display:flex;align-items:center;width:100%;gap:4px">
+          <div style="display:flex;align-items:center;justify-content:center;background:var(--grass-pale);border-radius:8px;padding:10px 8px;gap:10px;flex:1.4">
+            <div style="text-align:center"><div style="font-family:var(--fd);font-size:28px;color:var(--grass)">${seasonWins}</div><div style="font-size:11px;color:var(--grass);font-weight:600;letter-spacing:.3px">W</div></div>
+            <div style="font-size:16px;color:var(--grass);opacity:.35">–</div>
+            <div style="text-align:center"><div style="font-family:var(--fd);font-size:28px;color:var(--grass)">${seasonLosses}</div><div style="font-size:11px;color:var(--grass);font-weight:600;letter-spacing:.3px">L</div></div>
+          </div>
+          <div style="display:flex;flex:1;justify-content:center"><div style="text-align:center"><div style="font-family:var(--fd);font-size:26px">${pct}%</div><div style="font-size:11px;color:var(--muted)">Win%</div></div></div>
+          <div style="display:flex;flex:1;justify-content:center"><div style="text-align:center"><div style="font-family:var(--fd);font-size:26px">${avgSeason}</div><div style="font-size:11px;color:var(--muted)">Avg</div></div></div>
+          <div style="display:flex;flex:1;justify-content:center"><div style="text-align:center"><div style="font-family:var(--fd);font-size:26px;color:${sHcpNum>=0?'var(--grass)':'var(--danger)'}">${sHcpNum>=0?'+':''}${sHcpNum}</div><div style="font-size:11px;color:var(--muted)">Hcp</div></div></div>
         </div>
       </div>
 
       <!-- Lifetime stats (smaller) -->
-      <div style="background:var(--bg);border-radius:10px;padding:12px 14px;margin-top:10px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)">🏆 Lifetime</div>
-          <div style="font-family:var(--fd);font-size:20px;color:var(--muted)">${toDisp(ltRating)}</div>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
-          ${[['Wins',ltWins],['Losses',ltLosses],['Win %',ltPct+'%'],['Avg',avgLt]].map(([lbl,val])=>`
-            <div style="text-align:center">
-              <div style="font-size:16px;font-weight:700;color:var(--text)">${val}</div>
-              <div style="font-size:10px;color:var(--muted);font-weight:500">${lbl}</div>
-            </div>`).join('')}
+      <div style="background:var(--bg);border-radius:10px;padding:10px 12px;margin-top:10px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:8px">🏆 Lifetime <span style="font-family:var(--fd);font-size:16px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);margin-left:4px">${toDisp(ltRating)}</span></div>
+        <div style="display:flex;align-items:center;width:100%;gap:4px">
+          <div style="display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.05);border-radius:8px;padding:8px 8px;gap:8px;flex:1.4">
+            <div style="text-align:center"><div style="font-family:var(--fd);font-size:22px;color:var(--muted)">${ltWins}</div><div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.3px">W</div></div>
+            <div style="font-size:14px;color:var(--muted);opacity:.4">–</div>
+            <div style="text-align:center"><div style="font-family:var(--fd);font-size:22px;color:var(--muted)">${ltLosses}</div><div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.3px">L</div></div>
+          </div>
+          <div style="display:flex;flex:1;justify-content:center"><div style="text-align:center"><div style="font-family:var(--fd);font-size:20px;color:var(--muted)">${ltPct}%</div><div style="font-size:11px;color:var(--muted)">Win%</div></div></div>
+          <div style="display:flex;flex:1;justify-content:center"><div style="text-align:center"><div style="font-family:var(--fd);font-size:20px;color:var(--muted)">${avgLt}</div><div style="font-size:11px;color:var(--muted)">Avg</div></div></div>
+          <div style="display:flex;flex:1;justify-content:center"><div style="text-align:center"><div style="font-family:var(--fd);font-size:20px;color:${lHcpNum>=0?'var(--grass)':'var(--danger)'}">${lHcpNum>=0?'+':''}${lHcpNum}</div><div style="font-size:11px;color:var(--muted)">Hcp</div></div></div>
         </div>
       </div>
 
@@ -1014,14 +1012,6 @@ window.renderPlayerStats=function renderPlayerStats(){
             <div style="font-size:11px;font-weight:600;color:var(--danger);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">😬 Worst Partner</div>
             <div style="font-size:14px;font-weight:600;color:var(--text)">${worstPartner}</div>
           </div>
-          <div style="background:var(--grass-pale);border-radius:8px;padding:12px">
-            <div style="font-size:11px;font-weight:600;color:var(--grass);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">📈 Biggest Win</div>
-            ${renderBigCard(biggestWinData,true)}
-          </div>
-          <div style="background:#FCEBEB;border-radius:8px;padding:12px">
-            <div style="font-size:11px;font-weight:600;color:var(--danger);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">📉 Biggest Loss</div>
-            ${renderBigCard(biggestLossData,false)}
-          </div>
           <div style="background:#E6F1FB;border-radius:8px;padding:12px">
             <div style="font-size:11px;font-weight:600;color:#185FA5;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">🎯 Got Their #</div>
             <div style="font-size:14px;font-weight:600;color:var(--text)">${theirNum}</div>
@@ -1029,6 +1019,14 @@ window.renderPlayerStats=function renderPlayerStats(){
           <div style="background:#FFF3E0;border-radius:8px;padding:12px">
             <div style="font-size:11px;font-weight:600;color:#B45309;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">🐐 Gets Your Goat</div>
             <div style="font-size:14px;font-weight:600;color:var(--text)">${goat}</div>
+          </div>
+          <div style="background:var(--grass-pale);border-radius:8px;padding:12px">
+            <div style="font-size:11px;font-weight:600;color:var(--grass);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">📈 Biggest Win</div>
+            ${renderBigCard(biggestWinData,true)}
+          </div>
+          <div style="background:#FCEBEB;border-radius:8px;padding:12px">
+            <div style="font-size:11px;font-weight:600;color:var(--danger);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">📉 Biggest Loss</div>
+            ${renderBigCard(biggestLossData,false)}
           </div>
         </div>
       </div>
@@ -1276,7 +1274,7 @@ function renderAdminPage(){
   if(!adminAuthed){document.getElementById('admin-lock').style.display='flex';document.getElementById('admin-panel').style.display='none';return;}
   document.getElementById('admin-lock').style.display='none';
   document.getElementById('admin-panel').style.display='block';
-  renderAdminPlayers(); renderAdminMatches();
+  renderAdminPlayers(); renderAdminMatches(); renderAdminPrior();
 }
 function renderAdminPlayers(){
   const box=document.getElementById('admin-players-list');
@@ -1308,10 +1306,9 @@ function renderAdminMatches(){
       const sMarginErr=ps?Math.abs(ps.margin-actualMargin):null;
       const lMarginErr=pl?Math.abs(pl.margin-actualMargin):null;
       predHtml=`<span style="font-size:11px;color:var(--muted);display:block;margin-top:3px">
-        <span>Season: ${ps.a}–${ps.b} (margin ${ps.margin}) → <span style="font-weight:600;color:${sCorrect?'var(--grass)':'var(--danger)'}">${sCorrect?'✓':'✗'} Winner</span> · Margin err: ${sMarginErr}</span>
-      </span>
-      <span style="font-size:11px;color:var(--muted);display:block;margin-top:1px">
-        <span>Lifetime: ${pl.a}–${pl.b} (margin ${pl.margin}) → <span style="font-weight:600;color:${lCorrect?'var(--grass)':'var(--danger)'}">${lCorrect?'✓':'✗'} Winner</span> · Margin err: ${lMarginErr}</span>
+        Pred (Season): ${ps.a}–${ps.b} (margin ${ps.margin}) → <span style="font-weight:600;color:${sCorrect?'var(--grass)':'var(--danger)'}">${sCorrect?'✓':'✗'} Winner</span> · Margin err: ${sMarginErr}
+        &nbsp;|&nbsp;
+        Pred (Lifetime): ${pl.a}–${pl.b} (margin ${pl.margin}) → <span style="font-weight:600;color:${lCorrect?'var(--grass)':'var(--danger)'}">${lCorrect?'✓':'✗'} Winner</span> · Margin err: ${lMarginErr}
       </span>`;
     }
     return`<div class="admin-row">
@@ -1324,6 +1321,53 @@ function renderAdminMatches(){
     </div>`;
   }).join('');
 }
+function renderAdminPrior(){
+  const box=document.getElementById('admin-prior-list');
+  if(!players.length){box.innerHTML='<div class="es" style="padding:24px"><p>No players yet.</p></div>';return;}
+  box.innerHTML=[...players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>{
+    const pr=p.priorSeason||{};
+    return`<div class="admin-row" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="av" style="width:36px;height:36px;font-size:14px;flex-shrink:0">${initials(p.name)}</div>
+        <strong style="flex:1">${p.name}</strong>
+        <button class="icon-btn" onclick="togglePriorForm('${p.id}')">📋 Edit Prior Season</button>
+      </div>
+      <div id="prior-form-${p.id}" style="display:none" class="prior-form">
+        <div style="font-size:12px;font-weight:600;color:var(--grass);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Prior Season (Year 1)</div>
+        <div class="fr" style="margin-bottom:0;gap:12px">
+          <div class="fg"><label>End-of-Season Rating (0–10)</label><input type="number" id="prior-rating-${p.id}" min="0" max="10" step="0.001" placeholder="e.g. 5.750" value="${pr.endRating!=null?pr.endRating:''}"></div>
+          <div class="fg"><label>Wins</label><input type="number" id="prior-wins-${p.id}" min="0" placeholder="0" value="${pr.wins||''}"></div>
+          <div class="fg"><label>Losses</label><input type="number" id="prior-losses-${p.id}" min="0" placeholder="0" value="${pr.losses||''}"></div>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin:8px 0 10px">End-of-season rating is used as the starting point for this player's <strong>Lifetime rating</strong> only. Their season rating will still start at 5.00. Wins/losses are included in overall W–L record.</p>
+        <button class="icon-btn" style="background:var(--grass);color:#fff;border-color:var(--grass)" onclick="savePriorSeason('${p.id}')">💾 Save</button>
+        ${pr.endRating!=null?`<span style="font-size:12px;color:var(--muted);margin-left:10px">Saved: Rating ${pr.endRating} | ${pr.wins||0}W – ${pr.losses||0}L</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+window.togglePriorForm=function(id){
+  const el=document.getElementById('prior-form-'+id);
+  el.style.display=el.style.display==='none'?'block':'none';
+};
+window.savePriorSeason=async function(id){
+  const ratingInput=document.getElementById('prior-rating-'+id).value;
+  const wins=parseInt(document.getElementById('prior-wins-'+id).value)||0;
+  const losses=parseInt(document.getElementById('prior-losses-'+id).value)||0;
+  const p=players.find(x=>x.id===id);if(!p)return;
+  if(ratingInput===''&&wins===0&&losses===0){toast('Enter at least a rating or W–L to save',true);return;}
+  const endRating=ratingInput!==''?parseFloat(ratingInput):null;
+  if(endRating!==null&&(isNaN(endRating)||endRating<0||endRating>10)){toast('Rating must be between 0 and 10',true);return;}
+  const priorSeason={endRating,wins,losses};
+  try{
+    await updateDoc(doc(db,'players',id),{priorSeason});
+    // Recompute all ratings so this season's matches layer on top of the new baseline
+    await recomputeAllRatings(matches);
+    toast(`${p.name}'s prior season data saved — ratings recalculated!`);
+    renderAdminPrior();
+  }catch(e){toast('Error: '+e.message,true);}
+};
+
 window.openEditPlayer=function(id){
   const p=players.find(x=>x.id===id);if(!p)return;
   document.getElementById('edit-player-id').value=id;
@@ -1332,10 +1376,6 @@ window.openEditPlayer=function(id){
   document.getElementById('edit-player-wins').value=p.wins||0;
   document.getElementById('edit-player-losses').value=p.losses||0;
   document.getElementById('edit-player-fmt').value=p.format||'both';
-  const pr=p.priorSeason||{};
-  document.getElementById('prior-rating-modal').value=pr.endRating!=null?pr.endRating:'';
-  document.getElementById('prior-wins-modal').value=pr.wins||'';
-  document.getElementById('prior-losses-modal').value=pr.losses||'';
   openModal('modal-editplayer');
 };
 window.saveEditPlayer=async function(){
@@ -1349,17 +1389,10 @@ window.saveEditPlayer=async function(){
   if(isNaN(disp)||disp<0||disp>10){toast('Rating must be 0–10',true);return;}
   if(isNaN(wins)||wins<0){toast('Invalid wins',true);return;}
   if(isNaN(losses)||losses<0){toast('Invalid losses',true);return;}
-  const prRatingInput=document.getElementById('prior-rating-modal').value;
-  const prWins=parseInt(document.getElementById('prior-wins-modal').value)||0;
-  const prLosses=parseInt(document.getElementById('prior-losses-modal').value)||0;
-  const prEndRating=prRatingInput!==''?parseFloat(prRatingInput):null;
-  if(prEndRating!==null&&(isNaN(prEndRating)||prEndRating<0||prEndRating>10)){toast('Prior rating must be 0–10',true);return;}
-  const priorSeason={endRating:prEndRating,wins:prWins,losses:prLosses};
   const btn=document.getElementById('save-player-btn');
   btn.disabled=true;btn.textContent='Saving…';
   try{
-    await updateDoc(doc(db,'players',id),{name,rating:dispToRaw(disp),wins,losses,format:fmt,priorSeason});
-    await recomputeAllRatings(matches);
+    await updateDoc(doc(db,'players',id),{name,rating:dispToRaw(disp),wins,losses,format:fmt});
     closeModal('modal-editplayer');toast(`${name} updated!`);
   }catch(e){toast('Error: '+e.message,true);}
   btn.disabled=false;btn.textContent='Save Changes';
@@ -1574,5 +1607,6 @@ window.closeModal=function(id,e){if(!e||e.target===document.getElementById(id))d
   history.replaceState(null,'',location.pathname);
 })();
 </script>
+<footer style="text-align:center;padding:20px 16px 28px;font-size:11px;color:var(--muted);letter-spacing:.4px">Friday Cornhole League &nbsp;·&nbsp; Ver 1.7</footer>
 </body>
 </html>
