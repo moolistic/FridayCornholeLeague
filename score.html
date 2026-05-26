@@ -111,6 +111,19 @@ nav{background:var(--grass);padding:0 14px;display:flex;align-items:center;heigh
 select.fallback-select{border-radius:0;border:none;border-bottom:0.5px solid var(--border)}
 select.fallback-select:last-child{border-bottom:none}
 
+/* Predicted score panel */
+.pred-panel{background:var(--card);border:0.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:14px}
+.pred-panel-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:10px}
+.pred-table{width:100%;border-collapse:collapse}
+.pred-table th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:0 0 8px 0;text-align:center}
+.pred-table th.pred-th-label{text-align:left;width:60px}
+.pred-table td{padding:4px 0;text-align:center;vertical-align:middle}
+.pred-table td.pred-td-label{text-align:left;font-size:12px;color:var(--muted);font-weight:500}
+.pred-table td.pred-td-a{font-family:var(--fd);font-size:24px;color:var(--grass)}
+.pred-table td.pred-td-b{font-family:var(--fd);font-size:24px;color:var(--wood)}
+.pred-table td.pred-td-margin{font-family:var(--fd);font-size:20px;color:var(--muted)}
+.pred-table tr+tr td{border-top:0.5px solid var(--border);padding-top:8px}
+
 /* Toast */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--grass);color:#fff;padding:14px 22px;border-radius:10px;font-weight:600;font-size:14px;opacity:0;transition:all .3s ease;z-index:9999;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
@@ -295,6 +308,33 @@ select.fallback-select:last-child{border-bottom:none}
         <div class="wc-label">Team B</div>
         <div class="wc-names" id="wc-b-names"></div>
       </div>
+    </div>
+    <div id="pred-panel" class="pred-panel" style="display:none">
+      <div class="pred-panel-title">Predicted Score</div>
+      <table class="pred-table">
+        <thead>
+          <tr>
+            <th class="pred-th-label"></th>
+            <th>Team A</th>
+            <th>Team B</th>
+            <th>Margin</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="pred-td-label">Season</td>
+            <td class="pred-td-a" id="pred-s-a">—</td>
+            <td class="pred-td-b" id="pred-s-b">—</td>
+            <td class="pred-td-margin" id="pred-s-margin">—</td>
+          </tr>
+          <tr>
+            <td class="pred-td-label">Lifetime</td>
+            <td class="pred-td-a" id="pred-l-a">—</td>
+            <td class="pred-td-b" id="pred-l-b">—</td>
+            <td class="pred-td-margin" id="pred-l-margin">—</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
     <div style="height:12px"></div>
     <button class="action-btn secondary" onclick="goBack(1)">← Back</button>
@@ -701,11 +741,55 @@ window.toggleFallback = function(slot){
 };
 
 // ── Winner step ───────────────────────────────────────────────────────────────
+function computePredictedScores(){
+  const tA = isSingles ? [sel[1]] : [sel[1], sel[3]].filter(Boolean);
+  const tB = isSingles ? [sel[2]] : [sel[2], sel[4]].filter(Boolean);
+  if(!tA.length || !tB.length) return null;
+
+  // Season ratings
+  const avgSA = safeAvgS(tA), avgSB = safeAvgS(tB);
+  const probS = 1 / (1 + Math.pow(10, (avgSB - avgSA) / 2));
+  const expMarginS = Math.min(Math.abs(avgSA - avgSB) * marginScale2, 20);
+
+  // Lifetime ratings
+  const avgLA = safeAvgL(tA), avgLB = safeAvgL(tB);
+  const probL = 1 / (1 + Math.pow(10, (avgLB - avgLA) / 2));
+  const expMarginL = Math.min(Math.abs(avgLA - avgLB) * marginScale2, 20);
+
+  function predScores(probA, margin){
+    const highScore = 21;
+    const lowScore = Math.round(Math.max(0, highScore - margin));
+    if(probA >= 0.5){
+      return { a: highScore, b: lowScore };
+    } else {
+      return { a: lowScore, b: highScore };
+    }
+  }
+
+  return {
+    season: predScores(probS, expMarginS),
+    lifetime: predScores(probL, expMarginL)
+  };
+}
+
 function renderWinnerStep(){
   document.getElementById('wc-a-names').textContent = getTeamAName();
   document.getElementById('wc-b-names').textContent = getTeamBName();
   document.getElementById('wc-a').classList.toggle('selected', winner==='A');
   document.getElementById('wc-b').classList.toggle('selected', winner==='B');
+
+  // Show predicted scores
+  const pred = computePredictedScores();
+  const panel = document.getElementById('pred-panel');
+  if(pred && panel){
+    panel.style.display = 'block';
+    document.getElementById('pred-s-a').textContent = pred.season.a;
+    document.getElementById('pred-s-b').textContent = pred.season.b;
+    document.getElementById('pred-s-margin').textContent = Math.abs(pred.season.a - pred.season.b);
+    document.getElementById('pred-l-a').textContent = pred.lifetime.a;
+    document.getElementById('pred-l-b').textContent = pred.lifetime.b;
+    document.getElementById('pred-l-margin').textContent = Math.abs(pred.lifetime.a - pred.lifetime.b);
+  }
 }
 
 window.pickWinner = function(team){
@@ -723,14 +807,23 @@ function renderScoreStep(){
   document.getElementById('loser-label').textContent = loserName + ' score';
   document.getElementById('winner-label').textContent = winnerName + ' score';
 
-  // Winner score buttons: 21 default + common overages
+  // Winner always locked to 21 — just show quick-select + other
+  winnerScore = 21;
   const winScores = [15,17,18,19,20,21,22,23,24,25];
   document.getElementById('winner-score-btns').innerHTML = winScores.map(s =>
     `<div class="score-btn${winnerScore===s?' selected':''}" onclick="setWinnerScore(${s})">${s}</div>`
   ).join('') + `<input class="score-num-input" type="number" id="custom-winner-score" min="1" max="50" placeholder="Other" oninput="setWinnerScoreCustom(this.value)" style="grid-column:span 4">`;
   document.getElementById('winner-score-display').textContent = winnerScore;
 
-  // Loser score buttons
+  // Compute predicted loser score
+  const pred = computePredictedScores();
+  let predLoser = 0;
+  if(pred){
+    predLoser = winner==='A' ? pred.season.b : pred.season.a;
+  }
+  loserScore = predLoser;
+
+  // Loser: show predicted score pre-selected, just common buttons + other input
   const scores = [0,3,5,7,9,11,13,15,17,18,19,20];
   document.getElementById('score-btns').innerHTML = scores.map(s =>
     `<div class="score-btn${loserScore===s?' selected':''}" onclick="setLoserScore(${s})">${s}</div>`
@@ -890,6 +983,14 @@ window.submitScore = async function(){
       lifetimeRatingChanges:rcL,    // lifetime deltas
       breakdowns:bdS,               // season breakdowns
       lifetimeBreakdowns:bdL,       // lifetime breakdowns
+      predictions: (() => {
+        const pred = computePredictedScores();
+        if(!pred) return null;
+        return {
+          season:   { a: pred.season.a,   b: pred.season.b,   margin: Math.abs(pred.season.a - pred.season.b) },
+          lifetime: { a: pred.lifetime.a, b: pred.lifetime.b, margin: Math.abs(pred.lifetime.a - pred.lifetime.b) }
+        };
+      })(),
       date, timestamp:Date.now(), enteredBy:recorderId||null
     });
 
