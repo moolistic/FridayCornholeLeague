@@ -211,10 +211,12 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
     <button class="nb" onclick="showPage('rankings',this);closeHam()">Rankings</button>
     <a class="nb" href="score.html" style="text-decoration:none">Enter Score</a>
     <button class="nb" onclick="showPage('stats',this);closeHam()">Player Stats</button>
-    <button class="nb" onclick="showPage('admin',this);closeHam()">Admin</button>
-    <a class="nb" href="profile.html" style="text-decoration:none" id="nav-profile-link">My Profile</a>
+    <button class="nb" id="nav-admin-btn" onclick="showPage('admin',this);closeHam()" style="display:none">Admin</button>
   </div>
-  <div class="sbadge">Season 2026</div>
+  <a href="profile.html" id="nav-profile-pill" style="text-decoration:none;display:flex;align-items:center;gap:7px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:4px 12px 4px 5px;color:#fff;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0;transition:background .15s;margin-left:8px">
+    <div id="nav-av" style="width:26px;height:26px;border-radius:50%;background:var(--grass-light);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:11px;color:#fff;flex-shrink:0;overflow:hidden">?</div>
+    <span id="nav-profile-name">Sign In</span>
+  </a>
   <button class="ham-btn" id="ham-btn" onclick="toggleHam()" aria-label="Menu">
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect y="4" width="22" height="2.2" rx="1.1" fill="white"/><rect y="9.9" width="22" height="2.2" rx="1.1" fill="white"/><rect y="15.8" width="22" height="2.2" rx="1.1" fill="white"/></svg>
   </button>
@@ -225,7 +227,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
   <button class="nb" onclick="showPage('rankings',this);closeHam()">Rankings</button>
   <a class="nb" href="score.html" style="text-decoration:none">Enter Score</a>
   <button class="nb" onclick="showPage('stats',this);closeHam()">Player Stats</button>
-  <button class="nb" onclick="showPage('admin',this);closeHam()">Admin</button>
+  <button class="nb" id="ham-admin-btn" onclick="showPage('admin',this);closeHam()" style="display:none">Admin</button>
   <a class="nb" href="profile.html" style="text-decoration:none">My Profile</a>
 </div>
 
@@ -293,11 +295,9 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
 <div class="page" id="page-admin">
   <div class="admin-lock" id="admin-lock">
     <div class="admin-lock-box">
-      <div class="pt">Admin Access</div>
-      <div class="ps">Enter your password to continue</div>
-      <input type="password" id="admin-pw-input" placeholder="Password" onkeydown="if(event.key==='Enter')adminLogin()">
-      <button class="subbtn" style="margin-top:0" onclick="adminLogin()">UNLOCK</button>
-      <div id="admin-pw-err" style="color:var(--danger);font-size:13px;margin-top:10px;display:none">Incorrect password</div>
+      <div class="pt">Admin Only</div>
+      <div class="ps" id="admin-lock-msg">Sign in with an admin account to access this panel.</div>
+      <a href="profile.html" style="display:inline-block;margin-top:16px;background:var(--grass);color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-family:var(--fd);font-size:18px;letter-spacing:1px">Sign In</a>
     </div>
   </div>
   <div id="admin-panel" style="display:none">
@@ -306,7 +306,6 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
         <div><div class="pt">Admin Panel</div><div class="ps">Manage players, matches and events</div></div>
         <div style="display:flex;gap:8px;align-items:center">
           <button class="fbtn" style="background:var(--grass);border-color:var(--grass);color:#fff;font-size:14px" onclick="openAddPlayer()">+ Add Player</button>
-          <button class="logout-btn" onclick="adminLogout()">Log Out</button>
         </div>
       </div>
     </div>
@@ -321,6 +320,30 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
       <div class="admin-section-hdr">Players</div>
       <div style="padding:10px 20px 4px;font-size:13px;color:var(--muted)">Prior season end rating feeds into <strong>Lifetime rating only</strong>. Season rating always starts at 5.00. Admin can also link player records to user accounts here.</div>
       <div id="admin-players-list"><div class="loading-overlay"><div class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:24px;height:24px;display:block;margin:0 auto"></div></div></div>
+    </div>
+    <div class="admin-section">
+      <div class="admin-section-hdr">Merge Duplicate Players</div>
+      <div style="padding:10px 20px 4px;font-size:13px;color:var(--muted)">When a new user auto-creates a player record but a manual record already exists, merge them here. All match history is repointed to the target player. The duplicate is deleted.</div>
+      <div style="padding:14px 20px">
+        <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-bottom:10px">
+          <div>
+            <label style="display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Merge FROM (duplicate)</label>
+            <select id="merge-from" style="width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none"><option value="">— Select player —</option></select>
+          </div>
+          <div style="font-family:var(--fd);font-size:18px;color:var(--muted);padding-top:18px">→</div>
+          <div>
+            <label style="display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Merge INTO (keep)</label>
+            <select id="merge-into" style="width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none"><option value="">— Select player —</option></select>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:10px">⚠️ This rewrites match history and deletes the "from" player. Ratings will be fully recalculated. Cannot be undone.</p>
+        <button class="fbtn" style="background:var(--danger);border-color:var(--danger);color:#fff" onclick="confirmMergePlayers()">Merge Players</button>
+      </div>
+    </div>
+    <div class="admin-section">
+      <div class="admin-section-hdr">Admin Access Management</div>
+      <div style="padding:10px 20px 4px;font-size:13px;color:var(--muted)">Grant or revoke admin access for registered users. At least one admin must remain at all times.</div>
+      <div id="admin-access-list"><div class="loading-overlay"><div class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:24px;height:24px;display:block;margin:0 auto"></div></div></div>
     </div>
     <div class="admin-section">
       <div class="admin-section-hdr">Match History</div>
@@ -418,7 +441,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
 
 <script type="module">
 import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot }
+import { getFirestore, collection, doc, addDoc, getDoc, updateDoc, deleteDoc, writeBatch, onSnapshot }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
@@ -438,16 +461,97 @@ const db  = getFirestore(app);
 const auth = getAuth(app);
 
 let indexCurrentUser = null;
-onAuthStateChanged(auth, user => {
-  indexCurrentUser = user;
-  // Update nav profile link to show signed-in state
-  const navLink = document.getElementById('nav-profile-link');
-  if(navLink){
-    navLink.textContent = user ? (user.displayName ? user.displayName.split(' ')[0] : 'My Profile') : 'Sign In';
-    navLink.style.color = user ? 'var(--corn)' : '';
+let indexUserProfile = null;
+
+function isAdmin(user, profile){
+  if(!user) return false;
+  if(user.email === ADMIN_EMAIL) return true;
+  return !!(profile?.isAdmin);
+}
+
+function updateNavAuth(user, profile){
+  // Profile pill
+  const pill  = document.getElementById('nav-profile-pill');
+  const avEl  = document.getElementById('nav-av');
+  const nameEl= document.getElementById('nav-profile-name');
+  if(nameEl){
+    if(user){
+      const name = profile
+        ? `${profile.firstName||''} ${profile.lastName||''}`.trim()
+        : (user.displayName||user.email.split('@')[0]);
+      nameEl.textContent = name.split(' ')[0] || 'Me';
+      if(user.photoURL){
+        avEl.innerHTML=`<img src="${user.photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+      } else {
+        avEl.textContent = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()||'?';
+      }
+    } else {
+      nameEl.textContent = 'Sign In';
+      avEl.textContent = '?';
+    }
   }
-  // Re-render calendar if open so RSVP buttons reflect auth state
+  // Admin button visibility
+  const adminVisible = isAdmin(user, profile);
+  ['nav-admin-btn','ham-admin-btn'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.style.display = adminVisible ? '' : 'none';
+  });
+}
+
+onAuthStateChanged(auth, async user => {
+  indexCurrentUser = user;
+  indexUserProfile = null;
+
+  if(user){
+    // Load user profile
+    try{
+      const snap = await getDoc(doc(db,'users',user.uid));
+      if(snap.exists()){
+        indexUserProfile = snap.data();
+      } else {
+        // Brand-new user — create profile + player record
+        const nameParts = (user.displayName||'').split(' ');
+        const firstName = nameParts[0]||'';
+        const lastName  = nameParts.slice(1).join(' ')||'';
+        const fullName  = user.displayName || user.email.split('@')[0];
+        // Create player doc
+        const playerRef = await addDoc(collection(db,'players'),{
+          name: fullName,
+          rating: RAW_CENTER, lifetimeRating: RAW_CENTER,
+          wins:0, losses:0, totalPoints:0,
+          seasonGames:0, lifetimeGames:0,
+          format:'both', autoCreated:true
+        });
+        // Create user profile linked to that player
+        const newProfile = {
+          firstName, lastName,
+          email: user.email,
+          birthday: null, favPizzaTopping: null,
+          linkedPlayerId: playerRef.id,
+          isAdmin: false,
+          createdAt: Date.now()
+        };
+        indexUserProfile = newProfile;
+        // Write profile doc using the user's uid as doc id
+        try{ await updateDoc(doc(db,'users',user.uid), newProfile); } catch(_){
+          // Doc doesn't exist yet — use addDoc workaround via batch
+          const b=writeBatch(db);
+          b.set(doc(db,'users',user.uid), newProfile);
+          await b.commit();
+        }
+      }
+    } catch(e){ console.warn('Profile load error', e); }
+    // Superadmin email always gets isAdmin flag synced
+    if(user.email === ADMIN_EMAIL && !indexUserProfile?.isAdmin){
+      try{ await updateDoc(doc(db,'users',user.uid),{isAdmin:true}); indexUserProfile = {...indexUserProfile, isAdmin:true}; }catch(e){}
+    }
+  }
+
+  updateNavAuth(user, indexUserProfile);
+
+  // If on admin page, re-evaluate access
   const activePage = document.querySelector('.page.active')?.id;
+  if(activePage === 'page-admin') renderAdminPage();
   if(activePage === 'page-calendar') renderCalendar();
 });
 
@@ -507,7 +611,12 @@ onSnapshot(collection(db,'events'), snap=>{
 });
 onSnapshot(collection(db,'users'), snap=>{
   users=snap.docs.map(d=>({uid:d.id,...d.data()}));
-  if(adminAuthed) renderAdminPlayers();
+  // Refresh current user's profile in case isAdmin changed
+  if(indexCurrentUser){
+    const fresh=users.find(u=>u.uid===indexCurrentUser.uid);
+    if(fresh){ indexUserProfile=fresh; updateNavAuth(indexCurrentUser,fresh); }
+  }
+  if(adminAuthed){ renderAdminPlayers(); renderAdminAccessList(); populateMergeSelects(); }
 });
 
 function refreshActive(){
@@ -516,7 +625,10 @@ function refreshActive(){
   if(id==='page-rankings') renderRankings();
   if(id==='page-stats')    { fillSelects(); renderPlayerStats(); }
   if(id==='page-calendar') renderCalendar();
-  if(id==='page-admin' && adminAuthed){ renderAdminPlayers(); renderAdminMatches(); }
+  if(id==='page-admin'){
+    if(adminAuthed){ renderAdminPlayers(); renderAdminMatches(); populateMergeSelects(); }
+    else renderAdminPage();
+  }
 }
 
 // ── Hamburger menu ────────────────────────────────────────────────────────────
@@ -1270,21 +1382,26 @@ window.confirmDeleteEvent=function(id){
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 let adminAuthed=false;
-window.adminLogin=function(){
-  if(document.getElementById('admin-pw-input').value===ADMIN_PASS){
-    adminAuthed=true;
-    document.getElementById('admin-pw-input').value='';
-    document.getElementById('admin-pw-err').style.display='none';
-    renderAdminPage();
-  } else {
-    document.getElementById('admin-pw-err').style.display='block';
+
+function renderAdminPage(){
+  const authed = isAdmin(indexCurrentUser, indexUserProfile);
+  adminAuthed = authed;
+  if(!authed){
+    document.getElementById('admin-lock').style.display='flex';
+    document.getElementById('admin-panel').style.display='none';
+    document.getElementById('admin-lock-msg').textContent = indexCurrentUser
+      ? 'Your account does not have admin access.'
+      : 'Sign in with an admin account to access this panel.';
+    return;
   }
-};
-window.adminLogout=function(){
-  adminAuthed=false;
-  document.getElementById('admin-lock').style.display='flex';
-  document.getElementById('admin-panel').style.display='none';
-};
+  document.getElementById('admin-lock').style.display='none';
+  document.getElementById('admin-panel').style.display='block';
+  renderAdminPlayers();
+  renderAdminMatches();
+  renderAdminAccessList();
+  populateMergeSelects();
+}
+
 window.confirmSeasonReset=function(){
   const yr=new Date().getFullYear()+1;
   document.getElementById('confirm-msg').textContent=`Reset all season ratings to baseline for the ${yr} season? Lifetime ratings will NOT be affected. This cannot be undone.`;
@@ -1303,11 +1420,132 @@ async function resetSeasonRatings(){
     toast('Season reset complete! All ratings back to baseline.');
   }catch(e){ toast('Error: '+e.message,true); }
 }
-function renderAdminPage(){
-  if(!adminAuthed){document.getElementById('admin-lock').style.display='flex';document.getElementById('admin-panel').style.display='none';return;}
-  document.getElementById('admin-lock').style.display='none';
-  document.getElementById('admin-panel').style.display='block';
-  renderAdminPlayers(); renderAdminMatches();
+
+// ── Admin access management ───────────────────────────────────────────────────
+function renderAdminAccessList(){
+  const box=document.getElementById('admin-access-list');
+  if(!box) return;
+  if(!users.length){box.innerHTML='<div style="padding:16px 20px;font-size:13px;color:var(--muted)">No registered users yet.</div>';return;}
+  const adminCount=users.filter(u=>u.isAdmin||u.email===ADMIN_EMAIL).length;
+  box.innerHTML=users.map(u=>{
+    const name=`${u.firstName||''} ${u.lastName||''}`.trim()||u.email||u.uid;
+    const isAdm=!!(u.isAdmin)||(u.email===ADMIN_EMAIL);
+    const isSelf=indexCurrentUser&&u.uid===indexCurrentUser.uid;
+    const isSuperAdmin=u.email===ADMIN_EMAIL;
+    // Prevent revoking if only 1 admin left or if it's the superadmin email
+    const canRevoke=isAdm&&!isSuperAdmin&&adminCount>1;
+    const canGrant=!isAdm;
+    return`<div class="admin-row">
+      <div class="admin-row-info">
+        <strong>${name}${isSelf?' (you)':''}</strong>
+        <span>${u.email||''}${isSuperAdmin?' · Superadmin':''}</span>
+      </div>
+      ${isAdm
+        ?`<span style="font-size:12px;font-weight:700;color:var(--grass);background:var(--grass-pale);padding:3px 10px;border-radius:20px">✓ Admin</span>
+           ${canRevoke?`<button class="icon-btn danger" onclick="setUserAdmin('${u.uid}',false)">Revoke</button>`:'<span style="font-size:11px;color:var(--muted)">Protected</span>'}`
+        :`<button class="icon-btn" onclick="setUserAdmin('${u.uid}',true)">Grant Admin</button>`
+      }
+    </div>`;
+  }).join('');
+}
+
+window.setUserAdmin=async function(uid,grant){
+  const u=users.find(x=>x.uid===uid);
+  if(!u) return;
+  const name=`${u.firstName||''} ${u.lastName||''}`.trim()||u.email;
+  // Failsafe: count current admins
+  const adminCount=users.filter(x=>x.isAdmin||x.email===ADMIN_EMAIL).length;
+  if(!grant && adminCount<=1){toast('Cannot revoke — at least one admin must remain.',true);return;}
+  if(!grant && u.email===ADMIN_EMAIL){toast('Cannot revoke the superadmin account.',true);return;}
+  document.getElementById('confirm-msg').textContent=grant
+    ?`Grant admin access to ${name}? They will be able to manage players, matches and events.`
+    :`Revoke admin access from ${name}?`;
+  document.getElementById('confirm-ok-btn').onclick=async()=>{
+    closeModal('modal-confirm');
+    try{
+      await updateDoc(doc(db,'users',uid),{isAdmin:grant});
+      toast(grant?`${name} is now an admin.`:`Admin access removed from ${name}.`);
+    }catch(e){toast('Error: '+e.message,true);}
+  };
+  openModal('modal-confirm');
+};
+
+// ── Merge players ─────────────────────────────────────────────────────────────
+function populateMergeSelects(){
+  const sorted=[...players].sort((a,b)=>{
+    const aL=a.name.split(' ').slice(1).join(' ').toLowerCase()||a.name.toLowerCase();
+    const bL=b.name.split(' ').slice(1).join(' ').toLowerCase()||b.name.toLowerCase();
+    return aL.localeCompare(bL);
+  });
+  ['merge-from','merge-into'].forEach(id=>{
+    const sel=document.getElementById(id); if(!sel) return;
+    const cur=sel.value;
+    sel.innerHTML='<option value="">— Select player —</option>'+
+      sorted.map(p=>`<option value="${p.id}">${p.name}${p.autoCreated?' (auto)':''}</option>`).join('');
+    if(cur) sel.value=cur;
+  });
+}
+
+window.confirmMergePlayers=function(){
+  const fromId=document.getElementById('merge-from').value;
+  const intoId=document.getElementById('merge-into').value;
+  if(!fromId||!intoId){toast('Select both players to merge',true);return;}
+  if(fromId===intoId){toast('Cannot merge a player with themselves',true);return;}
+  const fromP=players.find(p=>p.id===fromId);
+  const intoP=players.find(p=>p.id===intoId);
+  if(!fromP||!intoP) return;
+  document.getElementById('confirm-msg').textContent=`Merge "${fromP.name}" INTO "${intoP.name}"? All match history will be repointed to ${intoP.name}, and ${fromP.name} will be deleted. This cannot be undone.`;
+  document.getElementById('confirm-ok-btn').onclick=async()=>{
+    closeModal('modal-confirm');
+    await mergePlayers(fromId,intoId);
+  };
+  openModal('modal-confirm');
+};
+
+async function mergePlayers(fromId,intoId){
+  toast('Merging players…');
+  try{
+    // 1. Repoint all matches referencing fromId → intoId
+    const affectedMatches=matches.filter(m=>
+      (m.teamA||[]).includes(fromId)||(m.teamB||[]).includes(fromId)||
+      (m.players||[]).includes(fromId)
+    );
+    for(const m of affectedMatches){
+      const rep=arr=>(arr||[]).map(id=>id===fromId?intoId:id);
+      const updM={
+        teamA:rep(m.teamA), teamB:rep(m.teamB), players:rep(m.players)
+      };
+      // Rekey ratingChanges / lifetimeRatingChanges / breakdowns if needed
+      for(const field of ['ratingChanges','lifetimeRatingChanges','breakdowns','lifetimeBreakdowns']){
+        if(m[field]&&m[field][fromId]!==undefined){
+          const obj={...m[field]};
+          obj[intoId]=(obj[intoId]||0)+(obj[fromId]||0);
+          delete obj[fromId];
+          updM[field]=obj;
+        }
+      }
+      await updateDoc(doc(db,'matches',m.id),updM);
+    }
+    // 2. Repoint any user whose linkedPlayerId = fromId → intoId
+    const linkedUsers=users.filter(u=>u.linkedPlayerId===fromId);
+    for(const u of linkedUsers){
+      await updateDoc(doc(db,'users',u.uid),{linkedPlayerId:intoId});
+    }
+    // 3. Delete the duplicate player
+    await deleteDoc(doc(db,'players',fromId));
+    // 4. Full recalc using updated match list
+    const updatedMatches=matches
+      .filter(m=>m.id!==fromId)
+      .map(m=>{
+        const rep=arr=>(arr||[]).map(id=>id===fromId?intoId:id);
+        return{...m,teamA:rep(m.teamA),teamB:rep(m.teamB),players:rep(m.players)};
+      });
+    await recomputeAllRatings(updatedMatches);
+    // 5. Reset selects
+    document.getElementById('merge-from').value='';
+    document.getElementById('merge-into').value='';
+    toast('Merge complete — ratings recalculated! ✓');
+  }catch(e){toast('Merge error: '+e.message,true);}
 }
 function renderAdminPlayers(){
   const box=document.getElementById('admin-players-list');

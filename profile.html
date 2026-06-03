@@ -251,7 +251,7 @@ input:focus,select:focus{border-color:var(--grass)}
 
 <script type="module">
 import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, onSnapshot }
+import { getFirestore, collection, doc, getDoc, setDoc, addDoc, updateDoc, onSnapshot }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {
   getAuth, onAuthStateChanged, signOut as fbSignOut,
@@ -313,9 +313,23 @@ onAuthStateChanged(auth, async user => {
   const snap = await getDoc(ref);
   if(snap.exists()){
     currentProfile = snap.data();
-    renderProfileScreen(user, currentProfile);
-    showScreen('profile');
+    // If auto-created profile has no first/last name filled in yet, show completion
+    const needsCompletion = !currentProfile.firstName && !currentProfile.lastName && !user.displayName;
+    if(needsCompletion){
+      document.getElementById('complete-first').value = '';
+      document.getElementById('complete-last').value  = '';
+      showScreen('complete');
+    } else {
+      // Pre-fill name from displayName if profile fields still blank
+      if(!currentProfile.firstName && user.displayName){
+        currentProfile.firstName = user.displayName.split(' ')[0]||'';
+        currentProfile.lastName  = user.displayName.split(' ').slice(1).join(' ')||'';
+      }
+      renderProfileScreen(user, currentProfile);
+      showScreen('profile');
+    }
   } else {
+    // No profile at all — show completion
     document.getElementById('complete-first').value = user.displayName?.split(' ')[0] || '';
     document.getElementById('complete-last').value  = user.displayName?.split(' ').slice(1).join(' ') || '';
     showScreen('complete');
@@ -368,10 +382,16 @@ window.emailSignUp = async function(){
   try{
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
     await updateProfile(cred.user, { displayName: `${first} ${last}` });
+    // Auto-create player record
+    const playerRef = await addDoc(collection(db,'players'),{
+      name:`${first} ${last}`, rating:5, lifetimeRating:5,
+      wins:0, losses:0, totalPoints:0,
+      seasonGames:0, lifetimeGames:0, format:'both', autoCreated:true
+    });
     await setDoc(doc(db,'users',cred.user.uid), {
       firstName: first, lastName: last, email,
       birthday: bday || null, favPizzaTopping: pizza || null,
-      linkedPlayerId: null, createdAt: Date.now()
+      linkedPlayerId: playerRef.id, isAdmin: false, createdAt: Date.now()
     });
     toast(`Welcome, ${first}! 🎉`);
   } catch(e){
@@ -391,12 +411,27 @@ window.saveCompletion = async function(){
   const btn = document.getElementById('complete-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Saving…';
   try{
-    await setDoc(doc(db,'users',user.uid),{
+    // Check if a profile already exists (auto-created by index.html)
+    const snap = await getDoc(doc(db,'users',user.uid));
+    const existing = snap.exists() ? snap.data() : null;
+    const linkedPlayerId = existing?.linkedPlayerId || null;
+    // If linked player exists and has no real name yet, update it
+    if(linkedPlayerId){
+      const pSnap = await getDoc(doc(db,'players',linkedPlayerId));
+      if(pSnap.exists() && pSnap.data().autoCreated){
+        await updateDoc(doc(db,'players',linkedPlayerId),{name:`${first} ${last}`});
+      }
+    }
+    const profileData = {
       firstName: first, lastName: last, email: user.email,
       birthday: bday || null, favPizzaTopping: pizza || null,
-      linkedPlayerId: null, createdAt: Date.now()
-    });
-    toast(`Profile created! Welcome, ${first} 🎉`);
+      linkedPlayerId, isAdmin: false, createdAt: existing?.createdAt || Date.now()
+    };
+    await setDoc(doc(db,'users',user.uid), profileData);
+    currentProfile = profileData;
+    renderProfileScreen(user, profileData);
+    showScreen('profile');
+    toast(`Profile saved! Welcome, ${first} 🎉`);
   } catch(e){ showErr('complete-err', e.message); }
   btn.disabled = false; btn.textContent = 'SAVE & CONTINUE';
 };
