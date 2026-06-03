@@ -201,17 +201,64 @@ select.fallback-select:last-child{border-bottom:none}
 </div>
 
 <div class="wrap">
-  <!-- STEP 0: Who's entering the score? -->
+  <!-- STEP 0: Sign In -->
   <div class="step active" id="step-0">
-    <div class="step-header">
-      <div class="step-pill">Before We Start</div>
-      <div class="step-title">Who's Entering?</div>
-      <div class="step-sub">Tap your name — you'll be placed on Team A first. Tap again to deselect if you're just recording.</div>
+    <!-- Signed-out state -->
+    <div id="step0-auth">
+      <div class="step-header">
+        <div class="step-pill">Before We Start</div>
+        <div class="step-title">Sign In First</div>
+        <div class="step-sub">Sign in so your name is attached to this score entry</div>
+      </div>
+      <div style="background:var(--card);border:0.5px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:0.5px solid var(--border)">
+          <button id="s0-tab-in"  onclick="s0Tab('in')"  style="padding:12px;text-align:center;font-size:13px;font-weight:600;color:var(--grass);background:var(--grass-pale);cursor:pointer;border:none;font-family:var(--fb)">Sign In</button>
+          <button id="s0-tab-up"  onclick="s0Tab('up')"  style="padding:12px;text-align:center;font-size:13px;font-weight:600;color:var(--muted);background:none;cursor:pointer;border:none;font-family:var(--fb)">Create Account</button>
+        </div>
+        <!-- Sign-in form -->
+        <div id="s0-form-in" style="padding:20px">
+          <div id="s0-err-in" style="color:var(--danger);font-size:13px;margin-bottom:10px;display:none;padding:8px 12px;background:#FFF0F0;border-radius:8px"></div>
+          <div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px">Email</label><input type="email" id="s0-email" placeholder="you@example.com" autocomplete="email" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none"></div>
+          <div style="margin-bottom:14px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px">Password</label><input type="password" id="s0-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')s0SignIn()" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none"></div>
+          <button onclick="s0SignIn()" id="s0-signin-btn" style="width:100%;padding:12px;background:var(--grass);color:#fff;border:none;border-radius:8px;font-family:var(--fd);font-size:18px;letter-spacing:1px;cursor:pointer;margin-bottom:12px">SIGN IN</button>
+          <div style="display:flex;align-items:center;gap:10px;margin:4px 0 12px;color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px"><div style="flex:1;height:1px;background:var(--border)"></div>or<div style="flex:1;height:1px;background:var(--border)"></div></div>
+          <button onclick="s0Google()" style="width:100%;padding:11px;background:#fff;color:#3c3c3c;border:1px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 1px 3px rgba(0,0,0,0.08)"><svg width="16" height="16" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.703-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>Continue with Google</button>
+        </div>
+        <!-- Sign-up form -->
+        <div id="s0-form-up" style="padding:20px;display:none">
+          <div id="s0-err-up" style="color:var(--danger);font-size:13px;margin-bottom:10px;display:none;padding:8px 12px;background:#FFF0F0;border-radius:8px"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px">First Name</label><input type="text" id="s0-first" placeholder="Jake" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none"></div>
+            <div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px">Last Name</label><input type="text" id="s0-last" placeholder="Miller" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none"></div>
+          </div>
+          <div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px">Email</label><input type="email" id="s0-email-up" placeholder="you@example.com" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none"></div>
+          <div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px">Password</label><input type="password" id="s0-pass-up" placeholder="Min 6 characters" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+            <div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px">Birthday</label><input type="date" id="s0-bday" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none"></div>
+            <div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px">🍕 Fav Pizza Topping</label><input type="text" id="s0-pizza" placeholder="Pepperoni" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none"></div>
+          </div>
+          <button onclick="s0SignUp()" id="s0-signup-btn" style="width:100%;padding:12px;background:var(--grass);color:#fff;border:none;border-radius:8px;font-family:var(--fd);font-size:18px;letter-spacing:1px;cursor:pointer;margin-bottom:12px">CREATE ACCOUNT</button>
+          <div style="display:flex;align-items:center;gap:10px;margin:4px 0 12px;color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px"><div style="flex:1;height:1px;background:var(--border)"></div>or<div style="flex:1;height:1px;background:var(--border)"></div></div>
+          <button onclick="s0Google()" style="width:100%;padding:11px;background:#fff;color:#3c3c3c;border:1px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 1px 3px rgba(0,0,0,0.08)"><svg width="16" height="16" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.703-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>Continue with Google</button>
+        </div>
+      </div>
     </div>
-    <div id="cards-0" class="player-grid"><div class="loading-msg">Loading players…</div></div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:500">Not listed? Use dropdown</div>
-    <div class="dropdown-fallback open" id="fallback-0">
-      <select class="fallback-select" id="sel-0" onchange="selectRecorderFromDropdown()"><option value="">— Select your name —</option></select>
+    <!-- Signed-in state -->
+    <div id="step0-signed-in" style="display:none">
+      <div class="step-header">
+        <div class="step-pill">Signed In ✓</div>
+        <div class="step-title">Ready to Play?</div>
+        <div class="step-sub" id="step0-welcome-sub">You're in. Let's record a match.</div>
+      </div>
+      <div style="background:var(--card);border:0.5px solid var(--border);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;margin-bottom:20px">
+        <div id="step0-av" style="width:44px;height:44px;border-radius:50%;background:var(--grass-pale);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:18px;color:var(--grass);flex-shrink:0;overflow:hidden"></div>
+        <div style="flex:1;min-width:0">
+          <div id="step0-name" style="font-weight:700;font-size:15px"></div>
+          <div id="step0-player-link" style="font-size:12px;color:var(--muted)"></div>
+        </div>
+        <button onclick="s0SignOut()" style="padding:6px 12px;background:none;border:0.5px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--fb)">Sign Out</button>
+      </div>
+      <button class="action-btn primary" onclick="s0Continue()">LET'S GO →</button>
     </div>
   </div>
 
@@ -372,8 +419,13 @@ select.fallback-select:last-child{border-bottom:none}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, doc, addDoc, updateDoc, onSnapshot }
+import { getFirestore, collection, doc, addDoc, updateDoc, getDoc, setDoc, onSnapshot }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  getAuth, onAuthStateChanged, signOut as fbSignOut,
+  createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  GoogleAuthProvider, signInWithPopup, updateProfile as fbUpdateProfile
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey:            "AIzaSyBjMKqN6n8bdfoZ157fU71nuzZAvFzwZCI",
@@ -388,6 +440,145 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
+const auth = getAuth(app);
+const gProvider = new GoogleAuthProvider();
+
+// Auth state — drives step 0 UI
+let currentUser = null;
+let currentUserProfile = null;
+
+onAuthStateChanged(auth, async user => {
+  currentUser = user;
+  if(user){
+    // Load profile to get linkedPlayerId
+    try{
+      const snap = await getDoc(doc(db,'users',user.uid));
+      currentUserProfile = snap.exists() ? snap.data() : null;
+    } catch(e){ currentUserProfile = null; }
+    renderStep0SignedIn();
+    // If we're still on step 0, auto-set recorderId from linked player
+    if(currentStep === 0){
+      if(currentUserProfile?.linkedPlayerId){
+        recorderId = currentUserProfile.linkedPlayerId;
+      }
+    }
+  } else {
+    currentUser = null;
+    currentUserProfile = null;
+    renderStep0SignedOut();
+    if(currentStep !== 0) showStep(0);
+  }
+});
+
+function renderStep0SignedIn(){
+  document.getElementById('step0-auth').style.display = 'none';
+  document.getElementById('step0-signed-in').style.display = 'block';
+  const name = currentUserProfile
+    ? `${currentUserProfile.firstName||''} ${currentUserProfile.lastName||''}`.trim()
+    : (currentUser.displayName || currentUser.email);
+  document.getElementById('step0-name').textContent = name || 'Signed in';
+  const avEl = document.getElementById('step0-av');
+  if(currentUser.photoURL){
+    avEl.innerHTML = `<img src="${currentUser.photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  } else {
+    avEl.textContent = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() || '?';
+  }
+  const lp = currentUserProfile?.linkedPlayerId;
+  const linked = lp ? players.find(x=>x.id===lp) : null;
+  document.getElementById('step0-player-link').textContent = linked
+    ? `🎯 Playing as ${linked.name}`
+    : `No player linked — go to My Profile to link`;
+  document.getElementById('step0-welcome-sub').textContent = `Signed in as ${currentUser.email}`;
+}
+
+function renderStep0SignedOut(){
+  document.getElementById('step0-auth').style.display = 'block';
+  document.getElementById('step0-signed-in').style.display = 'none';
+}
+
+// ── Step 0 auth helpers ───────────────────────────────────────────────────────
+window.s0Tab = function(tab){
+  document.getElementById('s0-tab-in').style.cssText = tab==='in'
+    ? 'padding:12px;text-align:center;font-size:13px;font-weight:600;color:var(--grass);background:var(--grass-pale);cursor:pointer;border:none;font-family:var(--fb)'
+    : 'padding:12px;text-align:center;font-size:13px;font-weight:600;color:var(--muted);background:none;cursor:pointer;border:none;font-family:var(--fb)';
+  document.getElementById('s0-tab-up').style.cssText = tab==='up'
+    ? 'padding:12px;text-align:center;font-size:13px;font-weight:600;color:var(--grass);background:var(--grass-pale);cursor:pointer;border:none;font-family:var(--fb)'
+    : 'padding:12px;text-align:center;font-size:13px;font-weight:600;color:var(--muted);background:none;cursor:pointer;border:none;font-family:var(--fb)';
+  document.getElementById('s0-form-in').style.display = tab==='in' ? 'block' : 'none';
+  document.getElementById('s0-form-up').style.display = tab==='up' ? 'block' : 'none';
+};
+
+window.s0Google = async function(){
+  try{ await signInWithPopup(auth, gProvider); }
+  catch(e){ toast(e.message, true); }
+};
+
+window.s0SignIn = async function(){
+  const email = document.getElementById('s0-email').value.trim();
+  const pass  = document.getElementById('s0-pass').value;
+  const errEl = document.getElementById('s0-err-in');
+  if(!email||!pass){ errEl.textContent='Fill in all fields'; errEl.style.display='block'; return; }
+  const btn = document.getElementById('s0-signin-btn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Signing in…';
+  try{
+    await signInWithEmailAndPassword(auth, email, pass);
+    errEl.style.display='none';
+  } catch(e){
+    errEl.textContent = s0FriendlyErr(e.code); errEl.style.display='block';
+  }
+  btn.disabled=false; btn.textContent='SIGN IN';
+};
+
+window.s0SignUp = async function(){
+  const first = document.getElementById('s0-first').value.trim();
+  const last  = document.getElementById('s0-last').value.trim();
+  const email = document.getElementById('s0-email-up').value.trim();
+  const pass  = document.getElementById('s0-pass-up').value;
+  const bday  = document.getElementById('s0-bday').value;
+  const pizza = document.getElementById('s0-pizza').value.trim();
+  const errEl = document.getElementById('s0-err-up');
+  if(!first||!last||!email||!pass){ errEl.textContent='Please fill in all required fields'; errEl.style.display='block'; return; }
+  if(pass.length<6){ errEl.textContent='Password must be at least 6 characters'; errEl.style.display='block'; return; }
+  const btn = document.getElementById('s0-signup-btn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Creating account…';
+  try{
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    await fbUpdateProfile(cred.user, { displayName: `${first} ${last}` });
+    await setDoc(doc(db,'users',cred.user.uid),{
+      firstName:first, lastName:last, email,
+      birthday:bday||null, favPizzaTopping:pizza||null,
+      linkedPlayerId:null, createdAt:Date.now()
+    });
+    errEl.style.display='none';
+    toast(`Welcome, ${first}! 🎉`);
+  } catch(e){
+    errEl.textContent = s0FriendlyErr(e.code); errEl.style.display='block';
+  }
+  btn.disabled=false; btn.textContent='CREATE ACCOUNT';
+};
+
+window.s0SignOut = async function(){
+  await fbSignOut(auth);
+  recorderId = null; picks = []; isSingles = false;
+  showStep(0);
+};
+
+window.s0Continue = function(){
+  // Set recorderId from linked player, then advance
+  if(currentUserProfile?.linkedPlayerId){
+    recorderId = currentUserProfile.linkedPlayerId;
+    picks = [recorderId];
+  } else {
+    recorderId = null;
+    picks = [];
+  }
+  showStep(1);
+};
+
+function s0FriendlyErr(code){
+  const m={'auth/user-not-found':'No account with that email.','auth/wrong-password':'Incorrect password.','auth/email-already-in-use':'Email already in use.','auth/weak-password':'Password too short.','auth/invalid-email':'Invalid email.','auth/invalid-credential':'Incorrect email or password.'};
+  return m[code]||'Something went wrong.';
+}
 
 const RAW_CENTER = 5, K = 32;
 const marginScale = 12;
@@ -477,63 +668,21 @@ window.goBack = function(toStep){
 
 // ── Render ────────────────────────────────────────────────────────────────────────────────────
 function renderStep(n){
-  if(n===0) renderRecorderStep();
+  if(n===0){ /* auth state drives step 0 UI via onAuthStateChanged */ }
   if(n===1) renderPickStep();
   if(n===5) renderWinnerStep();
   if(n===6) renderScoreStep();
 }
 
 
-// ── Recorder step (step 0) ────────────────────────────────────────────────────
-function renderRecorderStep(){
-  const container = document.getElementById('cards-0');
-  if(!players.length){ container.innerHTML='<div class="loading-msg">Loading…</div>'; return; }
-  const pool = getCheckedPool();
-  container.innerHTML = pool.map(p => {
-    const isMe = recorderId === p.id;
-    return `<div class="player-card${isMe?' selected':''}" onclick="toggleRecorder('${p.id}')">
-      <div class="pc-av">${initials(p.name)}</div>
-      <div class="pc-name">${p.name.split(' ')[0]}<br><span style="font-weight:400;color:var(--muted);font-size:11px">${p.name.split(' ').slice(1).join(' ')}</span></div>
-      <div class="pc-rating">${toDisp(p.rating||RAW_CENTER)}</div>
-      <div class="pc-check">✓</div>
-    </div>`;
-  }).join('');
-  // Sync dropdown
-  const selEl = document.getElementById('sel-0');
-  if(selEl){
-    const sorted = [...players].sort((a,b)=>a.name.localeCompare(b.name));
-    selEl.innerHTML = '<option value="">— Select your name —</option>' +
-      sorted.map(p=>`<option value="${p.id}"${recorderId===p.id?' selected':''}>${p.name}</option>`).join('');
-  }
-}
-
-window.toggleRecorder = function(id){
-  if(recorderId === id){
-    recorderId = null;
-    renderRecorderStep();
-  } else {
-    recorderId = id;
-    picks = [recorderId];
-    showStep(1);
-  }
-};
-
-window.selectRecorderFromDropdown = function(){
-  const v = document.getElementById('sel-0')?.value;
-  if(!v) return;
-  recorderId = v;
-  picks = [recorderId];
-  showStep(1);
-};
-
-window.confirmRecorder = function(){
-  picks = [];
-  if(recorderId) picks.push(recorderId);
-  showStep(1);
-};
-
 window.goBackToRecorder = function(){
   picks=[]; isSingles=false; deriveSel();
+  if(currentUser && currentUserProfile?.linkedPlayerId){
+    recorderId = currentUserProfile.linkedPlayerId;
+    picks = [recorderId];
+  } else {
+    recorderId = null;
+  }
   showStep(0);
 };
 

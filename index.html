@@ -212,6 +212,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
     <a class="nb" href="score.html" style="text-decoration:none">Enter Score</a>
     <button class="nb" onclick="showPage('stats',this);closeHam()">Player Stats</button>
     <button class="nb" onclick="showPage('admin',this);closeHam()">Admin</button>
+    <a class="nb" href="profile.html" style="text-decoration:none" id="nav-profile-link">My Profile</a>
   </div>
   <div class="sbadge">Season 2026</div>
   <button class="ham-btn" id="ham-btn" onclick="toggleHam()" aria-label="Menu">
@@ -225,6 +226,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
   <a class="nb" href="score.html" style="text-decoration:none">Enter Score</a>
   <button class="nb" onclick="showPage('stats',this);closeHam()">Player Stats</button>
   <button class="nb" onclick="showPage('admin',this);closeHam()">Admin</button>
+  <a class="nb" href="profile.html" style="text-decoration:none">My Profile</a>
 </div>
 
 <!-- HOME DASHBOARD -->
@@ -422,6 +424,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
 import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey:            "AIzaSyBjMKqN6n8bdfoZ157fU71nuzZAvFzwZCI",
@@ -436,6 +439,21 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
+const auth = getAuth(app);
+
+let indexCurrentUser = null;
+onAuthStateChanged(auth, user => {
+  indexCurrentUser = user;
+  // Update nav profile link to show signed-in state
+  const navLink = document.getElementById('nav-profile-link');
+  if(navLink){
+    navLink.textContent = user ? (user.displayName ? user.displayName.split(' ')[0] : 'My Profile') : 'Sign In';
+    navLink.style.color = user ? 'var(--corn)' : '';
+  }
+  // Re-render calendar if open so RSVP buttons reflect auth state
+  const activePage = document.querySelector('.page.active')?.id;
+  if(activePage === 'page-calendar') renderCalendar();
+});
 
 const RAW_CENTER = 5, RAW_SCALE = 1, K = 32;
 const ADMIN_PASS = '060725';
@@ -1039,7 +1057,10 @@ window.renderPlayerStats=function renderPlayerStats(){
 }
 
 // ── RSVP ─────────────────────────────────────────────────────────────────────
-function getRsvp(evId){ try{return localStorage.getItem('rsvp_'+evId)||'none';}catch{return'none';} }
+function getRsvp(evId){
+  if(indexCurrentUser) try{return localStorage.getItem('rsvp_'+indexCurrentUser.uid+'_'+evId)||'none';}catch{return'none';}
+  try{return localStorage.getItem('rsvp_'+evId)||'none';}catch{return'none';}
+}
 function getRsvpLabel(evId){
   const r=getRsvp(evId);
   if(r==='yes') return '✅ Going';
@@ -1053,14 +1074,19 @@ function getRsvpStyle(evId){
   return '';
 }
 window.toggleRsvp=function(evId,btn){
+  if(!indexCurrentUser){
+    toast('Sign in to RSVP — click "My Profile" in the nav',true);
+    return;
+  }
   const cur=getRsvp(evId);
   let next;
   if(cur==='none') next='yes';
   else if(cur==='yes') next='no';
   else next='none';
+  const key='rsvp_'+indexCurrentUser.uid+'_'+evId;
   try{
-    if(next==='none') localStorage.removeItem('rsvp_'+evId);
-    else localStorage.setItem('rsvp_'+evId,next);
+    if(next==='none') localStorage.removeItem(key);
+    else localStorage.setItem(key,next);
   }catch{}
   btn.textContent=getRsvpLabel(evId);
   btn.style.cssText=getRsvpStyle(evId);
@@ -1153,6 +1179,7 @@ function renderCalendar(){
       </div>`:''}
       ${!isPast?`<div class="cal-actions" style="flex-wrap:wrap;gap:8px">
         ${!isCancelled?`<a class="icon-btn" href="${buildGCalUrl(ev)}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px">📅 Add to Google Calendar</a>`:''}
+        ${!isCancelled?`<button class="icon-btn" id="rsvp-btn-${ev.id}" style="${getRsvpStyle(ev.id)}" onclick="toggleRsvp('${ev.id}',this)">${indexCurrentUser?getRsvpLabel(ev.id):'🔒 Sign In to RSVP'}</button>`:''}
         ${adminAuthed?`<button class="icon-btn" onclick="openEditEvent('${ev.id}')">✏️ Edit</button>
         <button class="icon-btn danger" onclick="confirmDeleteEvent('${ev.id}')">🗑 Delete</button>`:''}
       </div>`:adminAuthed?`<div class="cal-actions">
