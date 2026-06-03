@@ -319,16 +319,12 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
     </div>
     <div class="admin-section">
       <div class="admin-section-hdr">Players</div>
+      <div style="padding:10px 20px 4px;font-size:13px;color:var(--muted)">Prior season end rating feeds into <strong>Lifetime rating only</strong>. Season rating always starts at 5.00. Admin can also link player records to user accounts here.</div>
       <div id="admin-players-list"><div class="loading-overlay"><div class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:24px;height:24px;display:block;margin:0 auto"></div></div></div>
     </div>
     <div class="admin-section">
       <div class="admin-section-hdr">Match History</div>
       <div id="admin-matches-list"><div class="loading-overlay"><div class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:24px;height:24px;display:block;margin:0 auto"></div></div></div>
-    </div>
-    <div class="admin-section">
-      <div class="admin-section-hdr">Prior Season Data</div>
-      <div style="padding:12px 20px 4px;font-size:13px;color:var(--muted)">A player's prior season end rating feeds into their <strong>Lifetime rating only</strong>. Season rating always starts at 5.00 for everyone regardless of prior history.</div>
-      <div id="admin-prior-list"><div class="loading-overlay"><div class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:24px;height:24px;display:block;margin:0 auto"></div></div></div>
     </div>
   </div>
 </div>
@@ -457,6 +453,7 @@ onAuthStateChanged(auth, user => {
 
 const RAW_CENTER = 5, RAW_SCALE = 1, K = 32;
 const ADMIN_PASS = '060725';
+const ADMIN_EMAIL = 'matthew.r.fiebig@gmail.com';
 const marginScale = 12; //Margin of victory score multiplier
 const performanceScale = 0.1; //Performance scale for rating adjustment
 const fullconfident = 20; //20 games played means 100% confidence in score
@@ -489,7 +486,7 @@ function toast(msg,err){
 }
 
 // ── In-memory cache ───────────────────────────────────────────────────────────
-let players=[], matches=[], events=[];
+let players=[], matches=[], events=[], users=[];
 
 onSnapshot(collection(db,'players'), snap=>{
   players=snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -508,6 +505,10 @@ onSnapshot(collection(db,'events'), snap=>{
   events.sort((a,b)=>(a.date||'')<(b.date||'')?-1:1);
   refreshActive();
 });
+onSnapshot(collection(db,'users'), snap=>{
+  users=snap.docs.map(d=>({uid:d.id,...d.data()}));
+  if(adminAuthed) renderAdminPlayers();
+});
 
 function refreshActive(){
   const id=document.querySelector('.page.active')?.id;
@@ -515,7 +516,7 @@ function refreshActive(){
   if(id==='page-rankings') renderRankings();
   if(id==='page-stats')    { fillSelects(); renderPlayerStats(); }
   if(id==='page-calendar') renderCalendar();
-  if(id==='page-admin' && adminAuthed){ renderAdminPlayers(); renderAdminMatches(); renderAdminPrior(); }
+  if(id==='page-admin' && adminAuthed){ renderAdminPlayers(); renderAdminMatches(); }
 }
 
 // ── Hamburger menu ────────────────────────────────────────────────────────────
@@ -833,7 +834,12 @@ function fillSelects(){
   ['stats-sel'].forEach(id=>{
     const el=document.getElementById(id); if(!el)return;
     const cur=el.value||el.dataset.pending||'';
-    el.innerHTML='<option value="">— Select —</option>'+players.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    const sorted=[...players].sort((a,b)=>{
+      const aLast=a.name.split(' ').slice(1).join(' ').toLowerCase()||a.name.toLowerCase();
+      const bLast=b.name.split(' ').slice(1).join(' ').toLowerCase()||b.name.toLowerCase();
+      return aLast.localeCompare(bLast)||a.name.localeCompare(b.name);
+    });
+    el.innerHTML='<option value="">— Select —</option>'+sorted.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
     if(cur){el.value=cur;}
     if(el.value===cur&&cur) delete el.dataset.pending;
   });
@@ -1301,20 +1307,88 @@ function renderAdminPage(){
   if(!adminAuthed){document.getElementById('admin-lock').style.display='flex';document.getElementById('admin-panel').style.display='none';return;}
   document.getElementById('admin-lock').style.display='none';
   document.getElementById('admin-panel').style.display='block';
-  renderAdminPlayers(); renderAdminMatches(); renderAdminPrior();
+  renderAdminPlayers(); renderAdminMatches();
 }
 function renderAdminPlayers(){
   const box=document.getElementById('admin-players-list');
   if(!players.length){box.innerHTML='<div class="es" style="padding:24px"><p>No players yet.</p></div>';return;}
   box.innerHTML=[...players].sort((a,b)=>b.rating-a.rating).map(p=>{
     const lt=p.lifetimeRating!==undefined?toDisp(p.lifetimeRating):toDisp(p.rating);
-    return`<div class="admin-row">
-    <div class="av" style="width:36px;height:36px;font-size:14px;flex-shrink:0">${initials(p.name)}</div>
-    <div class="admin-row-info"><strong>${p.name}</strong><span>Season: ${toDisp(p.rating)} | Lifetime: ${lt} | All-time W–L: ${p.wins||0}–${p.losses||0} | ${p.format||'both'}</span></div>
-    <button class="icon-btn" onclick="openEditPlayer('${p.id}')">✏️ Edit</button>
-    <button class="icon-btn danger" onclick="confirmDeletePlayer('${p.id}')">🗑 Delete</button>
-  </div>`;}).join('');
+    const pr=p.priorSeason||{};
+    // Find linked account
+    const linkedUser=users.find(u=>u.linkedPlayerId===p.id);
+    const linkedLabel=linkedUser
+      ?`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--grass-pale);color:var(--grass);font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;margin-top:3px">🔗 ${linkedUser.firstName||''} ${linkedUser.lastName||''} (${linkedUser.email||''})</span>`
+      :`<span style="font-size:11px;color:var(--muted)">No account linked</span>`;
+    // All registered users for the link dropdown (exclude already-linked-to-other)
+    const userOpts=users.map(u=>`<option value="${u.uid}" ${linkedUser&&linkedUser.uid===u.uid?'selected':''}>${u.firstName||''} ${u.lastName||''} — ${u.email||u.uid}</option>`).join('');
+    return`<div class="admin-row" style="flex-direction:column;align-items:stretch;gap:0">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="av" style="width:36px;height:36px;font-size:14px;flex-shrink:0">${initials(p.name)}</div>
+        <div class="admin-row-info">
+          <strong>${p.name}</strong>
+          <span>Season: ${toDisp(p.rating)} | Lifetime: ${lt} | W–L: ${p.wins||0}–${p.losses||0} | ${p.format||'both'}</span>
+          <div style="margin-top:2px">${linkedLabel}</div>
+        </div>
+        <button class="icon-btn" onclick="openEditPlayer('${p.id}')">✏️ Edit</button>
+        <button class="icon-btn danger" onclick="confirmDeletePlayer('${p.id}')">🗑 Delete</button>
+        <button class="icon-btn" onclick="togglePlayerExpand('${p.id}')" id="expand-btn-${p.id}">▼ More</button>
+      </div>
+      <div id="player-expand-${p.id}" style="display:none;background:var(--bg);border-radius:8px;padding:14px 16px;margin-top:10px">
+        <!-- Prior Season -->
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--grass);margin-bottom:8px">Prior Season Data</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:8px">
+          <div><label style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">End Rating (0–10)</label><input type="number" id="prior-rating-${p.id}" min="0" max="10" step="0.001" placeholder="e.g. 5.750" value="${pr.endRating!=null?pr.endRating:''}" style="width:100%;padding:7px 10px;border:0.5px solid var(--border);border-radius:6px;font-family:var(--fb);font-size:13px;outline:none"></div>
+          <div><label style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">Prior Wins</label><input type="number" id="prior-wins-${p.id}" min="0" placeholder="0" value="${pr.wins||''}" style="width:100%;padding:7px 10px;border:0.5px solid var(--border);border-radius:6px;font-family:var(--fb);font-size:13px;outline:none"></div>
+          <div><label style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">Prior Losses</label><input type="number" id="prior-losses-${p.id}" min="0" placeholder="0" value="${pr.losses||''}" style="width:100%;padding:7px 10px;border:0.5px solid var(--border);border-radius:6px;font-family:var(--fb);font-size:13px;outline:none"></div>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin-bottom:8px">End rating seeds Lifetime only. Season always starts at 5.00.</p>
+        <button class="icon-btn" style="background:var(--grass);color:#fff;border-color:var(--grass)" onclick="savePriorSeason('${p.id}')">💾 Save Prior Season</button>
+        ${pr.endRating!=null?`<span style="font-size:11px;color:var(--muted);margin-left:8px">Saved: ${pr.endRating} | ${pr.wins||0}W–${pr.losses||0}L</span>`:''}
+        <!-- Account Link -->
+        <div style="border-top:0.5px solid var(--border);margin-top:14px;padding-top:12px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--grass);margin-bottom:8px">Link Account</div>
+          ${users.length?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select id="link-sel-${p.id}" style="flex:1;min-width:180px;padding:7px 10px;border:0.5px solid var(--border);border-radius:6px;font-family:var(--fb);font-size:13px;outline:none">
+              <option value="">— No account linked —</option>
+              ${userOpts}
+            </select>
+            <button class="icon-btn" style="background:var(--grass);color:#fff;border-color:var(--grass)" onclick="savePlayerLink('${p.id}')">🔗 Save Link</button>
+          </div>`:'<span style="font-size:12px;color:var(--muted)">No registered users yet.</span>'}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
+window.togglePlayerExpand=function(id){
+  const el=document.getElementById('player-expand-'+id);
+  const btn=document.getElementById('expand-btn-'+id);
+  const open=el.style.display==='none';
+  el.style.display=open?'block':'none';
+  btn.textContent=open?'▲ Less':'▼ More';
+};
+window.savePlayerLink=async function(playerId){
+  const sel=document.getElementById('link-sel-'+playerId);
+  const uid=sel?.value||null;
+  // If unlinking, find the current linked user and clear their linkedPlayerId
+  const currentLinked=users.find(u=>u.linkedPlayerId===playerId);
+  try{
+    if(currentLinked && currentLinked.uid!==uid){
+      await updateDoc(doc(db,'users',currentLinked.uid),{linkedPlayerId:null});
+    }
+    if(uid){
+      // Unlink this uid from any other player first
+      const prevPlayer=users.find(u=>u.uid===uid);
+      if(prevPlayer?.linkedPlayerId && prevPlayer.linkedPlayerId!==playerId){
+        // fine — just overwrite
+      }
+      await updateDoc(doc(db,'users',uid),{linkedPlayerId:playerId});
+    }
+    const p=players.find(x=>x.id===playerId);
+    toast(uid?`Account linked to ${p?.name||playerId}!`:'Account unlinked.');
+    renderAdminPlayers();
+  }catch(e){toast('Error: '+e.message,true);}
+};
 function renderAdminMatches(){
   const box=document.getElementById('admin-matches-list');
   if(!matches.length){box.innerHTML='<div class="es" style="padding:24px"><p>No matches yet.</p></div>';return;}
@@ -1348,35 +1422,6 @@ function renderAdminMatches(){
     </div>`;
   }).join('');
 }
-function renderAdminPrior(){
-  const box=document.getElementById('admin-prior-list');
-  if(!players.length){box.innerHTML='<div class="es" style="padding:24px"><p>No players yet.</p></div>';return;}
-  box.innerHTML=[...players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>{
-    const pr=p.priorSeason||{};
-    return`<div class="admin-row" style="flex-direction:column;align-items:stretch;gap:8px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div class="av" style="width:36px;height:36px;font-size:14px;flex-shrink:0">${initials(p.name)}</div>
-        <strong style="flex:1">${p.name}</strong>
-        <button class="icon-btn" onclick="togglePriorForm('${p.id}')">📋 Edit Prior Season</button>
-      </div>
-      <div id="prior-form-${p.id}" style="display:none" class="prior-form">
-        <div style="font-size:12px;font-weight:600;color:var(--grass);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Prior Season (Year 1)</div>
-        <div class="fr" style="margin-bottom:0;gap:12px">
-          <div class="fg"><label>End-of-Season Rating (0–10)</label><input type="number" id="prior-rating-${p.id}" min="0" max="10" step="0.001" placeholder="e.g. 5.750" value="${pr.endRating!=null?pr.endRating:''}"></div>
-          <div class="fg"><label>Wins</label><input type="number" id="prior-wins-${p.id}" min="0" placeholder="0" value="${pr.wins||''}"></div>
-          <div class="fg"><label>Losses</label><input type="number" id="prior-losses-${p.id}" min="0" placeholder="0" value="${pr.losses||''}"></div>
-        </div>
-        <p style="font-size:11px;color:var(--muted);margin:8px 0 10px">End-of-season rating is used as the starting point for this player's <strong>Lifetime rating</strong> only. Their season rating will still start at 5.00. Wins/losses are included in overall W–L record.</p>
-        <button class="icon-btn" style="background:var(--grass);color:#fff;border-color:var(--grass)" onclick="savePriorSeason('${p.id}')">💾 Save</button>
-        ${pr.endRating!=null?`<span style="font-size:12px;color:var(--muted);margin-left:10px">Saved: Rating ${pr.endRating} | ${pr.wins||0}W – ${pr.losses||0}L</span>`:''}
-      </div>
-    </div>`;
-  }).join('');
-}
-window.togglePriorForm=function(id){
-  const el=document.getElementById('prior-form-'+id);
-  el.style.display=el.style.display==='none'?'block':'none';
-};
 window.savePriorSeason=async function(id){
   const ratingInput=document.getElementById('prior-rating-'+id).value;
   const wins=parseInt(document.getElementById('prior-wins-'+id).value)||0;
@@ -1388,10 +1433,9 @@ window.savePriorSeason=async function(id){
   const priorSeason={endRating,wins,losses};
   try{
     await updateDoc(doc(db,'players',id),{priorSeason});
-    // Recompute all ratings so this season's matches layer on top of the new baseline
     await recomputeAllRatings(matches);
     toast(`${p.name}'s prior season data saved — ratings recalculated!`);
-    renderAdminPrior();
+    renderAdminPlayers();
   }catch(e){toast('Error: '+e.message,true);}
 };
 
@@ -1634,6 +1678,6 @@ window.closeModal=function(id,e){if(!e||e.target===document.getElementById(id))d
   history.replaceState(null,'',location.pathname);
 })();
 </script>
-<footer style="text-align:center;padding:20px 16px 28px;font-size:11px;color:var(--muted);letter-spacing:.4px">Friday Cornhole League &nbsp;·&nbsp; Ver 1.7</footer>
+<footer style="text-align:center;padding:20px 16px 28px;font-size:11px;color:var(--muted);letter-spacing:.4px">Friday Cornhole League &nbsp;·&nbsp; Ver 1.75</footer>
 </body>
 </html>
