@@ -177,16 +177,18 @@ select.fallback-select:last-child{border-bottom:none}
 
 <nav>
   <div class="brand">FC<span>L</span></div>
-  <div class="nav-links">
+  <div class="nav-links" id="nav-links-desktop">
     <a class="nb" href="index.html#home">Home</a>
     <a class="nb" href="index.html#calendar">Calendar</a>
     <a class="nb" href="index.html#rankings">Rankings</a>
     <a class="nb active" href="score.html">Enter Score</a>
     <a class="nb" href="index.html#stats">Player Stats</a>
-    <a class="nb" href="index.html#admin">Admin</a>
+    <a class="nb" id="score-admin-link" href="index.html#admin" style="display:none">Admin</a>
   </div>
-  <div class="sbadge">Season 2026</div>
-  <div class="sbadge">Ver 1.63</div>
+  <a href="profile.html" id="score-profile-pill" style="text-decoration:none;display:flex;align-items:center;gap:7px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:4px 12px 4px 5px;color:#fff;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0;transition:background .15s;margin-left:8px">
+    <div id="score-nav-av" style="width:26px;height:26px;border-radius:50%;background:var(--grass-light);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:11px;color:#fff;flex-shrink:0;overflow:hidden">?</div>
+    <span id="score-nav-name">Sign In</span>
+  </a>
   <button class="ham-btn" id="ham-btn" onclick="toggleHam()" aria-label="Menu">
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect y="4" width="22" height="2.2" rx="1.1" fill="white"/><rect y="9.9" width="22" height="2.2" rx="1.1" fill="white"/><rect y="15.8" width="22" height="2.2" rx="1.1" fill="white"/></svg>
   </button>
@@ -197,7 +199,8 @@ select.fallback-select:last-child{border-bottom:none}
   <a class="nb" href="index.html#rankings">Rankings</a>
   <a class="nb active" href="score.html">Enter Score</a>
   <a class="nb" href="index.html#stats">Player Stats</a>
-  <a class="nb" href="index.html#admin">Admin</a>
+  <a class="nb" id="score-ham-admin" href="index.html#admin" style="display:none">Admin</a>
+  <a class="nb" href="profile.html">My Profile</a>
 </div>
 
 <div class="wrap">
@@ -455,6 +458,7 @@ onAuthStateChanged(auth, async user => {
       const snap = await getDoc(doc(db,'users',user.uid));
       currentUserProfile = snap.exists() ? snap.data() : null;
     } catch(e){ currentUserProfile = null; }
+    updateScoreNavPill(user, currentUserProfile);
     renderStep0SignedIn();
     // If we're still on step 0, auto-set recorderId from linked player
     if(currentStep === 0){
@@ -465,10 +469,36 @@ onAuthStateChanged(auth, async user => {
   } else {
     currentUser = null;
     currentUserProfile = null;
+    updateScoreNavPill(null, null);
     renderStep0SignedOut();
     if(currentStep !== 0) showStep(0);
   }
 });
+
+function updateScoreNavPill(user, profile){
+  const nameEl = document.getElementById('score-nav-name');
+  const avEl   = document.getElementById('score-nav-av');
+  const adminVisible = user && (user.email === ADMIN_EMAIL || profile?.isAdmin);
+  ['score-admin-link','score-ham-admin'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.style.display = adminVisible ? '' : 'none';
+  });
+  if(!nameEl) return;
+  if(user){
+    const name = profile
+      ? `${profile.firstName||''} ${profile.lastName||''}`.trim()
+      : (user.displayName || user.email.split('@')[0]);
+    nameEl.textContent = name.split(' ')[0] || 'Me';
+    if(user.photoURL){
+      avEl.innerHTML = `<img src="${user.photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    } else {
+      avEl.textContent = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() || '?';
+    }
+  } else {
+    nameEl.textContent = 'Sign In';
+    avEl.textContent = '?';
+  }
+}
 
 function renderStep0SignedIn(){
   document.getElementById('step0-auth').style.display = 'none';
@@ -581,6 +611,7 @@ function s0FriendlyErr(code){
 }
 
 const RAW_CENTER = 5, K = 32;
+const ADMIN_EMAIL = 'matthew.r.fiebig@gmail.com';
 const marginScale = 12;
 const performanceScale = 0.1;
 const fullconfident = 20;

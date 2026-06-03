@@ -623,7 +623,7 @@ function refreshActive(){
   const id=document.querySelector('.page.active')?.id;
   if(id==='page-home')     renderHome();
   if(id==='page-rankings') renderRankings();
-  if(id==='page-stats')    { fillSelects(); renderPlayerStats(); }
+  if(id==='page-stats')    { fillSelects(); defaultStatsToCurrentUser(); renderPlayerStats(); }
   if(id==='page-calendar') renderCalendar();
   if(id==='page-admin'){
     if(adminAuthed){ renderAdminPlayers(); renderAdminMatches(); populateMergeSelects(); }
@@ -658,7 +658,7 @@ window.showPage=function(p,btn){
   }
   if(p==='home')     renderHome();
   if(p==='rankings') renderRankings();
-  if(p==='stats')    { fillSelects(); renderPlayerStats(); }
+  if(p==='stats')    { fillSelects(); defaultStatsToCurrentUser(); renderPlayerStats(); }
   if(p==='calendar') renderCalendar();
   if(p==='admin')    renderAdminPage();
 };
@@ -955,6 +955,15 @@ function fillSelects(){
     if(cur){el.value=cur;}
     if(el.value===cur&&cur) delete el.dataset.pending;
   });
+}
+
+function defaultStatsToCurrentUser(){
+  const sel=document.getElementById('stats-sel');
+  if(!sel||sel.value) return; // already has a selection
+  const linkedId=indexUserProfile?.linkedPlayerId;
+  if(linkedId && players.find(p=>p.id===linkedId)){
+    sel.value=linkedId;
+  }
 }
 
 window.renderPlayerStats=function renderPlayerStats(){
@@ -1708,9 +1717,23 @@ window.saveEditPlayer=async function(){
 };
 window.confirmDeletePlayer=function(id){
   const p=players.find(x=>x.id===id);if(!p)return;
-  document.getElementById('confirm-msg').textContent=`Delete "${p.name}"? They'll be removed from the roster. Match records remain.`;
+  const linkedUser=users.find(u=>u.linkedPlayerId===id);
+  const isAutoCreated=!!p.autoCreated;
+  let msg=`Delete "${p.name}"? Match records remain.`;
+  if(linkedUser){
+    const uName=`${linkedUser.firstName||''} ${linkedUser.lastName||''}`.trim()||linkedUser.email;
+    msg=`Delete "${p.name}"? Their account (${uName}) will be unlinked but NOT deleted. Match records remain.`;
+  }
+  document.getElementById('confirm-msg').textContent=msg;
   document.getElementById('confirm-ok-btn').onclick=async()=>{
-    try{await deleteDoc(doc(db,'players',id));toast('Player deleted');}catch(e){toast('Error: '+e.message,true);}
+    try{
+      // Unlink any user pointing to this player
+      if(linkedUser){
+        await updateDoc(doc(db,'users',linkedUser.uid),{linkedPlayerId:null});
+      }
+      await deleteDoc(doc(db,'players',id));
+      toast(`${p.name} deleted`);
+    }catch(e){toast('Error: '+e.message,true);}
     closeModal('modal-confirm');
   };
   openModal('modal-confirm');
