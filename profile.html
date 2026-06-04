@@ -415,6 +415,7 @@ window.emailSignUp = async function(){
   try{
     cred = await createUserWithEmailAndPassword(auth, email, pass);
   } catch(e){
+    console.error('Signup error:', e.code, e.message);
     showErr('signup-err', friendlyAuthErr(e.code));
     btn.disabled = false; btn.textContent = 'CREATE ACCOUNT';
     return;
