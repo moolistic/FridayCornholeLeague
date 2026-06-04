@@ -341,11 +341,6 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
       </div>
     </div>
     <div class="admin-section">
-      <div class="admin-section-hdr">Admin Access Management</div>
-      <div style="padding:10px 20px 4px;font-size:13px;color:var(--muted)">Grant or revoke admin access for registered users. At least one admin must remain at all times.</div>
-      <div id="admin-access-list"><div class="loading-overlay"><div class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:24px;height:24px;display:block;margin:0 auto"></div></div></div>
-    </div>
-    <div class="admin-section">
       <div class="admin-section-hdr">Match History</div>
       <div id="admin-matches-list"><div class="loading-overlay"><div class="spinner" style="border-color:rgba(0,0,0,0.15);border-top-color:var(--grass);width:24px;height:24px;display:block;margin:0 auto"></div></div></div>
     </div>
@@ -616,7 +611,7 @@ onSnapshot(collection(db,'users'), snap=>{
     const fresh=users.find(u=>u.uid===indexCurrentUser.uid);
     if(fresh){ indexUserProfile=fresh; updateNavAuth(indexCurrentUser,fresh); }
   }
-  if(adminAuthed){ renderAdminPlayers(); renderAdminAccessList(); populateMergeSelects(); }
+  if(adminAuthed){ renderAdminPlayers(); populateMergeSelects(); }
 });
 
 function refreshActive(){
@@ -627,7 +622,6 @@ function refreshActive(){
   if(id==='page-calendar') renderCalendar();
   if(id==='page-admin'){
     if(adminAuthed){ renderAdminPlayers(); renderAdminMatches(); populateMergeSelects(); }
-    else renderAdminPage();
   }
 }
 
@@ -1407,7 +1401,6 @@ function renderAdminPage(){
   document.getElementById('admin-panel').style.display='block';
   renderAdminPlayers();
   renderAdminMatches();
-  renderAdminAccessList();
   populateMergeSelects();
 }
 
@@ -1430,33 +1423,6 @@ async function resetSeasonRatings(){
   }catch(e){ toast('Error: '+e.message,true); }
 }
 
-// ── Admin access management ───────────────────────────────────────────────────
-function renderAdminAccessList(){
-  const box=document.getElementById('admin-access-list');
-  if(!box) return;
-  if(!users.length){box.innerHTML='<div style="padding:16px 20px;font-size:13px;color:var(--muted)">No registered users yet.</div>';return;}
-  const adminCount=users.filter(u=>u.isAdmin||u.email===ADMIN_EMAIL).length;
-  box.innerHTML=users.map(u=>{
-    const name=`${u.firstName||''} ${u.lastName||''}`.trim()||u.email||u.uid;
-    const isAdm=!!(u.isAdmin)||(u.email===ADMIN_EMAIL);
-    const isSelf=indexCurrentUser&&u.uid===indexCurrentUser.uid;
-    const isSuperAdmin=u.email===ADMIN_EMAIL;
-    // Prevent revoking if only 1 admin left or if it's the superadmin email
-    const canRevoke=isAdm&&!isSuperAdmin&&adminCount>1;
-    const canGrant=!isAdm;
-    return`<div class="admin-row">
-      <div class="admin-row-info">
-        <strong>${name}${isSelf?' (you)':''}</strong>
-        <span>${u.email||''}${isSuperAdmin?' · Superadmin':''}</span>
-      </div>
-      ${isAdm
-        ?`<span style="font-size:12px;font-weight:700;color:var(--grass);background:var(--grass-pale);padding:3px 10px;border-radius:20px">✓ Admin</span>
-           ${canRevoke?`<button class="icon-btn danger" onclick="setUserAdmin('${u.uid}',false)">Revoke</button>`:'<span style="font-size:11px;color:var(--muted)">Protected</span>'}`
-        :`<button class="icon-btn" onclick="setUserAdmin('${u.uid}',true)">Grant Admin</button>`
-      }
-    </div>`;
-  }).join('');
-}
 
 window.setUserAdmin=async function(uid,grant){
   const u=users.find(x=>x.uid===uid);
@@ -1603,6 +1569,34 @@ function renderAdminPlayers(){
             <button class="icon-btn" style="background:var(--grass);color:#fff;border-color:var(--grass)" onclick="savePlayerLink('${p.id}')">🔗 Save Link</button>
           </div>`:'<span style="font-size:12px;color:var(--muted)">No registered users yet.</span>'}
         </div>
+        ${linkedUser?`
+        <!-- Admin Access (only shown when account is linked) -->
+        <div style="border-top:0.5px solid var(--border);margin-top:14px;padding-top:12px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--grass);margin-bottom:6px">Admin Access</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;font-size:13px;color:var(--muted)">
+              ${(()=>{
+                const isAdm=!!(linkedUser.isAdmin)||(linkedUser.email===ADMIN_EMAIL);
+                const isSuperAdmin=linkedUser.email===ADMIN_EMAIL;
+                const adminCount=users.filter(u=>u.isAdmin||u.email===ADMIN_EMAIL).length;
+                const canRevoke=isAdm&&!isSuperAdmin&&adminCount>1;
+                const name=`${linkedUser.firstName||''} ${linkedUser.lastName||''}`.trim()||linkedUser.email;
+                if(isSuperAdmin) return `<span style="font-weight:600;color:var(--grass)">✓ Superadmin</span> — ${name}`;
+                if(isAdm) return `<span style="font-weight:600;color:var(--grass)">✓ Admin</span> — ${name}${canRevoke?'':' <span style=\'font-size:11px;opacity:.6\'>(last admin — protected)</span>'}`;
+                return `<span style="color:var(--muted)">No admin access</span> — ${name}`;
+              })()}
+            </div>
+            ${(()=>{
+              const isAdm=!!(linkedUser.isAdmin)||(linkedUser.email===ADMIN_EMAIL);
+              const isSuperAdmin=linkedUser.email===ADMIN_EMAIL;
+              const adminCount=users.filter(u=>u.isAdmin||u.email===ADMIN_EMAIL).length;
+              const canRevoke=isAdm&&!isSuperAdmin&&adminCount>1;
+              if(isSuperAdmin) return '';
+              if(isAdm) return canRevoke?`<button class="icon-btn danger" onclick="setUserAdmin('${linkedUser.uid}',false)">Revoke Admin</button>`:'';
+              return `<button class="icon-btn" style="background:var(--grass);color:#fff;border-color:var(--grass)" onclick="setUserAdmin('${linkedUser.uid}',true)">Grant Admin</button>`;
+            })()}
+          </div>
+        </div>`:''}
       </div>
     </div>`;
   }).join('');
