@@ -342,29 +342,26 @@ onAuthStateChanged(auth, async user => {
   }
   const ref = doc(db, 'users', user.uid);
   const snap = await getDoc(ref);
+
   if(snap.exists()){
     currentProfile = snap.data();
     updateProfNavPill(user, currentProfile);
-    // If auto-created profile has no first/last name filled in yet, show completion
-    const needsCompletion = !currentProfile.firstName && !currentProfile.lastName && !user.displayName;
+    const needsCompletion = !currentProfile.firstName && !currentProfile.lastName;
     if(needsCompletion){
-      document.getElementById('complete-first').value = '';
-      document.getElementById('complete-last').value  = '';
+      // Pre-fill from Google displayName if available
+      document.getElementById('complete-first').value = user.displayName?.split(' ')[0] || '';
+      document.getElementById('complete-last').value  = user.displayName?.split(' ').slice(1).join(' ') || '';
       showScreen('complete');
     } else {
-      // Pre-fill name from displayName if profile fields still blank
-      if(!currentProfile.firstName && user.displayName){
-        currentProfile.firstName = user.displayName.split(' ')[0]||'';
-        currentProfile.lastName  = user.displayName.split(' ').slice(1).join(' ')||'';
-      }
       renderProfileScreen(user, currentProfile);
       showScreen('profile');
     }
   } else {
+    // Brand new user — no profile doc yet
     updateProfNavPill(user, null);
-    // No profile at all — show completion
-    document.getElementById('complete-first').value = user.displayName?.split(' ')[0] || '';
-    document.getElementById('complete-last').value  = user.displayName?.split(' ').slice(1).join(' ') || '';
+    const nameParts = (user.displayName || '').split(' ');
+    document.getElementById('complete-first').value = nameParts[0] || '';
+    document.getElementById('complete-last').value  = nameParts.slice(1).join(' ') || '';
     showScreen('complete');
   }
 });
@@ -408,38 +405,44 @@ window.emailSignUp = async function(){
   const pass   = document.getElementById('signup-password').value;
   const bday   = document.getElementById('signup-birthday').value;
   const pizza  = document.getElementById('signup-pizza').value.trim();
+  showErr('signup-err','');
   if(!first||!last||!email||!pass){ showErr('signup-err','Please fill in all required fields'); return; }
   if(pass.length < 6){ showErr('signup-err','Password must be at least 6 characters'); return; }
   const btn = document.getElementById('signup-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Creating account…';
-  showErr('signup-err','');
+
+  let cred = null;
   try{
-    const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    try{
-      await updateProfile(cred.user, { displayName: `${first} ${last}` });
-    } catch(_){}
-    // Auto-create player record
-    let linkedPlayerId = null;
-    try{
-      const playerRef = await addDoc(collection(db,'players'),{
-        name:`${first} ${last}`, rating:5, lifetimeRating:5,
-        wins:0, losses:0, totalPoints:0,
-        seasonGames:0, lifetimeGames:0, format:'both', autoCreated:true
-      });
-      linkedPlayerId = playerRef.id;
-    } catch(fe){ console.warn('Player creation failed:', fe); }
-    try{
-      await setDoc(doc(db,'users',cred.user.uid), {
-        firstName: first, lastName: last, email,
-        birthday: bday || null, favPizzaTopping: pizza || null,
-        linkedPlayerId, isAdmin: false, createdAt: Date.now()
-      });
-    } catch(fe){ console.warn('Profile doc creation failed:', fe); }
-    toast(`Welcome, ${first}! 🎉`);
+    cred = await createUserWithEmailAndPassword(auth, email, pass);
   } catch(e){
-    showErr('signup-err', e.code ? friendlyAuthErr(e.code) : (e.message || 'Something went wrong. Please try again.'));
+    showErr('signup-err', friendlyAuthErr(e.code));
+    btn.disabled = false; btn.textContent = 'CREATE ACCOUNT';
+    return;
   }
+
+  // Auth succeeded — now write Firestore docs (non-fatal if rules block)
+  try{ await updateProfile(cred.user, { displayName: `${first} ${last}` }); }catch(_){}
+
+  let linkedPlayerId = null;
+  try{
+    const playerRef = await addDoc(collection(db,'players'),{
+      name:`${first} ${last}`, rating:5, lifetimeRating:5,
+      wins:0, losses:0, totalPoints:0,
+      seasonGames:0, lifetimeGames:0, format:'both', autoCreated:true
+    });
+    linkedPlayerId = playerRef.id;
+  } catch(fe){ console.warn('Player creation failed (check Firestore rules):', fe.message); }
+
+  try{
+    await setDoc(doc(db,'users',cred.user.uid), {
+      firstName: first, lastName: last, email,
+      birthday: bday || null, favPizzaTopping: pizza || null,
+      linkedPlayerId, isAdmin: false, createdAt: Date.now()
+    });
+  } catch(fe){ console.warn('Profile doc failed (check Firestore rules):', fe.message); }
+
   btn.disabled = false; btn.textContent = 'CREATE ACCOUNT';
+  // onAuthStateChanged will fire and navigate to the profile screen
 };
 
 // ── Complete Google profile ───────────────────────────────────────────────────
@@ -453,28 +456,44 @@ window.saveCompletion = async function(){
   const btn = document.getElementById('complete-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Saving…';
   try{
-    // Check if a profile already exists (auto-created by index.html)
+    // Check if a profile already exists
     const snap = await getDoc(doc(db,'users',user.uid));
     const existing = snap.exists() ? snap.data() : null;
-    const linkedPlayerId = existing?.linkedPlayerId || null;
-    // If linked player exists and has no real name yet, update it
-    if(linkedPlayerId){
-      const pSnap = await getDoc(doc(db,'players',linkedPlayerId));
-      if(pSnap.exists() && pSnap.data().autoCreated){
-        await updateDoc(doc(db,'players',linkedPlayerId),{name:`${first} ${last}`});
-      }
+    let linkedPlayerId = existing?.linkedPlayerId || null;
+
+    if(!linkedPlayerId){
+      // No player yet — create one now
+      try{
+        const playerRef = await addDoc(collection(db,'players'),{
+          name:`${first} ${last}`, rating:5, lifetimeRating:5,
+          wins:0, losses:0, totalPoints:0,
+          seasonGames:0, lifetimeGames:0, format:'both', autoCreated:true
+        });
+        linkedPlayerId = playerRef.id;
+      } catch(fe){ console.warn('Player creation failed (check Firestore rules):', fe.message); }
+    } else {
+      // Player exists — update name if it was auto-created with a placeholder
+      try{
+        const pSnap = await getDoc(doc(db,'players',linkedPlayerId));
+        if(pSnap.exists() && pSnap.data().autoCreated){
+          await updateDoc(doc(db,'players',linkedPlayerId),{name:`${first} ${last}`});
+        }
+      } catch(_){}
     }
+
     const profileData = {
       firstName: first, lastName: last, email: user.email,
       birthday: bday || null, favPizzaTopping: pizza || null,
-      linkedPlayerId, isAdmin: false, createdAt: existing?.createdAt || Date.now()
+      linkedPlayerId, isAdmin: existing?.isAdmin || false,
+      createdAt: existing?.createdAt || Date.now()
     };
     await setDoc(doc(db,'users',user.uid), profileData);
     currentProfile = profileData;
+    updateProfNavPill(user, profileData);
     renderProfileScreen(user, profileData);
     showScreen('profile');
-    toast(`Profile saved! Welcome, ${first} 🎉`);
-  } catch(e){ showErr('complete-err', e.message); }
+    toast(`Welcome, ${first}! 🎉`);
+  } catch(e){ showErr('complete-err', e.message || 'Something went wrong. Please try again.'); }
   btn.disabled = false; btn.textContent = 'SAVE & CONTINUE';
 };
 

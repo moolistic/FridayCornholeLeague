@@ -204,47 +204,20 @@ select.fallback-select:last-child{border-bottom:none}
 </div>
 
 <div class="wrap">
-  <!-- STEP 0: Sign In -->
+  <!-- STEP 0: Sign In Gate -->
   <div class="step active" id="step-0">
     <!-- Signed-out state -->
     <div id="step0-auth">
       <div class="step-header">
         <div class="step-pill">Before We Start</div>
         <div class="step-title">Sign In First</div>
-        <div class="step-sub">Sign in so your name is attached to this score entry</div>
+        <div class="step-sub">Sign in so your score entry is tied to your account</div>
       </div>
-      <div style="background:var(--card);border:0.5px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:16px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:0.5px solid var(--border)">
-          <button id="s0-tab-in"  onclick="s0Tab('in')"  style="padding:12px;text-align:center;font-size:13px;font-weight:600;color:var(--grass);background:var(--grass-pale);cursor:pointer;border:none;font-family:var(--fb)">Sign In</button>
-          <button id="s0-tab-up"  onclick="s0Tab('up')"  style="padding:12px;text-align:center;font-size:13px;font-weight:600;color:var(--muted);background:none;cursor:pointer;border:none;font-family:var(--fb)">Create Account</button>
-        </div>
-        <!-- Sign-in form -->
-        <div id="s0-form-in" style="padding:20px">
-          <div id="s0-err-in" style="color:var(--danger);font-size:13px;margin-bottom:10px;display:none;padding:8px 12px;background:#FFF0F0;border-radius:8px"></div>
-          <div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px">Email</label><input type="email" id="s0-email" placeholder="you@example.com" autocomplete="email" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none"></div>
-          <div style="margin-bottom:14px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px">Password</label><input type="password" id="s0-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')s0SignIn()" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none"></div>
-          <button onclick="s0SignIn()" id="s0-signin-btn" style="width:100%;padding:12px;background:var(--grass);color:#fff;border:none;border-radius:8px;font-family:var(--fd);font-size:18px;letter-spacing:1px;cursor:pointer;margin-bottom:12px">SIGN IN</button>
-          <div style="display:flex;align-items:center;gap:10px;margin:4px 0 12px;color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px"><div style="flex:1;height:1px;background:var(--border)"></div>or<div style="flex:1;height:1px;background:var(--border)"></div></div>
-          <button onclick="s0Google()" style="width:100%;padding:11px;background:#fff;color:#3c3c3c;border:1px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 1px 3px rgba(0,0,0,0.08)"><svg width="16" height="16" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.703-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>Continue with Google</button>
-        </div>
-        <!-- Sign-up form -->
-        <div id="s0-form-up" style="padding:20px;display:none">
-          <div id="s0-err-up" style="color:var(--danger);font-size:13px;margin-bottom:10px;display:none;padding:8px 12px;background:#FFF0F0;border-radius:8px"></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-            <div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px">First Name</label><input type="text" id="s0-first" placeholder="Jake" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none"></div>
-            <div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px">Last Name</label><input type="text" id="s0-last" placeholder="Miller" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none"></div>
-          </div>
-          <div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px">Email</label><input type="email" id="s0-email-up" placeholder="you@example.com" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none"></div>
-          <div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px">Password</label><input type="password" id="s0-pass-up" placeholder="Min 6 characters" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none"></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-            <div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px">Birthday</label><input type="date" id="s0-bday" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none"></div>
-            <div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px">🍕 Fav Pizza Topping</label><input type="text" id="s0-pizza" placeholder="Pepperoni" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none"></div>
-          </div>
-          <button onclick="s0SignUp()" id="s0-signup-btn" style="width:100%;padding:12px;background:var(--grass);color:#fff;border:none;border-radius:8px;font-family:var(--fd);font-size:18px;letter-spacing:1px;cursor:pointer;margin-bottom:12px">CREATE ACCOUNT</button>
-          <div style="display:flex;align-items:center;gap:10px;margin:4px 0 12px;color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px"><div style="flex:1;height:1px;background:var(--border)"></div>or<div style="flex:1;height:1px;background:var(--border)"></div></div>
-          <button onclick="s0Google()" style="width:100%;padding:11px;background:#fff;color:#3c3c3c;border:1px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 1px 3px rgba(0,0,0,0.08)"><svg width="16" height="16" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.703-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>Continue with Google</button>
-        </div>
-      </div>
+      <a href="profile.html" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;background:var(--grass);color:#fff;border:none;border-radius:10px;font-family:var(--fd);font-size:22px;letter-spacing:1px;text-decoration:none;transition:background .15s" onmouseover="this.style.background='#27500A'" onmouseout="this.style.background='var(--grass)'">
+        <svg width="20" height="20" viewBox="0 0 18 18"><path fill="rgba(255,255,255,0.85)" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.703-1.567 2.684-3.875 2.684-6.615z"/><path fill="rgba(255,255,255,0.85)" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="rgba(255,255,255,0.85)" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="rgba(255,255,255,0.85)" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
+        Sign In to Continue
+      </a>
+      <p style="text-align:center;margin-top:12px;font-size:13px;color:var(--muted)">You'll be sent back here after signing in.</p>
     </div>
     <!-- Signed-in state -->
     <div id="step0-signed-in" style="display:none">
@@ -422,12 +395,11 @@ select.fallback-select:last-child{border-bottom:none}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, doc, addDoc, updateDoc, getDoc, setDoc, onSnapshot }
+import { getFirestore, collection, doc, addDoc, updateDoc, getDoc, onSnapshot }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {
   getAuth, onAuthStateChanged, signOut as fbSignOut,
-  createUserWithEmailAndPassword, signInWithEmailAndPassword,
-  GoogleAuthProvider, signInWithPopup, updateProfile as fbUpdateProfile
+  GoogleAuthProvider
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -527,66 +499,6 @@ function renderStep0SignedOut(){
 }
 
 // ── Step 0 auth helpers ───────────────────────────────────────────────────────
-window.s0Tab = function(tab){
-  document.getElementById('s0-tab-in').style.cssText = tab==='in'
-    ? 'padding:12px;text-align:center;font-size:13px;font-weight:600;color:var(--grass);background:var(--grass-pale);cursor:pointer;border:none;font-family:var(--fb)'
-    : 'padding:12px;text-align:center;font-size:13px;font-weight:600;color:var(--muted);background:none;cursor:pointer;border:none;font-family:var(--fb)';
-  document.getElementById('s0-tab-up').style.cssText = tab==='up'
-    ? 'padding:12px;text-align:center;font-size:13px;font-weight:600;color:var(--grass);background:var(--grass-pale);cursor:pointer;border:none;font-family:var(--fb)'
-    : 'padding:12px;text-align:center;font-size:13px;font-weight:600;color:var(--muted);background:none;cursor:pointer;border:none;font-family:var(--fb)';
-  document.getElementById('s0-form-in').style.display = tab==='in' ? 'block' : 'none';
-  document.getElementById('s0-form-up').style.display = tab==='up' ? 'block' : 'none';
-};
-
-window.s0Google = async function(){
-  try{ await signInWithPopup(auth, gProvider); }
-  catch(e){ toast(e.message, true); }
-};
-
-window.s0SignIn = async function(){
-  const email = document.getElementById('s0-email').value.trim();
-  const pass  = document.getElementById('s0-pass').value;
-  const errEl = document.getElementById('s0-err-in');
-  if(!email||!pass){ errEl.textContent='Fill in all fields'; errEl.style.display='block'; return; }
-  const btn = document.getElementById('s0-signin-btn');
-  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Signing in…';
-  try{
-    await signInWithEmailAndPassword(auth, email, pass);
-    errEl.style.display='none';
-  } catch(e){
-    errEl.textContent = s0FriendlyErr(e.code); errEl.style.display='block';
-  }
-  btn.disabled=false; btn.textContent='SIGN IN';
-};
-
-window.s0SignUp = async function(){
-  const first = document.getElementById('s0-first').value.trim();
-  const last  = document.getElementById('s0-last').value.trim();
-  const email = document.getElementById('s0-email-up').value.trim();
-  const pass  = document.getElementById('s0-pass-up').value;
-  const bday  = document.getElementById('s0-bday').value;
-  const pizza = document.getElementById('s0-pizza').value.trim();
-  const errEl = document.getElementById('s0-err-up');
-  if(!first||!last||!email||!pass){ errEl.textContent='Please fill in all required fields'; errEl.style.display='block'; return; }
-  if(pass.length<6){ errEl.textContent='Password must be at least 6 characters'; errEl.style.display='block'; return; }
-  const btn = document.getElementById('s0-signup-btn');
-  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Creating account…';
-  try{
-    const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    await fbUpdateProfile(cred.user, { displayName: `${first} ${last}` });
-    await setDoc(doc(db,'users',cred.user.uid),{
-      firstName:first, lastName:last, email,
-      birthday:bday||null, favPizzaTopping:pizza||null,
-      linkedPlayerId:null, createdAt:Date.now()
-    });
-    errEl.style.display='none';
-    toast(`Welcome, ${first}! 🎉`);
-  } catch(e){
-    errEl.textContent = s0FriendlyErr(e.code); errEl.style.display='block';
-  }
-  btn.disabled=false; btn.textContent='CREATE ACCOUNT';
-};
-
 window.s0SignOut = async function(){
   await fbSignOut(auth);
   recorderId = null; picks = []; isSingles = false;
@@ -604,11 +516,6 @@ window.s0Continue = function(){
   }
   showStep(1);
 };
-
-function s0FriendlyErr(code){
-  const m={'auth/user-not-found':'No account with that email.','auth/wrong-password':'Incorrect password.','auth/email-already-in-use':'Email already in use.','auth/weak-password':'Password too short.','auth/invalid-email':'Invalid email.','auth/invalid-credential':'Incorrect email or password.'};
-  return m[code]||'Something went wrong.';
-}
 
 const RAW_CENTER = 5, K = 32;
 const ADMIN_EMAIL = 'matthew.r.fiebig@gmail.com';
