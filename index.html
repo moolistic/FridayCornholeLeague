@@ -320,7 +320,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
 
 <script type="module">
 import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, doc, addDoc, getDoc, updateDoc, deleteDoc, writeBatch, onSnapshot }
+import { getFirestore, collection, doc, addDoc, getDoc, updateDoc, deleteDoc, deleteField, writeBatch, onSnapshot }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
@@ -815,6 +815,11 @@ window.goPlayer=function(id){
   renderPlayerStats();
 };
 
+// Navigate to player stats from another page
+window.goPlayerExternal=function(id){
+  location.href='index.html?player='+id;
+};
+
 function fillSelects(){
   ['stats-sel'].forEach(id=>{
     const el=document.getElementById(id); if(!el)return;
@@ -1056,10 +1061,11 @@ window.renderPlayerStats=function renderPlayerStats(){
     </div>`;
 }
 
-// ── RSVP ─────────────────────────────────────────────────────────────────────
+// ── RSVP (Firestore-backed) ───────────────────────────────────────────────────
 function getRsvp(evId){
-  if(indexCurrentUser) try{return localStorage.getItem('rsvp_'+indexCurrentUser.uid+'_'+evId)||'none';}catch{return'none';}
-  try{return localStorage.getItem('rsvp_'+evId)||'none';}catch{return'none';}
+  const ev=events.find(e=>e.id===evId); if(!ev) return 'none';
+  if(!indexCurrentUser) return 'none';
+  return (ev.rsvps&&ev.rsvps[indexCurrentUser.uid]) || 'none';
 }
 function getRsvpLabel(evId){
   const r=getRsvp(evId);
@@ -1073,7 +1079,23 @@ function getRsvpStyle(evId){
   if(r==='no')  return 'border-color:var(--danger);color:var(--danger);font-weight:600';
   return '';
 }
-window.toggleRsvp=function(evId,btn){
+function getGoingCount(evId){
+  const ev=events.find(e=>e.id===evId); if(!ev||!ev.rsvps) return 0;
+  // Only count users with a linkedPlayerId (league members)
+  const linkedUids=new Set(users.filter(u=>u.linkedPlayerId).map(u=>u.uid));
+  return Object.entries(ev.rsvps).filter(([uid,v])=>v==='yes'&&linkedUids.has(uid)).length;
+}
+function getGoingNames(evId){
+  const ev=events.find(e=>e.id===evId); if(!ev||!ev.rsvps) return [];
+  const linkedUsers=users.filter(u=>u.linkedPlayerId);
+  return Object.entries(ev.rsvps)
+    .filter(([uid,v])=>v==='yes')
+    .map(([uid])=>{
+      const u=linkedUsers.find(x=>x.uid===uid);
+      return u?`${u.firstName||''} ${u.lastName||''}`.trim():null;
+    }).filter(Boolean);
+}
+window.toggleRsvp=async function(evId,btn){
   if(!indexCurrentUser){
     toast('Sign in to RSVP — click "My Profile" in the nav',true);
     return;
@@ -1083,15 +1105,18 @@ window.toggleRsvp=function(evId,btn){
   if(cur==='none') next='yes';
   else if(cur==='yes') next='no';
   else next='none';
-  const key='rsvp_'+indexCurrentUser.uid+'_'+evId;
+  btn.disabled=true;
   try{
-    if(next==='none') localStorage.removeItem(key);
-    else localStorage.setItem(key,next);
-  }catch{}
-  btn.textContent=getRsvpLabel(evId);
-  btn.style.cssText=getRsvpStyle(evId);
-  const msg=next==='yes'?'You\'re going! 🎉':next==='no'?'RSVP removed — maybe next time':'RSVP cleared';
-  toast(msg);
+    const evRef=doc(db,'events',evId);
+    if(next==='none'){
+      await updateDoc(evRef,{[`rsvps.${indexCurrentUser.uid}`]:deleteField()});
+    } else {
+      await updateDoc(evRef,{[`rsvps.${indexCurrentUser.uid}`]:next});
+    }
+    const msg=next==='yes'?'You\'re going! 🎉':next==='no'?'RSVP removed — maybe next time':'RSVP cleared';
+    toast(msg);
+  }catch(e){toast('Error saving RSVP: '+e.message,true);}
+  btn.disabled=false;
 };
 
 // ── Calendar ──────────────────────────────────────────────────────────────────
@@ -1163,13 +1188,24 @@ function renderCalendar(){
       ev.notes       ?{icon:'📋',label:'Notes',val:ev.notes}:null,
     ].filter(Boolean);
     const cardClass=isPast?'cal-past':isCancelled?'cal-cancelled':'cal-upcoming';
+
+    // Going count — only show for non-cancelled events
+    const goingCount=!isCancelled?getGoingCount(ev.id):0;
+    const goingNames=!isCancelled?getGoingNames(ev.id):[];
+    const goingBadge=goingCount>0
+      ?`<div title="${goingNames.join(', ')}" style="display:inline-flex;align-items:center;gap:5px;background:var(--grass-pale);color:var(--grass);font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;cursor:default">✅ ${goingCount} going</div>`
+      :'';
+
     return`<div class="cal-card ${cardClass}">
-      <div class="cal-card-hdr">
-        <div class="cal-card-date">${dateStr}</div>
-        ${isCancelled
-          ? `<div class="cal-card-theme" style="color:var(--danger)">🚫 No FCL This Week</div>`
-          : ev.theme?`<div class="cal-card-theme">${ev.theme}</div>`:''
-        }
+      <div class="cal-card-hdr" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+        <div>
+          <div class="cal-card-date">${dateStr}</div>
+          ${isCancelled
+            ? `<div class="cal-card-theme" style="color:var(--danger)">🚫 No FCL This Week</div>`
+            : ev.theme?`<div class="cal-card-theme">${ev.theme}</div>`:''
+          }
+        </div>
+        ${goingBadge?`<div style="flex-shrink:0;margin-top:2px">${goingBadge}</div>`:''}
       </div>
       ${!isCancelled?`<div class="cal-card-body">
         ${details.map(d=>`<div class="cal-detail">
@@ -1274,6 +1310,18 @@ window.closeModal=function(id,e){if(!e||e.target===document.getElementById(id))d
   const yrEl=document.getElementById('season-year-label');
   if(yrEl) yrEl.textContent=new Date().getFullYear();
   const hash=(location.hash||'').replace('#','');
+  const params=new URLSearchParams(location.search);
+  const playerParam=params.get('player');
+  // If ?player=ID, go to stats page with that player pre-selected
+  if(playerParam){
+    const btn=[...document.querySelectorAll('.nb')].find(b=>b.textContent.trim()==='Player Stats');
+    showPage('stats', btn||null);
+    // Store pending player id; fillSelects/renderPlayerStats fire after data loads
+    const sel=document.getElementById('stats-sel');
+    if(sel) sel.dataset.pending=playerParam;
+    history.replaceState(null,'',location.pathname);
+    return;
+  }
   const validPages=['home','rankings','stats','calendar'];
   const target=validPages.includes(hash)?hash:'home';
   const labelMap={home:'home',rankings:'rankings',stats:'player stats',calendar:'calendar'};

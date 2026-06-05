@@ -423,7 +423,9 @@ function renderAdminPlayers(){
     const linkedLabel=linkedUser
       ?`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--grass-pale);color:var(--grass);font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;margin-top:3px">🔗 ${linkedUser.firstName||''} ${linkedUser.lastName||''} (${linkedUser.email||''})</span>`
       :`<span style="font-size:11px;color:var(--muted)">No account linked</span>`;
-    const userOpts=users.map(u=>`<option value="${u.uid}" ${linkedUser&&linkedUser.uid===u.uid?'selected':''}>${u.firstName||''} ${u.lastName||''} — ${u.email||u.uid}</option>`).join('');
+    // Only show accounts not already linked to another player (or the current link)
+    const linkedUids = new Set(users.filter(u=>u.linkedPlayerId && u.linkedPlayerId!==p.id).map(u=>u.uid));
+    const userOpts=users.filter(u=>!linkedUids.has(u.uid)).map(u=>`<option value="${u.uid}" ${linkedUser&&linkedUser.uid===u.uid?'selected':''}>${u.firstName||''} ${u.lastName||''} — ${u.email||u.uid}</option>`).join('');
     return`<div class="admin-row" style="flex-direction:column;align-items:stretch;gap:0">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div class="av" style="width:36px;height:36px;font-size:14px;flex-shrink:0">${initials(p.name)}</div>
@@ -450,12 +452,13 @@ function renderAdminPlayers(){
         <!-- Account Link -->
         <div style="border-top:0.5px solid var(--border);margin-top:14px;padding-top:12px">
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--grass);margin-bottom:8px">Link Account</div>
-          ${users.length?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          ${users.filter(u=>!new Set(users.filter(x=>x.linkedPlayerId&&x.linkedPlayerId!==p.id).map(x=>x.uid)).has(u.uid)).length?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <select id="link-sel-${p.id}" style="flex:1;min-width:180px;padding:7px 10px;border:0.5px solid var(--border);border-radius:6px;font-family:var(--fb);font-size:13px;outline:none">
               <option value="">— No account linked —</option>
               ${userOpts}
             </select>
-            <button class="icon-btn" style="background:var(--grass);color:#fff;border-color:var(--grass)" onclick="savePlayerLink('${p.id}')">🔗 Save Link</button>
+            <button class="icon-btn" style="background:var(--grass);color:#fff;border-color:var(--grass)" onclick="savePlayerLink('${p.id}')">🔗 Link</button>
+            ${linkedUser?`<button class="icon-btn danger" onclick="unlinkPlayer('${p.id}')">✕ Unlink</button>`:''}
           </div>`:'<span style="font-size:12px;color:var(--muted)">No registered users yet.</span>'}
         </div>
         ${linkedUser?`
@@ -513,6 +516,22 @@ window.savePlayerLink=async function(playerId){
     toast(uid?`Account linked to ${p?.name||playerId}!`:'Account unlinked.');
     renderAdminPlayers();
   }catch(e){toast('Error: '+e.message,true);}
+};
+
+window.unlinkPlayer=async function(playerId){
+  const linkedUser=users.find(u=>u.linkedPlayerId===playerId);
+  if(!linkedUser) return;
+  const name=`${linkedUser.firstName||''} ${linkedUser.lastName||''}`.trim()||linkedUser.email;
+  const p=players.find(x=>x.id===playerId);
+  document.getElementById('confirm-msg').textContent=`Unlink ${name} from ${p?.name||playerId}?`;
+  document.getElementById('confirm-ok-btn').onclick=async()=>{
+    closeModal('modal-confirm');
+    try{
+      await updateDoc(doc(db,'users',linkedUser.uid),{linkedPlayerId:null});
+      toast(`${name} unlinked.`);
+    }catch(e){toast('Error: '+e.message,true);}
+  };
+  openModal('modal-confirm');
 };
 
 window.setUserAdmin=async function(uid,grant){
