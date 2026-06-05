@@ -336,7 +336,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
       <label style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:block">Message</label>
       <textarea id="reminder-body" rows="5" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none;resize:vertical;line-height:1.5"></textarea>
     </div>
-    <div id="reminder-recipients" style="font-size:12px;color:var(--muted);margin-bottom:16px;padding:8px 12px;background:var(--bg);border-radius:6px"></div>
+    <div id="reminder-recipients" style="font-size:12px;color:var(--muted);margin-bottom:16px;padding:8px 12px;background:var(--bg);border-radius:6px;max-height:180px;overflow-y:auto"></div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:14px;padding:8px 12px;background:#FFFBF0;border:0.5px solid rgba(186,117,23,0.2);border-radius:6px">
       ⚙️ Requires EmailJS configured — see setup notes in code comments.
     </div>
@@ -1091,50 +1091,54 @@ window.renderPlayerStats=function renderPlayerStats(){
 }
 
 // ── RSVP (Firestore-backed) ───────────────────────────────────────────────────
-function getRsvp(evId){
+function getRsvp(evId, uid){
   const ev=events.find(e=>e.id===evId); if(!ev) return 'none';
-  if(!indexCurrentUser) return 'none';
-  return (ev.rsvps&&ev.rsvps[indexCurrentUser.uid]) || 'none';
+  const u=uid||indexCurrentUser?.uid; if(!u) return 'none';
+  return (ev.rsvps&&ev.rsvps[u]) || 'none';
 }
-function getRsvpLabel(evId){
-  const r=getRsvp(evId);
-  if(r==='yes') return '✅ Going';
-  if(r==='no')  return '❌ Not Going';
-  return '🎯 RSVP';
+function getRsvpCounts(evId){
+  const ev=events.find(e=>e.id===evId); if(!ev||!ev.rsvps) return {yes:0,no:0};
+  // Count all rsvp entries (includes proxy entries keyed by uid)
+  let yes=0,no=0;
+  for(const [key,v] of Object.entries(ev.rsvps)){
+    if(v==='yes') yes++; else if(v==='no') no++;
+  }
+  return{yes,no};
 }
-function getRsvpStyle(evId){
-  const r=getRsvp(evId);
-  if(r==='yes') return 'border-color:var(--grass);color:var(--grass);font-weight:600';
-  if(r==='no')  return 'border-color:var(--danger);color:var(--danger);font-weight:600';
-  return '';
+function getRsvpLists(evId){
+  const ev=events.find(e=>e.id===evId); if(!ev||!ev.rsvps) return{yes:[],no:[]};
+  const yes=[],no=[];
+  for(const [key,v] of Object.entries(ev.rsvps)){
+    // key is either uid (own RSVP) or uid_proxy_PLAYERID (proxy RSVP)
+    let label='';
+    if(key.includes('_proxy_')){
+      const playerId=key.split('_proxy_')[1];
+      const player=players.find(x=>x.id===playerId);
+      label=player?player.name:'Unknown guest';
+      // find who submitted it
+      const submitterUid=key.split('_proxy_')[0];
+      const submitter=users.find(u=>u.uid===submitterUid);
+      if(submitter) label+=` (via ${submitter.firstName||'someone'})`;
+    } else {
+      const u=users.find(x=>x.uid===key);
+      label=u?`${u.firstName||''} ${u.lastName||''}`.trim()||u.email:'Unknown';
+    }
+    if(v==='yes') yes.push(label);
+    else if(v==='no') no.push(label);
+  }
+  return{yes,no};
 }
-function getGoingCount(evId){
-  const ev=events.find(e=>e.id===evId); if(!ev||!ev.rsvps) return 0;
-  // Only count users with a linkedPlayerId (league members)
-  const linkedUids=new Set(users.filter(u=>u.linkedPlayerId).map(u=>u.uid));
-  return Object.entries(ev.rsvps).filter(([uid,v])=>v==='yes'&&linkedUids.has(uid)).length;
-}
-function getGoingNames(evId){
-  const ev=events.find(e=>e.id===evId); if(!ev||!ev.rsvps) return [];
-  const linkedUsers=users.filter(u=>u.linkedPlayerId);
-  return Object.entries(ev.rsvps)
-    .filter(([uid,v])=>v==='yes')
-    .map(([uid])=>{
-      const u=linkedUsers.find(x=>x.uid===uid);
-      return u?`${u.firstName||''} ${u.lastName||''}`.trim():null;
-    }).filter(Boolean);
-}
-window.toggleRsvp=async function(evId,btn){
+
+window.setRsvp=async function(evId,val,btnGoing,btnNo){
   if(!indexCurrentUser){
     toast('Sign in to RSVP — click "My Profile" in the nav',true);
     return;
   }
+  if(btnGoing) btnGoing.disabled=true;
+  if(btnNo) btnNo.disabled=true;
   const cur=getRsvp(evId);
-  let next;
-  if(cur==='none') next='yes';
-  else if(cur==='yes') next='no';
-  else next='none';
-  btn.disabled=true;
+  // Toggle off if clicking the same value
+  const next = cur===val ? 'none' : val;
   try{
     const evRef=doc(db,'events',evId);
     if(next==='none'){
@@ -1142,10 +1146,34 @@ window.toggleRsvp=async function(evId,btn){
     } else {
       await updateDoc(evRef,{[`rsvps.${indexCurrentUser.uid}`]:next});
     }
-    const msg=next==='yes'?'You\'re going! 🎉':next==='no'?'RSVP removed — maybe next time':'RSVP cleared';
+    const msg=next==='yes'?"You're going! 🎉":next==='no'?"Marked as not going":"RSVP cleared";
     toast(msg);
   }catch(e){toast('Error saving RSVP: '+e.message,true);}
-  btn.disabled=false;
+  if(btnGoing) btnGoing.disabled=false;
+  if(btnNo) btnNo.disabled=false;
+};
+
+window.setProxyRsvp=async function(evId,val,playerId){
+  if(!indexCurrentUser){ toast('Sign in first',true); return; }
+  if(!playerId){ toast('Select a player first',true); return; }
+  const key=`${indexCurrentUser.uid}_proxy_${playerId}`;
+  try{
+    const evRef=doc(db,'events',evId);
+    if(val==='none'){
+      await updateDoc(evRef,{[key]:deleteField()});
+    } else {
+      await updateDoc(evRef,{[key]:val});
+    }
+    const pName=players.find(x=>x.id===playerId)?.name||'Guest';
+    toast(val==='yes'?`${pName} marked as going 🎉`:val==='no'?`${pName} marked as not going`:`${pName} RSVP cleared`);
+  }catch(e){toast('Error: '+e.message,true);}
+};
+
+// Toggle RSVP list expansion (stored in DOM)
+window.toggleRsvpList=function(evId){
+  const el=document.getElementById('rsvp-list-'+evId);
+  if(!el) return;
+  el.style.display=el.style.display==='none'?'block':'none';
 };
 
 // ── Calendar ──────────────────────────────────────────────────────────────────
@@ -1263,12 +1291,74 @@ function renderCalendar(){
     ].filter(Boolean);
     const cardClass=isPast?'cal-past':isCancelled?'cal-cancelled':'cal-upcoming';
 
-    // Going count — only show for non-cancelled events
-    const goingCount=!isCancelled?getGoingCount(ev.id):0;
-    const goingNames=!isCancelled?getGoingNames(ev.id):[];
-    const goingBadge=goingCount>0
-      ?`<div title="${goingNames.join(', ')}" style="display:inline-flex;align-items:center;gap:5px;background:var(--grass-pale);color:var(--grass);font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;cursor:default">✅ ${goingCount} going</div>`
-      :'';
+    // RSVP counts & lists
+    const counts=!isCancelled?getRsvpCounts(ev.id):{yes:0,no:0};
+    const lists=!isCancelled?getRsvpLists(ev.id):{yes:[],no:[]};
+    const myRsvp=getRsvp(ev.id);
+
+    // Badge row — clickable, shows list below
+    const badgeRow=!isCancelled?`
+      <div style="display:flex;gap:6px;flex-shrink:0;margin-top:2px">
+        <button onclick="toggleRsvpList('${ev.id}')" style="display:inline-flex;align-items:center;gap:4px;background:var(--grass-pale);color:var(--grass);border:none;font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;cursor:pointer">✅ ${counts.yes}</button>
+        ${adminAuthed||counts.no>0?`<button onclick="toggleRsvpList('${ev.id}')" style="display:inline-flex;align-items:center;gap:4px;background:#FCEBEB;color:var(--danger);border:none;font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;cursor:pointer">❌ ${counts.no}</button>`:''}
+      </div>`:'';
+
+    // Expandable RSVP list (hidden by default)
+    const rsvpListHtml=!isCancelled?`
+      <div id="rsvp-list-${ev.id}" style="display:none;padding:10px 18px 4px;border-top:0.5px solid var(--border);background:var(--bg)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--grass);margin-bottom:6px">✅ Going (${lists.yes.length})</div>
+            ${lists.yes.length?lists.yes.map(n=>`<div style="font-size:13px;padding:3px 0;border-bottom:0.5px solid var(--border)">${n}</div>`).join(''):'<div style="font-size:12px;color:var(--muted)">No one yet</div>'}
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--danger);margin-bottom:6px">❌ Not Going (${lists.no.length})</div>
+            ${lists.no.length?lists.no.map(n=>`<div style="font-size:13px;padding:3px 0;border-bottom:0.5px solid var(--border)">${n}</div>`).join(''):'<div style="font-size:12px;color:var(--muted)">None</div>'}
+          </div>
+        </div>
+      </div>`:'';
+
+    // RSVP buttons — Going and Not Going as separate buttons
+    const myGoing=myRsvp==='yes';
+    const myNo=myRsvp==='no';
+    const rsvpBtns=!isCancelled&&!isPast?(indexCurrentUser?`
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:600;color:var(--muted)">Your RSVP:</span>
+        <button id="rsvp-yes-${ev.id}"
+          onclick="setRsvp('${ev.id}','yes',this,document.getElementById('rsvp-no-${ev.id}'))"
+          style="padding:6px 14px;border-radius:6px;border:1.5px solid ${myGoing?'var(--grass)':'var(--border)'};background:${myGoing?'var(--grass-pale)':'none'};color:${myGoing?'var(--grass)':'var(--muted)'};font-size:13px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:all .15s">
+          ✅ Going${myGoing?' ✓':''}
+        </button>
+        <button id="rsvp-no-${ev.id}"
+          onclick="setRsvp('${ev.id}','no',document.getElementById('rsvp-yes-${ev.id}'),this)"
+          style="padding:6px 14px;border-radius:6px;border:1.5px solid ${myNo?'var(--danger)':'var(--border)'};background:${myNo?'#FCEBEB':'none'};color:${myNo?'var(--danger)':'var(--muted)'};font-size:13px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:all .15s">
+          ❌ Not Going${myNo?' ✓':''}
+        </button>
+      </div>`
+    :`<button onclick="toast('Sign in to RSVP — click My Profile in the nav',true)" style="padding:6px 14px;border-radius:6px;border:1.5px solid var(--border);background:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--fb)">🔒 Sign In to RSVP</button>`):'';
+
+    // Proxy RSVP — for other players (any signed-in user can RSVP for others)
+    // Build list of players not already RSVP'd via this user's proxy
+    const proxySection=!isCancelled&&!isPast&&indexCurrentUser?`
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px">
+        <span style="font-size:12px;font-weight:600;color:var(--muted)">RSVP for someone:</span>
+        <select id="proxy-sel-${ev.id}" style="padding:5px 10px;border:0.5px solid var(--border);border-radius:6px;font-family:var(--fb);font-size:13px;outline:none;background:#fff;max-width:160px">
+          <option value="">— Select —</option>
+          ${players.filter(p=>{
+            // exclude the user's own linked player (they have their own buttons)
+            if(p.id===indexUserProfile?.linkedPlayerId) return false;
+            return true;
+          }).sort((a,b)=>a.name.localeCompare(b.name)).map(p=>{
+            const proxyKey=`${indexCurrentUser.uid}_proxy_${p.id}`;
+            const proxyVal=(ev.rsvps&&ev.rsvps[proxyKey])||'none';
+            const tag=proxyVal==='yes'?' ✅':proxyVal==='no'?' ❌':'';
+            return`<option value="${p.id}">${p.name.split(' ')[0]}${tag}</option>`;
+          }).join('')}
+        </select>
+        <button onclick="setProxyRsvp('${ev.id}','yes',document.getElementById('proxy-sel-${ev.id}').value)" style="padding:5px 12px;border-radius:6px;border:1.5px solid var(--grass);background:var(--grass-pale);color:var(--grass);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb)">✅</button>
+        <button onclick="setProxyRsvp('${ev.id}','no',document.getElementById('proxy-sel-${ev.id}').value)" style="padding:5px 12px;border-radius:6px;border:1.5px solid var(--danger);background:#FCEBEB;color:var(--danger);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb)">❌</button>
+        <button onclick="setProxyRsvp('${ev.id}','none',document.getElementById('proxy-sel-${ev.id}').value)" style="padding:5px 12px;border-radius:6px;border:1.5px solid var(--border);background:none;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb)">Clear</button>
+      </div>`:'';
 
     return`<div class="cal-card ${cardClass}">
       <div class="cal-card-hdr" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
@@ -1279,8 +1369,9 @@ function renderCalendar(){
             : ev.theme?`<div class="cal-card-theme">${ev.theme}</div>`:''
           }
         </div>
-        ${goingBadge?`<div style="flex-shrink:0;margin-top:2px">${goingBadge}</div>`:''}
+        ${badgeRow}
       </div>
+      ${rsvpListHtml}
       ${!isCancelled?`<div class="cal-card-body">
         ${details.map(d=>`<div class="cal-detail">
           <div class="cal-detail-icon">${d.icon}</div>
@@ -1288,13 +1379,20 @@ function renderCalendar(){
         </div>`).join('')}
         ${!details.length?'<span style="color:var(--muted);font-size:13px">No details added yet.</span>':''}
       </div>`:''}
-      ${!isPast?`<div class="cal-actions" style="flex-wrap:wrap;gap:8px">
-        ${!isCancelled?`<a class="icon-btn" href="${buildGCalUrl(ev)}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px">📅 Google Cal</a>`:''}
-        ${!isCancelled?`<button class="icon-btn" onclick="window._icalDownload('${ev.id}')" style="display:inline-flex;align-items:center;gap:4px">📆 iCal / Apple</button>`:''}
-        ${!isCancelled?`<button class="icon-btn" id="rsvp-btn-${ev.id}" style="${getRsvpStyle(ev.id)}" onclick="toggleRsvp('${ev.id}',this)">${indexCurrentUser?getRsvpLabel(ev.id):'🔒 Sign In to RSVP'}</button>`:''}
-        ${adminAuthed?`<button class="icon-btn" onclick="openReminderModal('${ev.id}')">📣 Remind</button>`:''}
-        ${adminAuthed?`<button class="icon-btn" onclick="openEditEvent('${ev.id}')">✏️ Edit</button>
-        <button class="icon-btn danger" onclick="confirmDeleteEvent('${ev.id}')">🗑 Delete</button>`:''}
+      ${!isPast?`<div class="cal-actions" style="flex-wrap:wrap;gap:8px;flex-direction:column;align-items:flex-start">
+        ${!isCancelled?`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          ${rsvpBtns}
+        </div>`:''}
+        ${!isCancelled?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          ${proxySection}
+        </div>`:''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-top:${(!isCancelled)?'4px':'0'}">
+          ${!isCancelled?`<a class="icon-btn" href="${buildGCalUrl(ev)}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px">📅 Google Cal</a>`:''}
+          ${!isCancelled?`<button class="icon-btn" onclick="window._icalDownload('${ev.id}')" style="display:inline-flex;align-items:center;gap:4px">📆 iCal / Apple</button>`:''}
+          ${adminAuthed?`<button class="icon-btn" onclick="openReminderModal('${ev.id}')">📣 Remind</button>`:''}
+          ${adminAuthed?`<button class="icon-btn" onclick="openEditEvent('${ev.id}')">✏️ Edit</button>
+          <button class="icon-btn danger" onclick="confirmDeleteEvent('${ev.id}')">🗑 Delete</button>`:''}
+        </div>
       </div>`:adminAuthed?`<div class="cal-actions">
         <button class="icon-btn" onclick="openEditEvent('${ev.id}')">✏️ Edit</button>
         <button class="icon-btn danger" onclick="confirmDeleteEvent('${ev.id}')">🗑 Delete</button>
@@ -1401,14 +1499,35 @@ window.openReminderModal = function(evId){
   document.getElementById('reminder-event-info').textContent =
     `📅 ${dateStr}${ev.theme ? ' · '+ev.theme : ''}`;
 
-  // Build recipient list — users with linked players and emails
-  const linked = users.filter(u=>u.linkedPlayerId && u.email);
-  document.getElementById('reminder-recipients').innerHTML =
-    `<strong>Recipients:</strong> ${linked.length} linked account${linked.length!==1?'s':''} — `+
-    linked.map(u=>`${u.firstName||''} ${u.lastName||''}`.trim()||u.email).join(', ');
-
+  renderReminderRecipients(evId);
   openModal('modal-reminder');
 };
+
+function renderReminderRecipients(evId){
+  const ev = events.find(x=>x.id===evId); if(!ev) return;
+  const linked = users.filter(u=>u.linkedPlayerId && u.email);
+  const box = document.getElementById('reminder-recipients');
+  if(!linked.length){
+    box.innerHTML='<span style="color:var(--muted)">No linked accounts with emails found.</span>';
+    return;
+  }
+  // Mark who already RSVPed yes
+  box.innerHTML=`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px">Recipients <span style="font-weight:400;text-transform:none;letter-spacing:0">(uncheck to skip)</span></div>`+
+    linked.map(u=>{
+      const rsvpVal = (ev.rsvps&&ev.rsvps[u.uid])||'none';
+      const alreadyYes = rsvpVal==='yes';
+      const alreadyNo  = rsvpVal==='no';
+      const tag = alreadyYes?' <span style="color:var(--grass);font-size:10px;font-weight:700">✅ RSVP\'d Going</span>'
+                : alreadyNo ? ' <span style="color:var(--danger);font-size:10px;font-weight:700">❌ Not Going</span>'
+                : '';
+      // Default: un-check people who already said yes
+      const checked = !alreadyYes;
+      return`<label style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--border);cursor:pointer;font-size:13px">
+        <input type="checkbox" class="reminder-recip-cb" data-uid="${u.uid}" data-email="${u.email}" data-name="${`${u.firstName||''} ${u.lastName||''}`.trim()||u.email}" ${checked?'checked':''} style="width:15px;height:15px;accent-color:var(--grass);cursor:pointer;flex-shrink:0">
+        <span>${`${u.firstName||''} ${u.lastName||''}`.trim()||u.email}${tag}</span>
+      </label>`;
+    }).join('');
+}
 
 window.setReminderType = function(type){
   _reminderType = type;
@@ -1429,11 +1548,12 @@ window.setReminderType = function(type){
   if(type==='rsvp'){
     document.getElementById('reminder-subject').value = `📋 RSVP Reminder — FCL ${dateStr}`;
     document.getElementById('reminder-body').value =
-`Hey! Just a reminder to RSVP for Friday Cornhole League this ${dateStr}.
+`Hello! A reminder to RSVP for Friday Cornhole League this ${dateStr}.
+ https://www.fridaycornholeleague.com/
 
 ${title}
 ${timeStr ? '⏰ '+timeStr+'\n' : ''}${loc ? '📍 '+loc+'\n' : ''}
-Head to the FCL site to RSVP so we can plan teams ahead of time!
+Head to the FCL site to RSVP so we can plan the dough count!
 
 See you on the boards 🌽`;
   } else {
@@ -1461,13 +1581,15 @@ window.sendReminder = async function(){
   const ev = events.find(x=>x.id===_reminderEventId); if(!ev) return;
   const dateObj = new Date(ev.date+'T12:00:00');
   const dateStr = dateObj.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-  const linked = users.filter(u=>u.linkedPlayerId && u.email);
-  if(!linked.length){ toast('No linked accounts with email addresses found', true); return; }
+
+  // Collect only checked recipients
+  const checked = [...document.querySelectorAll('.reminder-recip-cb:checked')];
+  if(!checked.length){ toast('No recipients selected', true); return; }
+  const recipients = checked.map(cb=>({email:cb.dataset.email, name:cb.dataset.name}));
 
   const btn = document.getElementById('send-reminder-btn');
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Sending…';
 
-  // Initialize EmailJS (only once)
   if(typeof emailjs !== 'undefined'){
     emailjs.init(EMAILJS_PUBLIC_KEY);
   } else {
@@ -1477,11 +1599,11 @@ window.sendReminder = async function(){
   }
 
   let sent=0, failed=0;
-  for(const u of linked){
+  for(const r of recipients){
     try{
       await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-        to_email:    u.email,
-        to_name:     `${u.firstName||''} ${u.lastName||''}`.trim() || 'Player',
+        to_email:    r.email,
+        to_name:     r.name,
         subject:     subject,
         message:     body,
         event_date:  dateStr,
@@ -1489,10 +1611,9 @@ window.sendReminder = async function(){
       });
       sent++;
     } catch(e){
-      console.warn('Email failed for', u.email, e);
+      console.warn('Email failed for', r.email, e);
       failed++;
     }
-    // Small delay to avoid rate limits
     await new Promise(r=>setTimeout(r,150));
   }
 
@@ -1535,6 +1656,6 @@ window.closeModal=function(id,e){if(!e||e.target===document.getElementById(id))d
   history.replaceState(null,'',location.pathname);
 })();
 </script>
-<footer style="text-align:center;padding:20px 16px 28px;font-size:11px;color:var(--muted);letter-spacing:.4px">Friday Cornhole League &nbsp;·&nbsp; Ver 1.8</footer>
+<footer style="text-align:center;padding:20px 16px 28px;font-size:11px;color:var(--muted);letter-spacing:.4px">Friday Cornhole League &nbsp;·&nbsp; Ver 1.9</footer>
 </body>
 </html>
