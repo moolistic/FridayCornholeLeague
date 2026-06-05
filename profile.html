@@ -182,6 +182,7 @@ input:focus,select:focus{border-color:var(--grass)}
           <div class="fg"><label>Birthday</label><input type="date" id="signup-birthday" autocomplete="bday"></div>
           <div class="fg"><label>🍕 Fav Pizza Topping</label><input type="text" id="signup-pizza" placeholder="e.g. Pepperoni"></div>
         </div>
+        <div class="fg" style="margin-top:14px"><label>📱 Phone Number <span style="font-weight:400;font-size:11px;color:var(--muted)">(optional · for future SMS reminders)</span></label><input type="tel" id="signup-phone" placeholder="e.g. 612-555-0100" autocomplete="tel"></div>
         <button class="btn-primary" onclick="emailSignUp()" id="signup-btn">CREATE ACCOUNT</button>
       </div>
     </div>
@@ -205,6 +206,7 @@ input:focus,select:focus{border-color:var(--grass)}
           <div class="fg"><label>Birthday</label><input type="date" id="complete-birthday" autocomplete="bday"></div>
           <div class="fg"><label>🍕 Fav Pizza Topping</label><input type="text" id="complete-pizza" placeholder="e.g. Pepperoni"></div>
         </div>
+        <div class="fg" style="margin-bottom:14px"><label>📱 Phone Number <span style="font-weight:400;font-size:11px;color:var(--muted)">(optional · for future SMS reminders)</span></label><input type="tel" id="complete-phone" placeholder="e.g. 612-555-0100" autocomplete="tel"></div>
         <button class="btn-primary" onclick="saveCompletion()" id="complete-btn">SAVE & CONTINUE</button>
       </div>
     </div>
@@ -233,6 +235,7 @@ input:focus,select:focus{border-color:var(--grass)}
           <div class="fg"><label>Birthday</label><input type="date" id="prof-birthday"></div>
           <div class="fg"><label>🍕 Fav Pizza Topping</label><input type="text" id="prof-pizza"></div>
         </div>
+        <div class="fg" style="margin-top:14px"><label>📱 Phone Number <span style="font-weight:400;font-size:11px;color:var(--muted)">(optional · for future SMS reminders)</span></label><input type="tel" id="prof-phone" placeholder="e.g. 612-555-0100" autocomplete="tel"></div>
       </div>
     </div>
 
@@ -405,6 +408,7 @@ window.emailSignUp = async function(){
   const pass   = document.getElementById('signup-password').value;
   const bday   = document.getElementById('signup-birthday').value;
   const pizza  = document.getElementById('signup-pizza').value.trim();
+  const phone  = document.getElementById('signup-phone').value.trim();
   showErr('signup-err','');
   if(!first||!last||!email||!pass){ showErr('signup-err','Please fill in all required fields'); return; }
   if(pass.length < 6){ showErr('signup-err','Password must be at least 6 characters'); return; }
@@ -415,7 +419,6 @@ window.emailSignUp = async function(){
   try{
     cred = await createUserWithEmailAndPassword(auth, email, pass);
   } catch(e){
-    console.error('Signup error:', e.code, e.message);
     showErr('signup-err', friendlyAuthErr(e.code));
     btn.disabled = false; btn.textContent = 'CREATE ACCOUNT';
     return;
@@ -438,6 +441,7 @@ window.emailSignUp = async function(){
     await setDoc(doc(db,'users',cred.user.uid), {
       firstName: first, lastName: last, email,
       birthday: bday || null, favPizzaTopping: pizza || null,
+      phone: phone || null,
       linkedPlayerId, isAdmin: false, createdAt: Date.now()
     });
   } catch(fe){ console.warn('Profile doc failed (check Firestore rules):', fe.message); }
@@ -453,6 +457,7 @@ window.saveCompletion = async function(){
   const last  = document.getElementById('complete-last').value.trim();
   const bday  = document.getElementById('complete-birthday').value;
   const pizza = document.getElementById('complete-pizza').value.trim();
+  const phone = document.getElementById('complete-phone').value.trim();
   if(!first||!last){ showErr('complete-err','Please enter your first and last name'); return; }
   const btn = document.getElementById('complete-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Saving…';
@@ -485,6 +490,7 @@ window.saveCompletion = async function(){
     const profileData = {
       firstName: first, lastName: last, email: user.email,
       birthday: bday || null, favPizzaTopping: pizza || null,
+      phone: phone || null,
       linkedPlayerId, isAdmin: existing?.isAdmin || false,
       createdAt: existing?.createdAt || Date.now()
     };
@@ -516,6 +522,7 @@ function renderProfileScreen(user, profile){
   document.getElementById('prof-email').value    = user.email;
   document.getElementById('prof-birthday').value = profile.birthday || '';
   document.getElementById('prof-pizza').value    = profile.favPizzaTopping || '';
+  document.getElementById('prof-phone').value    = profile.phone || '';
 
   const badge = document.getElementById('profile-link-badge');
   badge.style.display = profile.linkedPlayerId ? 'inline-flex' : 'none';
@@ -569,11 +576,12 @@ window.saveProfile = async function(){
   const last  = document.getElementById('prof-last').value.trim();
   const bday  = document.getElementById('prof-birthday').value;
   const pizza = document.getElementById('prof-pizza').value.trim();
+  const phone = document.getElementById('prof-phone').value.trim();
   if(!first||!last){ toast('Name cannot be empty', true); return; }
   const btn = document.getElementById('save-profile-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Saving…';
   try{
-    const updates = { firstName: first, lastName: last, birthday: bday||null, favPizzaTopping: pizza||null };
+    const updates = { firstName: first, lastName: last, birthday: bday||null, favPizzaTopping: pizza||null, phone: phone||null };
     await updateDoc(doc(db,'users',user.uid), updates);
     Object.assign(currentProfile, updates);
     document.getElementById('profile-display-name').textContent = `${first} ${last}`;
@@ -659,6 +667,6 @@ document.addEventListener('click', function(e){
     menu.classList.remove('open');
 });
 </script>
-<footer style="text-align:center;padding:20px 16px 28px;font-size:11px;color:var(--muted);letter-spacing:.4px">Friday Cornhole League &nbsp;·&nbsp; Ver 1.7</footer>
+<footer style="text-align:center;padding:20px 16px 28px;font-size:11px;color:var(--muted);letter-spacing:.4px">Friday Cornhole League &nbsp;·&nbsp; Ver 1.8</footer>
 </body>
 </html>

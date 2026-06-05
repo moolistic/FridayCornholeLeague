@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cornhole League</title>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -317,6 +318,34 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- ADMIN REMINDER MODAL -->
+<div class="moverlay" id="modal-reminder" onclick="closeModal('modal-reminder',event)">
+  <div class="mbox" style="max-width:500px">
+    <div class="mt2">📣 Send Reminder</div>
+    <div id="reminder-event-info" style="background:var(--grass-pale);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--grass);font-weight:600"></div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="reminder-type-rsvp" onclick="setReminderType('rsvp')" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid var(--grass);background:var(--grass);color:#fff;font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer">📋 RSVP Reminder</button>
+      <button id="reminder-type-update" onclick="setReminderType('update')" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid var(--border);background:none;color:var(--muted);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer">📢 Event Update</button>
+    </div>
+    <div class="fg" style="margin-bottom:12px">
+      <label style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:block">Subject</label>
+      <input type="text" id="reminder-subject" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none">
+    </div>
+    <div class="fg" style="margin-bottom:12px">
+      <label style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:block">Message</label>
+      <textarea id="reminder-body" rows="5" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none;resize:vertical;line-height:1.5"></textarea>
+    </div>
+    <div id="reminder-recipients" style="font-size:12px;color:var(--muted);margin-bottom:16px;padding:8px 12px;background:var(--bg);border-radius:6px"></div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;padding:8px 12px;background:#FFFBF0;border:0.5px solid rgba(186,117,23,0.2);border-radius:6px">
+      ⚙️ Requires EmailJS configured — see setup notes in code comments.
+    </div>
+    <div class="macts">
+      <button class="bsec" onclick="closeModal('modal-reminder')">Cancel</button>
+      <button class="bpri" id="send-reminder-btn" onclick="sendReminder()">Send Emails</button>
+    </div>
+  </div>
+</div>
 
 <script type="module">
 import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -1174,6 +1203,51 @@ function renderCalendar(){
     return`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&location=${loc}&details=${det}`;
   }
 
+  function buildICalUrl(ev){
+    // Build .ics file content and return a blob URL
+    function parseTime(timeStr){
+      if(!timeStr) return null;
+      const m=timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      if(!m) return null;
+      let h=parseInt(m[1]);const min=m[2],ap=m[3].toUpperCase();
+      if(ap==='PM'&&h!==12)h+=12;
+      if(ap==='AM'&&h===12)h=0;
+      return{h,min:parseInt(min)};
+    }
+    const base=ev.date.replace(/-/g,'');
+    const pad=n=>String(n).padStart(2,'0');
+    const startT=parseTime(ev.time);
+    const endT=parseTime(ev.endtime);
+    let dtStart,dtEnd;
+    if(startT){
+      dtStart=`${base}T${pad(startT.h)}${pad(startT.min)}00`;
+      dtEnd=endT?`${base}T${pad(endT.h)}${pad(endT.min)}00`:`${base}T${pad(startT.h+2)}${pad(startT.min)}00`;
+    } else {
+      dtStart=`${base}`;dtEnd=`${base}`;
+    }
+    const uid=`fcl-${ev.id||base}@cornholeleague`;
+    const title=(ev.theme||'Cornhole League Night').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+    const loc=(ev.location||'').replace(/,/g,'\\,');
+    let desc='Friday Cornhole League';
+    if(ev.bring) desc+=`\\nWhat to bring: ${ev.bring}`;
+    if(ev.cost)  desc+=`\\nCost: ${ev.cost}`;
+    if(ev.notes) desc+=`\\nNotes: ${ev.notes}`;
+    const allDay=!startT;
+    const dtProp=allDay?`DTSTART;VALUE=DATE:${dtStart}\r\nDTEND;VALUE=DATE:${dtEnd}`:`DTSTART:${dtStart}\r\nDTEND:${dtEnd}`;
+    const ics=`BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//FCL//Cornhole League//EN\r\nBEGIN:VEVENT\r\nUID:${uid}\r\n${dtProp}\r\nSUMMARY:${title}\r\nLOCATION:${loc}\r\nDESCRIPTION:${desc}\r\nEND:VEVENT\r\nEND:VCALENDAR`;
+    const blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
+    return URL.createObjectURL(blob);
+  }
+
+  window._icalDownload=function(evId){
+    const ev=events.find(x=>x.id===evId);if(!ev)return;
+    const url=buildICalUrl(ev);
+    const a=document.createElement('a');
+    a.href=url;a.download=`fcl-${ev.date}.ics`;
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+  };
+
   function eventCard(ev){
     const isPast=ev.date<today;
     const isCancelled=!!ev.cancelled;
@@ -1215,8 +1289,10 @@ function renderCalendar(){
         ${!details.length?'<span style="color:var(--muted);font-size:13px">No details added yet.</span>':''}
       </div>`:''}
       ${!isPast?`<div class="cal-actions" style="flex-wrap:wrap;gap:8px">
-        ${!isCancelled?`<a class="icon-btn" href="${buildGCalUrl(ev)}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px">📅 Add to Google Calendar</a>`:''}
+        ${!isCancelled?`<a class="icon-btn" href="${buildGCalUrl(ev)}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px">📅 Google Cal</a>`:''}
+        ${!isCancelled?`<button class="icon-btn" onclick="window._icalDownload('${ev.id}')" style="display:inline-flex;align-items:center;gap:4px">📆 iCal / Apple</button>`:''}
         ${!isCancelled?`<button class="icon-btn" id="rsvp-btn-${ev.id}" style="${getRsvpStyle(ev.id)}" onclick="toggleRsvp('${ev.id}',this)">${indexCurrentUser?getRsvpLabel(ev.id):'🔒 Sign In to RSVP'}</button>`:''}
+        ${adminAuthed?`<button class="icon-btn" onclick="openReminderModal('${ev.id}')">📣 Remind</button>`:''}
         ${adminAuthed?`<button class="icon-btn" onclick="openEditEvent('${ev.id}')">✏️ Edit</button>
         <button class="icon-btn danger" onclick="confirmDeleteEvent('${ev.id}')">🗑 Delete</button>`:''}
       </div>`:adminAuthed?`<div class="cal-actions">
@@ -1301,6 +1377,134 @@ window.confirmDeleteEvent=function(id){
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
+// ── EmailJS Configuration ─────────────────────────────────────────────────────
+// 1. Sign up at https://www.emailjs.com (free tier: 200 emails/month)
+// 2. Create a Service (Gmail recommended) → copy the Service ID
+// 3. Create an Email Template with these variables:
+//    {{to_email}}, {{to_name}}, {{subject}}, {{message}}, {{event_date}}, {{event_title}}
+// 4. Copy your Public Key from Account → API Keys
+// 5. Paste your IDs below:
+const EMAILJS_PUBLIC_KEY  = 'HKhTcjRicnIDVi3Xv';   // e.g. 'user_abc123XYZ'
+const EMAILJS_SERVICE_ID  = 'service_ea685ui';   // e.g. 'service_abc123'
+const EMAILJS_TEMPLATE_ID = 'template_FCL';  // e.g. 'template_abc123'
+
+let _reminderEventId = null;
+let _reminderType = 'rsvp';
+
+window.openReminderModal = function(evId){
+  const ev = events.find(x=>x.id===evId); if(!ev) return;
+  _reminderEventId = evId;
+  setReminderType('rsvp');
+
+  const dateObj = new Date(ev.date+'T12:00:00');
+  const dateStr = dateObj.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  document.getElementById('reminder-event-info').textContent =
+    `📅 ${dateStr}${ev.theme ? ' · '+ev.theme : ''}`;
+
+  // Build recipient list — users with linked players and emails
+  const linked = users.filter(u=>u.linkedPlayerId && u.email);
+  document.getElementById('reminder-recipients').innerHTML =
+    `<strong>Recipients:</strong> ${linked.length} linked account${linked.length!==1?'s':''} — `+
+    linked.map(u=>`${u.firstName||''} ${u.lastName||''}`.trim()||u.email).join(', ');
+
+  openModal('modal-reminder');
+};
+
+window.setReminderType = function(type){
+  _reminderType = type;
+  const ev = events.find(x=>x.id===_reminderEventId);
+  const dateObj = ev ? new Date(ev.date+'T12:00:00') : null;
+  const dateStr = dateObj ? dateObj.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'}) : '';
+  const title = ev?.theme || 'Cornhole Night';
+  const loc = ev?.location || '';
+  const timeStr = ev?.time && ev?.endtime ? `${ev.time} – ${ev.endtime}` : ev?.time || '';
+
+  const rsvpBtn = document.getElementById('reminder-type-rsvp');
+  const updateBtn = document.getElementById('reminder-type-update');
+  const activeStyle = 'flex:1;padding:9px;border-radius:8px;border:1.5px solid var(--grass);background:var(--grass);color:#fff;font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer';
+  const inactiveStyle = 'flex:1;padding:9px;border-radius:8px;border:1.5px solid var(--border);background:none;color:var(--muted);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer';
+  rsvpBtn.style.cssText = type==='rsvp' ? activeStyle : inactiveStyle;
+  updateBtn.style.cssText = type==='update' ? activeStyle : inactiveStyle;
+
+  if(type==='rsvp'){
+    document.getElementById('reminder-subject').value = `📋 RSVP Reminder — FCL ${dateStr}`;
+    document.getElementById('reminder-body').value =
+`Hey! Just a reminder to RSVP for Friday Cornhole League this ${dateStr}.
+
+${title}
+${timeStr ? '⏰ '+timeStr+'\n' : ''}${loc ? '📍 '+loc+'\n' : ''}
+Head to the FCL site to RSVP so we can plan teams ahead of time!
+
+See you on the boards 🌽`;
+  } else {
+    document.getElementById('reminder-subject').value = `📢 FCL Update — ${dateStr}`;
+    document.getElementById('reminder-body').value =
+`Hey everyone — quick update about FCL on ${dateStr}.
+
+${title}
+${timeStr ? '⏰ '+timeStr+'\n' : ''}${loc ? '📍 '+loc+'\n' : ''}
+[Add your update details here]
+
+See you on the boards 🌽`;
+  }
+};
+
+window.sendReminder = async function(){
+  if(EMAILJS_PUBLIC_KEY === 'YOUR_PUBLIC_KEY'){
+    toast('EmailJS not configured yet — see code comments in index.html', true);
+    return;
+  }
+  const subject = document.getElementById('reminder-subject').value.trim();
+  const body    = document.getElementById('reminder-body').value.trim();
+  if(!subject||!body){ toast('Subject and message are required', true); return; }
+
+  const ev = events.find(x=>x.id===_reminderEventId); if(!ev) return;
+  const dateObj = new Date(ev.date+'T12:00:00');
+  const dateStr = dateObj.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  const linked = users.filter(u=>u.linkedPlayerId && u.email);
+  if(!linked.length){ toast('No linked accounts with email addresses found', true); return; }
+
+  const btn = document.getElementById('send-reminder-btn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Sending…';
+
+  // Initialize EmailJS (only once)
+  if(typeof emailjs !== 'undefined'){
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+  } else {
+    toast('EmailJS library not loaded', true);
+    btn.disabled=false; btn.textContent='Send Emails';
+    return;
+  }
+
+  let sent=0, failed=0;
+  for(const u of linked){
+    try{
+      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+        to_email:    u.email,
+        to_name:     `${u.firstName||''} ${u.lastName||''}`.trim() || 'Player',
+        subject:     subject,
+        message:     body,
+        event_date:  dateStr,
+        event_title: ev.theme || 'Cornhole Night',
+      });
+      sent++;
+    } catch(e){
+      console.warn('Email failed for', u.email, e);
+      failed++;
+    }
+    // Small delay to avoid rate limits
+    await new Promise(r=>setTimeout(r,150));
+  }
+
+  closeModal('modal-reminder');
+  if(failed===0){
+    toast(`✅ Sent to ${sent} player${sent!==1?'s':''}!`);
+  } else {
+    toast(`Sent ${sent}, failed ${failed} — check console`, true);
+  }
+  btn.disabled=false; btn.textContent='Send Emails';
+};
+
 // ── Modals ────────────────────────────────────────────────────────────────────
 function openModal(id){document.getElementById(id).classList.add('open');}
 window.closeModal=function(id,e){if(!e||e.target===document.getElementById(id))document.getElementById(id).classList.remove('open');};
@@ -1331,6 +1535,6 @@ window.closeModal=function(id,e){if(!e||e.target===document.getElementById(id))d
   history.replaceState(null,'',location.pathname);
 })();
 </script>
-<footer style="text-align:center;padding:20px 16px 28px;font-size:11px;color:var(--muted);letter-spacing:.4px">Friday Cornhole League &nbsp;·&nbsp; Ver 1.75</footer>
+<footer style="text-align:center;padding:20px 16px 28px;font-size:11px;color:var(--muted);letter-spacing:.4px">Friday Cornhole League &nbsp;·&nbsp; Ver 1.8</footer>
 </body>
 </html>
