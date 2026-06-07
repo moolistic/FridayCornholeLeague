@@ -221,6 +221,25 @@ select.fallback-select:last-child{border-bottom:none}
       </a>
       <p style="text-align:center;margin-top:12px;font-size:13px;color:var(--muted)">You'll be sent back here after signing in.</p>
     </div>
+    <!-- Unverified email state -->
+    <div id="step0-unverified" style="display:none">
+      <div class="step-header">
+        <div class="step-pill">Action Required</div>
+        <div class="step-title">Verify Your Email</div>
+        <div class="step-sub">Check your inbox for a confirmation link before entering scores.</div>
+      </div>
+      <div style="background:#FFF8E1;border:1px solid #FFD54F;border-radius:12px;padding:20px;margin-bottom:20px;display:flex;align-items:flex-start;gap:14px">
+        <div style="font-size:28px;flex-shrink:0">📧</div>
+        <div>
+          <div style="font-weight:700;font-size:15px;margin-bottom:4px">Confirmation email sent</div>
+          <div id="step0-unverified-email" style="font-size:13px;color:#5D4037;margin-bottom:12px"></div>
+          <div style="font-size:13px;color:#5D4037">You can browse the league, but score entry is locked until your email is confirmed.</div>
+        </div>
+      </div>
+      <button class="action-btn primary" onclick="s0ResendVerification()">Resend Email</button>
+      <button onclick="s0SignOut()" class="action-btn secondary">Sign Out</button>
+    </div>
+
     <!-- Signed-in state -->
     <div id="step0-signed-in" style="display:none">
       <div class="step-header">
@@ -445,6 +464,15 @@ onAuthStateChanged(auth, async user => {
       currentUserProfile = snap.exists() ? snap.data() : null;
     } catch(e){ currentUserProfile = null; }
     updateScoreNavPill(user, currentUserProfile);
+
+    // Block unverified email/password users from entering scores
+    const isEmailUser = user.providerData.some(p => p.providerId === 'password');
+    if(isEmailUser && !user.emailVerified){
+      renderStep0Unverified();
+      if(currentStep !== 0) showStep(0);
+      return;
+    }
+
     renderStep0SignedIn();
     // If we're still on step 0, auto-advance — skip the "Let's go" screen
     if(currentStep === 0){
@@ -491,6 +519,14 @@ function updateScoreNavPill(user, profile){
   }
 }
 
+function renderStep0Unverified(){
+  document.getElementById('step0-auth').style.display = 'none';
+  document.getElementById('step0-signed-in').style.display = 'none';
+  document.getElementById('step0-unverified').style.display = 'block';
+  const emailEl = document.getElementById('step0-unverified-email');
+  if(emailEl) emailEl.textContent = `A link was sent to ${currentUser.email}`;
+}
+
 function renderStep0SignedIn(){
   document.getElementById('step0-auth').style.display = 'none';
   document.getElementById('step0-signed-in').style.display = 'block';
@@ -515,9 +551,19 @@ function renderStep0SignedIn(){
 function renderStep0SignedOut(){
   document.getElementById('step0-auth').style.display = 'block';
   document.getElementById('step0-signed-in').style.display = 'none';
+  document.getElementById('step0-unverified').style.display = 'none';
 }
 
 // ── Step 0 auth helpers ───────────────────────────────────────────────────────
+window.s0ResendVerification = async function(){
+  if(!currentUser) return;
+  try{
+    const { sendEmailVerification } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+    await sendEmailVerification(currentUser);
+    toast('Verification email resent! Check your inbox.');
+  } catch(e){ toast('Could not send: ' + (e.message||e.code), true); }
+};
+
 window.s0SignOut = async function(){
   await fbSignOut(auth);
   recorderId = null; picks = []; isSingles = false;
@@ -544,6 +590,8 @@ const fullconfident = 20;
 
 // State
 let players = [];
+let events = [];
+let users = [];
 // picks[] is the draft order array of player IDs.
 // After all picks, assignment is:
 //   picks[0] → A1 (sel[1])
@@ -563,6 +611,12 @@ let recorderId = null; // null = just recording, otherwise player id
 onSnapshot(collection(db,'players'), snap => {
   players = snap.docs.map(d => ({id: d.id, ...d.data()}));
   renderStep(currentStep);
+});
+onSnapshot(collection(db,'events'), snap => {
+  events = snap.docs.map(d => ({id: d.id, ...d.data()}));
+});
+onSnapshot(collection(db,'users'), snap => {
+  users = snap.docs.map(d => ({uid: d.id, ...d.data()}));
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -644,7 +698,42 @@ window.goBackToRecorder = function(){
 };
 
 // ── Checked pool ────────────────────────────────────────────────────────────────────────────
+// Resolves an RSVP key (uid or family_ownerUid_playerId) to a player object, or null
+function resolveRsvpKeyToPlayer(key){
+  if(key.startsWith('family_')){
+    const inner = key.slice('family_'.length);
+    const lastUs = inner.lastIndexOf('_');
+    const playerId = inner.slice(lastUs + 1);
+    // Skip if player has a linked account — they'll appear via their own uid key
+    const linkedUser = users.find(u => u.linkedPlayerId === playerId);
+    if(linkedUser) return null;
+    return players.find(x => x.id === playerId) || null;
+  }
+  // uid key
+  const u = users.find(x => x.uid === key);
+  if(!u) return null;
+  if(u.linkedPlayerId) return players.find(p => p.id === u.linkedPlayerId) || null;
+  return null; // user with no linked player can't appear on score cards
+}
+
+function getTodayEventPool(){
+  const today = new Date().toISOString().slice(0,10); // YYYY-MM-DD
+  const ev = events.find(e => e.date === today);
+  if(!ev || !ev.rsvps) return null;
+  const going = [];
+  for(const [key, val] of Object.entries(ev.rsvps)){
+    if(val !== 'yes') continue;
+    const p = resolveRsvpKeyToPlayer(key);
+    if(p && !going.find(x => x.id === p.id)) going.push(p);
+  }
+  return going.length >= 2 ? going : null;
+}
+
 function getCheckedPool(){
+  // Prefer today's event RSVP list if there's a matching calendar event
+  const eventPool = getTodayEventPool();
+  if(eventPool) return eventPool;
+  // Fall back to rankings tab checkboxes
   let ids=[];
   try{ ids=JSON.parse(localStorage.getItem('lb_checked')||'[]'); }catch(e){}
   const checked=players.filter(p=>ids.includes(p.id));
@@ -737,7 +826,8 @@ function renderPickCards(){
 
 function updatePickHint(){
   const count = picks.length;
-  const pool = getCheckedPool();
+  const eventPool = getTodayEventPool();
+  const pool = eventPool || getCheckedPool();
   let pids=[];
   try{ pids=JSON.parse(localStorage.getItem('lb_checked')||'[]'); }catch(e){}
   const hint = document.getElementById('tonight-hint');
@@ -749,7 +839,10 @@ function updatePickHint(){
     'Tap to select Team B · Player 2',
     'All 4 players selected!'
   ];
-  if(hint) hint.textContent = (pids.length>=2 ? `${pool.length} attending · ` : '') + hints[Math.min(count,4)];
+  let prefix = '';
+  if(eventPool) prefix = `📅 ${eventPool.length} going tonight · `;
+  else if(pids.length>=2) prefix = `${pool.length} attending · `;
+  if(hint) hint.textContent = prefix + hints[Math.min(count,4)];
   if(pill){
     const labels=['1 of 2–4','2 of 2–4','3 of 4','4 of 4','Ready!'];
     pill.textContent = 'Pick '+labels[Math.min(count,4)];
@@ -1080,6 +1173,15 @@ const safeAvgL = team => { const c=team.reduce((s,id)=>s+getCL(id),0); return c?
 const p1RiskL = team => { if(team.length<2)return 0; return (getCL(team[0])/fullconfident2)/((getCL(team[0])+getCL(team[1]))/fullconfident2); };
 
 window.submitScore = async function(){
+  // Block unverified email users
+  if(currentUser){
+    const isEmailUser = currentUser.providerData.some(p => p.providerId === 'password');
+    if(isEmailUser && !currentUser.emailVerified){
+      toast('Please verify your email before entering scores.', true);
+      return;
+    }
+  }
+
   if(!sel[1]||!sel[2]){ toast('Missing players',true); return; }
   if(!winner){ toast('Select a winner first',true); return; }
 
