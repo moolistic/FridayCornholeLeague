@@ -423,6 +423,14 @@ async function resetSeasonRatings(){
 function renderAdminPlayers(){
   const box=document.getElementById('admin-players-list');
   if(!players.length){box.innerHTML='<div class="es"><p>No players yet.</p></div>';return;}
+
+  // Build lookup maps once
+  const allLinkedPids  = new Set(users.map(u=>u.linkedPlayerId).filter(Boolean));
+  const allFamilyPids  = new Set(users.flatMap(u=>u.familyMembers||[]));
+  // pid → ownerUser
+  const familyOwnerOf  = {};
+  users.forEach(u=>(u.familyMembers||[]).forEach(pid=>{ familyOwnerOf[pid]=u; }));
+
   box.innerHTML=[...players].sort((a,b)=>b.rating-a.rating).map(p=>{
     const lt=p.lifetimeRating!==undefined?toDisp(p.lifetimeRating):toDisp(p.rating);
     const pr=p.priorSeason||{};
@@ -430,16 +438,76 @@ function renderAdminPlayers(){
     const linkedLabel=linkedUser
       ?`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--grass-pale);color:var(--grass);font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;margin-top:3px">🔗 ${linkedUser.firstName||''} ${linkedUser.lastName||''} (${linkedUser.email||''})</span>`
       :`<span style="font-size:11px;color:var(--muted)">No account linked</span>`;
+
+    // ── Family unit inline control ──
+    const familyOwner = familyOwnerOf[p.id];
+    const ownerLinkedUser = linkedUser; // player's own account (if linked)
+
+    let familyHtml = '';
+    if(linkedUser){
+      // This player has an account — show their family members list + add control
+      const theirFamilyIds  = linkedUser.familyMembers || [];
+      const theirFamilyName = `${linkedUser.firstName||''} ${linkedUser.lastName||''}`.trim() || linkedUser.email;
+
+      // Players available to add to their family: not themselves, not already in a family, not this user's own linked pid
+      const available = players.filter(q =>
+        q.id !== p.id &&
+        !theirFamilyIds.includes(q.id) &&
+        !allFamilyPids.has(q.id)
+      ).sort((a,b)=>a.name.localeCompare(b.name));
+
+      const memberChips = theirFamilyIds.map(pid=>{
+        const mp = players.find(x=>x.id===pid);
+        return`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--grass-pale);color:var(--grass);font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px">
+          ${mp?mp.name:pid}
+          <span onclick="adminRemoveFamilyMember('${linkedUser.uid}','${pid}','${theirFamilyIds.join(',')}')" style="cursor:pointer;font-size:12px;line-height:1;color:var(--grass);opacity:.7;margin-left:2px" title="Remove">×</span>
+        </span>`;
+      }).join('');
+
+      familyHtml = `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px">
+        <span style="font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap">👨‍👩‍👧 Family:</span>
+        ${memberChips||'<span style="font-size:11px;color:var(--muted)">None</span>'}
+        ${available.length?`
+          <select id="fadmin-sel-${linkedUser.uid}" style="padding:3px 8px;border:0.5px solid var(--border);border-radius:6px;font-family:var(--fb);font-size:12px;outline:none;max-width:160px">
+            <option value="">+ Add member…</option>
+            ${available.map(q=>`<option value="${q.id}">${q.name}${allLinkedPids.has(q.id)?' (linked)':''}</option>`).join('')}
+          </select>
+          <button class="icon-btn" style="padding:3px 10px;font-size:12px" onclick="adminAddFamilyMember('${linkedUser.uid}','${theirFamilyIds.join(',')}')">Add</button>`
+        :''}
+      </div>`;
+    } else if(familyOwner){
+      // This is an unlinked player already claimed by a family
+      const ownerName = `${familyOwner.firstName||''} ${familyOwner.lastName||''}`.trim() || familyOwner.email;
+      const ownerFamilyIds = familyOwner.familyMembers || [];
+      familyHtml = `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px">
+        <span style="font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap">👨‍👩‍👧 Family of:</span>
+        <span style="font-size:11px;background:#f0f0ec;color:var(--muted);padding:2px 8px;border-radius:10px;font-weight:600">${ownerName}</span>
+        <button class="icon-btn danger" style="padding:3px 10px;font-size:12px" onclick="adminRemoveFamilyMember('${familyOwner.uid}','${p.id}','${ownerFamilyIds.join(',')}')">Remove from family</button>
+      </div>`;
+    } else if(!allLinkedPids.has(p.id)){
+      // Unlinked + unclaimed — show a picker to add them to any linked user's family
+      const linkedUsers = users.filter(u=>u.linkedPlayerId);
+      familyHtml = linkedUsers.length ? `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px">
+        <span style="font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap">👨‍👩‍👧 Assign to family:</span>
+        <select id="fadmin-assign-${p.id}" style="padding:3px 8px;border:0.5px solid var(--border);border-radius:6px;font-family:var(--fb);font-size:12px;outline:none;max-width:180px">
+          <option value="">— Pick account —</option>
+          ${linkedUsers.map(u=>`<option value="${u.uid}|${(u.familyMembers||[]).join(',')}">${u.firstName||''} ${u.lastName||''} (${u.email||''})</option>`).join('')}
+        </select>
+        <button class="icon-btn" style="padding:3px 10px;font-size:12px" onclick="adminAssignToFamily('${p.id}')">Assign</button>
+      </div>` : '';
+    }
+
     // Only show accounts not already linked to another player (or the current link)
     const linkedUids = new Set(users.filter(u=>u.linkedPlayerId && u.linkedPlayerId!==p.id).map(u=>u.uid));
     const userOpts=users.filter(u=>!linkedUids.has(u.uid)).map(u=>`<option value="${u.uid}" ${linkedUser&&linkedUser.uid===u.uid?'selected':''}>${u.firstName||''} ${u.lastName||''} — ${u.email||u.uid}</option>`).join('');
     return`<div class="admin-row" style="flex-direction:column;align-items:stretch;gap:0">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div class="av" style="width:36px;height:36px;font-size:14px;flex-shrink:0">${initials(p.name)}</div>
-        <div class="admin-row-info">
+        <div class="admin-row-info" style="flex:1">
           <strong>${p.name}</strong>
           <span>Season: ${toDisp(p.rating)} | Lifetime: ${lt} | W–L: ${p.wins||0}–${p.losses||0} | ${p.format||'both'}</span>
           <div style="margin-top:2px">${linkedLabel}</div>
+          ${familyHtml}
         </div>
         <button class="icon-btn" onclick="openEditPlayer('${p.id}')">✏️ Edit</button>
         <button class="icon-btn danger" onclick="confirmDeletePlayer('${p.id}')">🗑 Delete</button>
@@ -961,6 +1029,19 @@ function renderAdminFamily(){
     </div>`;
   }).join('');
 }
+
+window.adminAssignToFamily = async function(playerId){
+  const sel = document.getElementById('fadmin-assign-'+playerId);
+  if(!sel||!sel.value){ toast('Select an account first', true); return; }
+  const [uid, currentIdsStr] = sel.value.split('|');
+  const current = currentIdsStr ? currentIdsStr.split(',').filter(Boolean) : [];
+  if(current.includes(playerId)){ toast('Already in that family', true); return; }
+  const newList = [...current, playerId];
+  try{
+    await updateDoc(doc(db,'users',uid), { familyMembers: newList });
+    toast(`${players.find(p=>p.id===playerId)?.name||'Player'} assigned to family ✓`);
+  }catch(e){ toast('Error: '+e.message, true); }
+};
 
 window.adminAddFamilyMember = async function(uid, currentIdsStr){
   const sel = document.getElementById('fadmin-sel-'+uid);

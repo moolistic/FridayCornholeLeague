@@ -267,13 +267,13 @@ input:focus,select:focus{border-color:var(--grass)}
     <div class="section-card" id="family-unit-card" style="display:none">
       <div class="section-hdr">👨‍👩‍👧 Family Members</div>
       <div id="family-unit-body" style="padding:16px 20px">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Add family members (e.g. kids without accounts) so you can RSVP for them. You can also claim any unlinked player as a family member.</p>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Add family members so you can RSVP for them. Unlinked players (no account) are added instantly. Linked players receive a confirmation request first.</p>
         <div id="family-members-list" style="margin-bottom:14px"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <select id="family-add-sel" style="flex:1;min-width:160px;padding:8px 12px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:13px;outline:none">
             <option value="">— Select unlinked player to add —</option>
           </select>
-          <button onclick="addFamilyMember()" style="padding:8px 16px;background:var(--grass);color:#fff;border:none;border-radius:8px;font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">+ Add</button>
+          <button id="family-add-btn" onclick="addFamilyMember()" style="padding:8px 16px;background:var(--grass);color:#fff;border:none;border-radius:8px;font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">+ Add</button>
         </div>
       </div>
     </div>
@@ -664,52 +664,114 @@ function renderPlayerRecordSection(){
 }
 
 // ── Family Members ────────────────────────────────────────────────────────────
+// familyMembers: [playerId]  — confirmed members (unlinked OR linked+accepted)
+// familyRequests: [{fromUid, fromPlayerId, fromName}]  — incoming pending requests on THIS user's doc
+// outgoingRequests: [targetPlayerId]  — pids this user has sent requests to (stored on own doc)
+
 function renderFamilySection(){
   const user = auth.currentUser; if(!user) return;
-  const linkedId = currentProfile?.linkedPlayerId;
+  const myLinkedId = currentProfile?.linkedPlayerId;
   const card = document.getElementById('family-unit-card');
-
-  // Only show if user has a linked player record
-  if(!linkedId){ card.style.display='none'; return; }
+  if(!myLinkedId){ card.style.display='none'; return; }
   card.style.display='block';
 
-  const familyIds = currentProfile.familyMembers || [];
+  const allUsers = window._allUsers || [];
+  const familyIds      = currentProfile.familyMembers     || [];
+  const incomingReqs   = currentProfile.familyRequests    || [];  // requests sent TO me
+  const outgoingPids   = currentProfile.outgoingFamilyReqs|| [];  // pids I requested
+
   const listEl = document.getElementById('family-members-list');
 
-  if(!familyIds.length){
-    listEl.innerHTML = `<div style="font-size:13px;color:var(--muted);padding:6px 0">No family members added yet.</div>`;
-  } else {
-    listEl.innerHTML = familyIds.map(pid => {
-      const p = players.find(x => x.id === pid);
-      const name = p ? p.name : `Unknown (${pid})`;
-      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--border)">
-        <div style="width:32px;height:32px;border-radius:50%;background:var(--grass-pale);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:13px;color:var(--grass);flex-shrink:0">${initials(name)}</div>
-        <span style="flex:1;font-size:14px;font-weight:600">${name}</span>
-        <button onclick="removeFamilyMember('${pid}')" style="padding:5px 12px;border-radius:6px;border:0.5px solid var(--border);background:none;color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--fb);transition:all .15s" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Remove</button>
-      </div>`;
-    }).join('');
-  }
+  // ── Incoming requests block ──
+  const incomingHtml = incomingReqs.length ? `
+    <div style="background:#FFF8E1;border:1px solid var(--wood);border-radius:8px;padding:10px 14px;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--wood);margin-bottom:8px">📬 Pending Family Requests</div>
+      ${incomingReqs.map(req => {
+        const p = players.find(x=>x.id===req.fromPlayerId);
+        return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:5px 0;border-bottom:0.5px solid var(--border)">
+          <span style="flex:1;font-size:13px;font-weight:600">${req.fromName||p?.name||'Someone'} wants to add you to their family</span>
+          <button onclick="acceptFamilyRequest('${req.fromUid}','${req.fromPlayerId}')"
+            style="padding:5px 12px;border-radius:6px;border:1.5px solid var(--grass);background:var(--grass-pale);color:var(--grass);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb)">✓ Accept</button>
+          <button onclick="declineFamilyRequest('${req.fromUid}')"
+            style="padding:5px 12px;border-radius:6px;border:1.5px solid var(--border);background:none;color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--fb)">Decline</button>
+        </div>`;
+      }).join('')}
+    </div>` : '';
 
-  // Populate the add-select with unlinked players not already in family
-  // "Unlinked" = no user has linkedPlayerId pointing to them, AND not already in any family unit
-  const allLinkedPids = new Set(
-    [...(window._allUsers||[])].map(u => u.linkedPlayerId).filter(Boolean)
-  );
-  // Also exclude pids already claimed in ANY family unit by any user
-  const allFamilyPids = new Set(
-    [...(window._allUsers||[])].flatMap(u => u.familyMembers||[])
-  );
+  // ── Current members ──
+  const membersHtml = familyIds.length
+    ? familyIds.map(pid => {
+        const p = players.find(x => x.id === pid);
+        const name = p ? p.name : `Unknown (${pid})`;
+        const isLinked = allUsers.some(u => u.linkedPlayerId === pid);
+        const badge = isLinked
+          ? `<span style="font-size:10px;background:var(--grass-pale);color:var(--grass);padding:2px 7px;border-radius:10px;font-weight:600">Linked</span>`
+          : `<span style="font-size:10px;background:#f0f0ec;color:var(--muted);padding:2px 7px;border-radius:10px;font-weight:600">Unlinked</span>`;
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--border)">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--grass-pale);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:13px;color:var(--grass);flex-shrink:0">${initials(name)}</div>
+          <span style="flex:1;font-size:14px;font-weight:600">${name}</span>
+          ${badge}
+          <button onclick="removeFamilyMember('${pid}')"
+            style="padding:5px 12px;border-radius:6px;border:0.5px solid var(--border);background:none;color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--fb)"
+            onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'"
+            onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Remove</button>
+        </div>`;
+      }).join('')
+    : `<div style="font-size:13px;color:var(--muted);padding:6px 0">No family members added yet.</div>`;
 
-  const sel = document.getElementById('family-add-sel');
+  listEl.innerHTML = incomingHtml + membersHtml;
+
+  // ── Add dropdown ──
+  // Pids already in confirmed families (across all users)
+  const allFamilyPids = new Set(allUsers.flatMap(u => u.familyMembers||[]));
+  // Pids with linked accounts (excluding myself)
+  const allLinkedPids = new Set(allUsers.map(u=>u.linkedPlayerId).filter(Boolean));
+
+  // Available = any player except:
+  //   - my own linked player
+  //   - already in my family
+  //   - already in someone else's family (unless unlinked — allow admin-only path; linked players go via request)
+  //   - I've already sent them a request (show pending label instead)
   const available = players.filter(p =>
-    p.id !== linkedId &&
-    !allLinkedPids.has(p.id) &&
+    p.id !== myLinkedId &&
     !familyIds.includes(p.id) &&
-    !allFamilyPids.has(p.id)
+    !allFamilyPids.has(p.id)   // not already in any family
   ).sort((a,b) => a.name.localeCompare(b.name));
 
-  sel.innerHTML = '<option value="">— Select unlinked player to add —</option>' +
-    available.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  // Also show players I sent requests to (so user can see pending)
+  const pendingRows = outgoingPids
+    .filter(pid => !familyIds.includes(pid)) // not yet accepted
+    .map(pid => {
+      const p = players.find(x=>x.id===pid);
+      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--border)">
+        <span style="flex:1;font-size:13px;color:var(--muted);font-style:italic">⏳ Request sent to ${p?.name||pid}</span>
+        <button onclick="cancelFamilyRequest('${pid}')"
+          style="padding:4px 10px;border-radius:6px;border:0.5px solid var(--border);background:none;color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--fb)">Cancel</button>
+      </div>`;
+    }).join('');
+
+  if(pendingRows){
+    listEl.innerHTML += `<div style="margin-top:8px;padding:8px 12px;background:var(--bg);border-radius:8px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:4px">Outgoing Requests</div>
+      ${pendingRows}
+    </div>`;
+  }
+
+  const sel = document.getElementById('family-add-sel');
+  sel.innerHTML = '<option value="">— Select player to add —</option>' +
+    available.map(p => {
+      const isLinked = allLinkedPids.has(p.id);
+      return `<option value="${p.id}">${p.name}${isLinked?' (will send request)':''}</option>`;
+    }).join('');
+
+  // Update button label dynamically
+  sel.onchange = () => {
+    const pid = sel.value;
+    const addBtn = document.getElementById('family-add-btn');
+    if(!addBtn) return;
+    const isLinked = pid && allLinkedPids.has(pid);
+    addBtn.textContent = isLinked ? '📨 Send Request' : '+ Add';
+  };
 }
 
 window.addFamilyMember = async function(){
@@ -717,11 +779,102 @@ window.addFamilyMember = async function(){
   const sel = document.getElementById('family-add-sel');
   const pid = sel.value;
   if(!pid){ toast('Select a player first', true); return; }
-  const newList = [...(currentProfile.familyMembers||[]), pid];
+  const allUsers = window._allUsers || [];
+  const allLinkedPids = new Set(allUsers.map(u=>u.linkedPlayerId).filter(Boolean));
+
+  if(allLinkedPids.has(pid)){
+    // Linked player → send a request on their user doc
+    const targetUser = allUsers.find(u => u.linkedPlayerId === pid);
+    if(!targetUser){ toast('Could not find that player\'s account', true); return; }
+    const myName = `${currentProfile.firstName||''} ${currentProfile.lastName||''}`.trim() || user.email;
+    const myLinkedId = currentProfile.linkedPlayerId;
+    const existingReqs = targetUser.familyRequests || [];
+    if(existingReqs.some(r => r.fromUid === user.uid)){ toast('Request already sent!', true); return; }
+    const newReqs = [...existingReqs, { fromUid: user.uid, fromPlayerId: myLinkedId, fromName: myName }];
+    // Also record outgoing on own doc
+    const myOutgoing = [...(currentProfile.outgoingFamilyReqs||[]), pid];
+    try{
+      await updateDoc(doc(db,'users',targetUser.uid), { familyRequests: newReqs });
+      await updateDoc(doc(db,'users',user.uid), { outgoingFamilyReqs: myOutgoing });
+      currentProfile.outgoingFamilyReqs = myOutgoing;
+      toast(`Request sent to ${players.find(p=>p.id===pid)?.name||'player'} ✓`);
+      renderFamilySection();
+    }catch(e){ toast('Error: '+e.message, true); }
+  } else {
+    // Unlinked player → add directly
+    const newList = [...(currentProfile.familyMembers||[]), pid];
+    try{
+      await updateDoc(doc(db,'users',user.uid), { familyMembers: newList });
+      currentProfile.familyMembers = newList;
+      toast(`${players.find(p=>p.id===pid)?.name||'Player'} added to your family ✓`);
+      renderFamilySection();
+    }catch(e){ toast('Error: '+e.message, true); }
+  }
+};
+
+window.acceptFamilyRequest = async function(fromUid, fromPlayerId){
+  const user = auth.currentUser; if(!user) return;
+  const allUsers = window._allUsers || [];
+  const fromUser = allUsers.find(u=>u.uid===fromUid);
+  if(!fromUser){ toast('Requester not found', true); return; }
+
+  const myLinkedId = currentProfile.linkedPlayerId;
+
+  // Add my linkedPlayerId to requester's familyMembers
+  const theirNewFamily = [...(fromUser.familyMembers||[]), myLinkedId].filter(Boolean);
+  // Remove outgoing request from their doc
+  const theirNewOutgoing = (fromUser.outgoingFamilyReqs||[]).filter(pid => pid !== myLinkedId);
+  // Remove incoming request from my doc
+  const myNewReqs = (currentProfile.familyRequests||[]).filter(r => r.fromUid !== fromUid);
+  // Add fromPlayerId to MY familyMembers too (mutual)
+  const myNewFamily = [...(currentProfile.familyMembers||[]), fromPlayerId].filter(Boolean);
+
   try{
-    await updateDoc(doc(db,'users',user.uid), { familyMembers: newList });
-    currentProfile.familyMembers = newList;
-    toast(`${players.find(p=>p.id===pid)?.name||'Player'} added to your family ✓`);
+    await updateDoc(doc(db,'users',fromUid), { familyMembers: theirNewFamily, outgoingFamilyReqs: theirNewOutgoing });
+    await updateDoc(doc(db,'users',user.uid), { familyRequests: myNewReqs, familyMembers: myNewFamily });
+    currentProfile.familyRequests = myNewReqs;
+    currentProfile.familyMembers  = myNewFamily;
+    toast(`Family link confirmed! ✓`);
+    renderFamilySection();
+  }catch(e){ toast('Error: '+e.message, true); }
+};
+
+window.declineFamilyRequest = async function(fromUid){
+  const user = auth.currentUser; if(!user) return;
+  const allUsers = window._allUsers || [];
+  const fromUser = allUsers.find(u=>u.uid===fromUid);
+  const myLinkedId = currentProfile.linkedPlayerId;
+
+  const myNewReqs = (currentProfile.familyRequests||[]).filter(r => r.fromUid !== fromUid);
+  // Also clean up their outgoing
+  const theirNewOutgoing = fromUser ? (fromUser.outgoingFamilyReqs||[]).filter(pid => pid !== myLinkedId) : undefined;
+
+  try{
+    await updateDoc(doc(db,'users',user.uid), { familyRequests: myNewReqs });
+    if(fromUser && theirNewOutgoing !== undefined){
+      await updateDoc(doc(db,'users',fromUid), { outgoingFamilyReqs: theirNewOutgoing });
+    }
+    currentProfile.familyRequests = myNewReqs;
+    toast('Request declined.');
+    renderFamilySection();
+  }catch(e){ toast('Error: '+e.message, true); }
+};
+
+window.cancelFamilyRequest = async function(targetPlayerId){
+  const user = auth.currentUser; if(!user) return;
+  const allUsers = window._allUsers || [];
+  const targetUser = allUsers.find(u => u.linkedPlayerId === targetPlayerId);
+  const myLinkedId = currentProfile.linkedPlayerId;
+  const myNewOutgoing = (currentProfile.outgoingFamilyReqs||[]).filter(pid => pid !== targetPlayerId);
+
+  try{
+    if(targetUser){
+      const theirNewReqs = (targetUser.familyRequests||[]).filter(r => r.fromUid !== user.uid);
+      await updateDoc(doc(db,'users',targetUser.uid), { familyRequests: theirNewReqs });
+    }
+    await updateDoc(doc(db,'users',user.uid), { outgoingFamilyReqs: myNewOutgoing });
+    currentProfile.outgoingFamilyReqs = myNewOutgoing;
+    toast('Request cancelled.');
     renderFamilySection();
   }catch(e){ toast('Error: '+e.message, true); }
 };
@@ -729,8 +882,16 @@ window.addFamilyMember = async function(){
 window.removeFamilyMember = async function(pid){
   const user = auth.currentUser; if(!user) return;
   const newList = (currentProfile.familyMembers||[]).filter(id => id !== pid);
+  // If the removed player is linked, also remove mutual link on their side
+  const allUsers = window._allUsers || [];
+  const theirUser = allUsers.find(u => u.linkedPlayerId === pid);
+  const myLinkedId = currentProfile.linkedPlayerId;
   try{
     await updateDoc(doc(db,'users',user.uid), { familyMembers: newList });
+    if(theirUser){
+      const theirNewFamily = (theirUser.familyMembers||[]).filter(id => id !== myLinkedId);
+      await updateDoc(doc(db,'users',theirUser.uid), { familyMembers: theirNewFamily });
+    }
     currentProfile.familyMembers = newList;
     toast('Family member removed');
     renderFamilySection();
