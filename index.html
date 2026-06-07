@@ -499,6 +499,11 @@ function toast(msg,err){
 // ── In-memory cache ───────────────────────────────────────────────────────────
 let players=[], matches=[], events=[], users=[];
 
+// Returns today's date as YYYY-MM-DD in local time (not UTC)
+function localDateStr(d=new Date()){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 onSnapshot(collection(db,'players'), snap=>{
   players=snap.docs.map(d=>({id:d.id,...d.data()}));
   refreshActive();
@@ -567,7 +572,7 @@ window.showPage=function(p,btn){
 
 // ── Home Dashboard ────────────────────────────────────────────────────────────
 function renderHome(){
-  const today=new Date().toISOString().split('T')[0];
+  const today=localDateStr();
   const upcoming=events.filter(e=>e.date>=today).slice(0,2);
 
   // Next events section
@@ -605,7 +610,7 @@ function renderHome(){
 function renderMovement(targetDiv){
   const curYear=new Date().getFullYear();
   const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-6);
-  const cutoffStr=cutoff.toISOString().split('T')[0];
+  const cutoffStr=localDateStr(cutoff);
   const recentMatches=matches.filter(m=>m.date&&m.date>=cutoffStr);
   if(!recentMatches.length||!players.length){targetDiv.innerHTML='';return;}
 
@@ -1249,7 +1254,7 @@ function renderCalendar(){
     box.innerHTML=`<div class="es"><p>No events scheduled yet.</p>${adminAuthed?'<p style="margin-top:8px;font-size:13px">Use the + Add Event button to create your first event.</p>':''}</div>`;
     return;
   }
-  const today=new Date().toISOString().split('T')[0];
+  const today=localDateStr();
   const upcoming=events.filter(e=>e.date>=today);
   const past=events.filter(e=>e.date<today).reverse();
 
@@ -1485,7 +1490,7 @@ window.openAddEvent=function(){
   document.getElementById('event-modal-title').textContent='Add Event';
   document.getElementById('edit-event-id').value='';
   ['ev-theme','ev-bring','ev-cost','ev-notes'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('ev-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('ev-date').value=localDateStr();
   document.getElementById('ev-cancelled').checked=false;
   document.getElementById('ev-time').value='6:00 PM';
   document.getElementById('ev-endtime').value='9:00 PM';
