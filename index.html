@@ -1091,13 +1091,13 @@ window.renderPlayerStats=function renderPlayerStats(){
 }
 
 // ── RSVP (Firestore-backed, family-unit model) ────────────────────────────────
-// Key formats:
-//   {uid}                     → linked user's own RSVP
-//   family_{ownerUid}_{pid}   → family member RSVP, set by ownerUid for player pid
+// Key rules:
+//   Linked player  → always keyed by their own {uid}
+//   Unlinked player (no account) → keyed as family_{ownerUid}_{playerId}
 //
-// Each person (owner + each family member) has their own independent RSVP.
-// The owner's buttons write only their own key. Per-member buttons write only
-// that member's key. The going/not going list resolves every key to a name.
+// This means setFamilyRsvp for a linked family member must write to THEIR uid,
+// not a family_ key. And the list resolver skips family_ keys whose playerId
+// belongs to a linked account (they'll already appear via their own uid key).
 
 function getRsvp(evId, uid){
   const ev=events.find(e=>e.id===evId); if(!ev) return 'none';
@@ -1106,22 +1106,28 @@ function getRsvp(evId, uid){
 }
 
 function getFamilyMemberRsvp(evId, ownerUid, playerId){
-  const ev=events.find(e=>e.id===evId); if(!ev) return 'none';
-  const key=`family_${ownerUid}_${playerId}`;
-  return (ev.rsvps&&ev.rsvps[key]) || 'none';
+  const ev=events.find(e=>e.id===evId); if(!ev||!ev.rsvps) return 'none';
+  // If this player has a linked account, their RSVP lives on their own uid key
+  const linkedUser=users.find(u=>u.linkedPlayerId===playerId);
+  if(linkedUser) return ev.rsvps[linkedUser.uid]||'none';
+  // Unlinked player — use family_ key
+  return ev.rsvps[`family_${ownerUid}_${playerId}`]||'none';
 }
 
-// Resolve a key to a display name
+// Resolve a key to a display name, skipping family_ keys for linked players
+// (they appear under their own uid key instead)
 function resolveRsvpKey(key){
   if(key.startsWith('family_')){
-    // family_{ownerUid}_{playerId} — playerId is everything after the last underscore
     const inner=key.slice('family_'.length);
     const lastUs=inner.lastIndexOf('_');
     const playerId=inner.slice(lastUs+1);
+    // If this player has a linked account, skip — they have their own uid key
+    const linkedUser=users.find(u=>u.linkedPlayerId===playerId);
+    if(linkedUser) return null;
     const p=players.find(x=>x.id===playerId);
     return p?p.name:null;
   }
-  // Own uid key — resolve to linked player name
+  // Own uid key
   const u=users.find(x=>x.uid===key);
   if(!u) return null;
   const linked=u.linkedPlayerId?players.find(p=>p.id===u.linkedPlayerId):null;
@@ -1131,7 +1137,8 @@ function resolveRsvpKey(key){
 function getRsvpCounts(evId){
   const ev=events.find(e=>e.id===evId); if(!ev||!ev.rsvps) return {yes:0,no:0};
   let yes=0,no=0;
-  for(const v of Object.values(ev.rsvps)){
+  for(const [key,v] of Object.entries(ev.rsvps)){
+    if(resolveRsvpKey(key)===null) continue; // skip stale family_ keys for linked players
     if(v==='yes') yes++; else if(v==='no') no++;
   }
   return{yes,no};
@@ -1170,6 +1177,22 @@ window.setRsvp=async function(evId,val,btnGoing,btnNo){
 window.setFamilyRsvp=async function(evId,val,playerId){
   if(!indexCurrentUser){ toast('Sign in first',true); return; }
   if(!playerId){ toast('No player specified',true); return; }
+
+  // If the family member has their own linked account, write to THEIR uid key
+  const linkedUser=users.find(u=>u.linkedPlayerId===playerId);
+  if(linkedUser){
+    const cur=getRsvp(evId, linkedUser.uid);
+    const next=cur===val?'none':val;
+    try{
+      const evRef=doc(db,'events',evId);
+      await updateDoc(evRef,{[`rsvps.${linkedUser.uid}`]:next==='none'?deleteField():next});
+      const pName=players.find(x=>x.id===playerId)?.name||'Family member';
+      toast(next==='yes'?`${pName} going 🎉`:next==='no'?`${pName} not going`:`${pName} RSVP cleared`);
+    }catch(e){toast('Error: '+e.message,true);}
+    return;
+  }
+
+  // Unlinked player — use family_ key under the current user
   const key=`family_${indexCurrentUser.uid}_${playerId}`;
   const cur=getFamilyMemberRsvp(evId,indexCurrentUser.uid,playerId);
   const next=cur===val?'none':val;
@@ -1187,9 +1210,38 @@ window.toggleRsvpList=function(evId){
   el.style.display=el.style.display==='none'?'block':'none';
 };
 
+// ── One-time cleanup: remove stale family_ keys for linked players ────────────
+// Old data may have family_{ownerUid}_{linkedPlayerId} keys. Since linked players
+// now always use their own uid key, these cause duplicates and must be removed.
+let _cleanupRan=false;
+async function cleanupStaleLinkedFamilyKeys(){
+  if(_cleanupRan) return;
+  _cleanupRan=true;
+  const linkedPids=new Set(users.map(u=>u.linkedPlayerId).filter(Boolean));
+  if(!linkedPids.size) return;
+  for(const ev of events){
+    if(!ev.rsvps) continue;
+    const staleKeys=Object.keys(ev.rsvps).filter(k=>{
+      if(!k.startsWith('family_')) return false;
+      const inner=k.slice('family_'.length);
+      const pid=inner.slice(inner.lastIndexOf('_')+1);
+      return linkedPids.has(pid);
+    });
+    if(!staleKeys.length) continue;
+    try{
+      const updates={};
+      staleKeys.forEach(k=>{ updates[`rsvps.${k}`]=deleteField(); });
+      await updateDoc(doc(db,'events',ev.id), updates);
+      console.log(`Cleaned ${staleKeys.length} stale RSVP key(s) from event ${ev.id}`);
+    }catch(e){ console.warn('Cleanup error:',e.message); }
+  }
+}
+
 // ── Calendar ──────────────────────────────────────────────────────────────────
 function renderCalendar(){
   const adminAuthed = isAdmin(indexCurrentUser, indexUserProfile);
+  // Clean up stale family_ keys for linked players (runs once, admin only)
+  if(adminAuthed && users.length && events.length) cleanupStaleLinkedFamilyKeys();
   // Show add button only when admin is logged in
   document.getElementById('cal-admin-btn').style.display=adminAuthed?'block':'none';
   const box=document.getElementById('calendar-content');
