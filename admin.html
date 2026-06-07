@@ -182,13 +182,6 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
       </div>
     </div>
 
-    <!-- Family Units -->
-    <div class="admin-section">
-      <div class="admin-section-hdr">Family Units</div>
-      <div style="padding:10px 20px 4px;font-size:13px;color:var(--muted)">Linked accounts can manage their own family members on their profile page. As admin you can also add or remove unlinked players from any family unit here.</div>
-      <div id="admin-family-list"><div class="loading-overlay"><div class="spinner"></div></div></div>
-    </div>
-
     <!-- Match History -->
     <div class="admin-section">
       <div class="admin-section-hdr">Match History</div>
@@ -431,7 +424,10 @@ function renderAdminPlayers(){
   const familyOwnerOf  = {};
   users.forEach(u=>(u.familyMembers||[]).forEach(pid=>{ familyOwnerOf[pid]=u; }));
 
-  box.innerHTML=[...players].sort((a,b)=>b.rating-a.rating).map(p=>{
+  box.innerHTML=[...players].sort((a,b)=>{
+    const lastName=n=>{const parts=n.trim().split(' ');return parts.length>1?parts.slice(1).join(' ').toLowerCase():parts[0].toLowerCase();};
+    return lastName(a.name).localeCompare(lastName(b.name));
+  }).map(p=>{
     const lt=p.lifetimeRating!==undefined?toDisp(p.lifetimeRating):toDisp(p.rating);
     const pr=p.priorSeason||{};
     const linkedUser=users.find(u=>u.linkedPlayerId===p.id);
@@ -450,11 +446,11 @@ function renderAdminPlayers(){
       const theirFamilyName = `${linkedUser.firstName||''} ${linkedUser.lastName||''}`.trim() || linkedUser.email;
 
       // Players available to add to their family: not themselves, not already in a family, not this user's own linked pid
+      const lastName=n=>{const parts=n.trim().split(' ');return parts.length>1?parts.slice(1).join(' ').toLowerCase():parts[0].toLowerCase();};
       const available = players.filter(q =>
         q.id !== p.id &&
-        !theirFamilyIds.includes(q.id) &&
-        !allFamilyPids.has(q.id)
-      ).sort((a,b)=>a.name.localeCompare(b.name));
+        !theirFamilyIds.includes(q.id)
+      ).sort((a,b)=>lastName(a.name).localeCompare(lastName(b.name)));
 
       const memberChips = theirFamilyIds.map(pid=>{
         const mp = players.find(x=>x.id===pid);
