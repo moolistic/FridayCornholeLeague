@@ -182,6 +182,13 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
       </div>
     </div>
 
+    <!-- Family Units -->
+    <div class="admin-section">
+      <div class="admin-section-hdr">Family Units</div>
+      <div style="padding:10px 20px 4px;font-size:13px;color:var(--muted)">Linked accounts can manage their own family members on their profile page. As admin you can also add or remove unlinked players from any family unit here.</div>
+      <div id="admin-family-list"><div class="loading-overlay"><div class="spinner"></div></div></div>
+    </div>
+
     <!-- Match History -->
     <div class="admin-section">
       <div class="admin-section-hdr">Match History</div>
@@ -371,7 +378,7 @@ function renderAccessGate(){
 // ── Firestore listeners ───────────────────────────────────────────────────────
 onSnapshot(collection(db,'players'), snap=>{
   players=snap.docs.map(d=>({id:d.id,...d.data()}));
-  if(isAdmin(currentUser,currentProfile)){ renderAdminPlayers(); populateMergeSelects(); }
+  if(isAdmin(currentUser,currentProfile)){ renderAdminPlayers(); populateMergeSelects(); renderAdminFamily(); }
 });
 onSnapshot(collection(db,'matches'), snap=>{
   matches=snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -388,7 +395,7 @@ onSnapshot(collection(db,'users'), snap=>{
     const fresh=users.find(u=>u.uid===currentUser.uid);
     if(fresh){ currentProfile=fresh; updateNavPill(currentUser,fresh); renderAccessGate(); }
   }
-  if(isAdmin(currentUser,currentProfile)){ renderAdminPlayers(); populateMergeSelects(); }
+  if(isAdmin(currentUser,currentProfile)){ renderAdminPlayers(); populateMergeSelects(); renderAdminFamily(); }
 });
 
 // ── Season Reset ─────────────────────────────────────────────────────────────
@@ -890,6 +897,93 @@ async function recomputeAllRatings(updatedMatches){
   }
   await Promise.all(writes);
 }
+
+// ── Family Units ──────────────────────────────────────────────────────────────
+function renderAdminFamily(){
+  const box = document.getElementById('admin-family-list');
+  if(!box) return;
+
+  // Collect all pids already linked to a user account (their own player)
+  const linkedPids = new Set(users.map(u=>u.linkedPlayerId).filter(Boolean));
+  // Collect all pids already claimed in any family unit
+  const claimedPids = new Set(users.flatMap(u=>u.familyMembers||[]));
+
+  // Users who have a linkedPlayerId = can have a family unit
+  const linkedUsers = users.filter(u=>u.linkedPlayerId);
+
+  if(!linkedUsers.length){
+    box.innerHTML='<div class="es"><p>No linked user accounts yet. Link user accounts to player records first.</p></div>';
+    return;
+  }
+
+  // Unlinked players = no user has linkedPlayerId === p.id
+  const unlinkedPlayers = players.filter(p => !linkedPids.has(p.id));
+
+  box.innerHTML = linkedUsers.map(u => {
+    const myPlayer = players.find(p=>p.id===u.linkedPlayerId);
+    const familyIds = u.familyMembers || [];
+    const name = `${u.firstName||''} ${u.lastName||''}`.trim() || u.email;
+
+    const memberRows = familyIds.map(pid => {
+      const p = players.find(x=>x.id===pid);
+      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--border)">
+        <span style="flex:1;font-size:13px;font-weight:600">${p?p.name:'Unknown ('+pid+')'}</span>
+        <button class="icon-btn danger" onclick="adminRemoveFamilyMember('${u.uid}','${pid}','${familyIds.join(',')}')">✕ Remove</button>
+      </div>`;
+    }).join('') || `<div style="font-size:12px;color:var(--muted);padding:4px 0">No family members</div>`;
+
+    // Available to add: unlinked AND not already claimed AND not already in this family
+    const available = unlinkedPlayers.filter(p =>
+      !familyIds.includes(p.id) &&
+      (!claimedPids.has(p.id) || familyIds.includes(p.id))
+    );
+
+    return `<div class="admin-row" style="flex-direction:column;align-items:stretch;gap:0">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <div class="av" style="width:36px;height:36px;font-size:14px;flex-shrink:0">${initials(name)}</div>
+        <div class="admin-row-info">
+          <strong>${name}</strong>
+          <span>${u.email||''} · Player: ${myPlayer?myPlayer.name:'—'}</span>
+        </div>
+      </div>
+      <div style="background:var(--bg);border-radius:8px;padding:10px 14px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--grass);margin-bottom:6px">Family Members</div>
+        ${memberRows}
+        ${available.length ? `
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+          <select id="fadmin-sel-${u.uid}" style="flex:1;min-width:150px;padding:7px 10px;border:0.5px solid var(--border);border-radius:6px;font-family:var(--fb);font-size:13px;outline:none">
+            <option value="">— Add unlinked player —</option>
+            ${available.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
+          </select>
+          <button class="icon-btn" style="background:var(--grass);color:#fff;border-color:var(--grass)" onclick="adminAddFamilyMember('${u.uid}','${familyIds.join(',')}')">+ Add</button>
+        </div>` : `<div style="font-size:12px;color:var(--muted);margin-top:8px">No unlinked players available to add.</div>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.adminAddFamilyMember = async function(uid, currentIdsStr){
+  const sel = document.getElementById('fadmin-sel-'+uid);
+  if(!sel) return;
+  const pid = sel.value;
+  if(!pid){ toast('Select a player first', true); return; }
+  const current = currentIdsStr ? currentIdsStr.split(',').filter(Boolean) : [];
+  if(current.includes(pid)){ toast('Already in family', true); return; }
+  const newList = [...current, pid];
+  try{
+    await updateDoc(doc(db,'users',uid), { familyMembers: newList });
+    toast(`${players.find(p=>p.id===pid)?.name||'Player'} added to family ✓`);
+  }catch(e){ toast('Error: '+e.message, true); }
+};
+
+window.adminRemoveFamilyMember = async function(uid, pid, currentIdsStr){
+  const current = currentIdsStr ? currentIdsStr.split(',').filter(Boolean) : [];
+  const newList = current.filter(id => id !== pid);
+  try{
+    await updateDoc(doc(db,'users',uid), { familyMembers: newList });
+    toast('Family member removed');
+  }catch(e){ toast('Error: '+e.message, true); }
+};
 
 // ── Hamburger ─────────────────────────────────────────────────────────────────
 window.toggleHam=function(){ document.getElementById('ham-menu').classList.toggle('open'); };

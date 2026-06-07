@@ -105,6 +105,14 @@ input:focus,select:focus{border-color:var(--grass)}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 @media(max-width:520px){.form-grid{grid-template-columns:1fr}.profile-header{flex-direction:column;text-align:center}}
+.verify-banner{background:#FFF8E1;border:1px solid #FFD54F;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px}
+.verify-banner .vb-icon{font-size:22px;flex-shrink:0;margin-top:1px}
+.verify-banner .vb-text{flex:1;font-size:13px;color:#5D4037}
+.verify-banner .vb-text strong{display:block;font-size:14px;margin-bottom:3px;color:#3E2723}
+.btn-verify{margin-top:8px;padding:7px 14px;background:var(--wood);color:#fff;border:none;border-radius:6px;font-family:var(--fd);font-size:14px;letter-spacing:.5px;cursor:pointer;transition:background .15s}
+.btn-verify:hover{background:#8a5510}
+.btn-secondary{width:100%;padding:12px;background:#fff;color:var(--grass);border:1.5px solid var(--grass);border-radius:8px;font-family:var(--fd);font-size:17px;letter-spacing:1px;cursor:pointer;transition:all .15s;margin-top:10px}
+.btn-secondary:hover{background:var(--grass-pale)}
 </style>
 </head>
 <body>
@@ -178,6 +186,7 @@ input:focus,select:focus{border-color:var(--grass)}
         </div>
         <div class="fg"><label>Email</label><input type="email" id="signup-email" placeholder="you@example.com" autocomplete="email"></div>
         <div class="fg"><label>Password</label><input type="password" id="signup-password" placeholder="Min 6 characters" autocomplete="new-password"></div>
+        <div class="fg"><label>Confirm Password</label><input type="password" id="signup-password-confirm" placeholder="Re-enter password" autocomplete="new-password"></div>
         <div class="form-grid">
           <div class="fg"><label>Birthday</label><input type="date" id="signup-birthday" autocomplete="bday"></div>
           <div class="fg"><label>🍕 Fav Pizza Topping</label><input type="text" id="signup-pizza" placeholder="e.g. Pepperoni"></div>
@@ -214,6 +223,17 @@ input:focus,select:focus{border-color:var(--grass)}
 
   <!-- PROFILE SCREEN -->
   <div class="screen" id="screen-profile">
+
+    <!-- Email verification banner (shown for unverified email/password users) -->
+    <div class="verify-banner" id="verify-banner" style="display:none">
+      <div class="vb-icon">📧</div>
+      <div class="vb-text">
+        <strong>Verify your email address</strong>
+        Check your inbox for a confirmation link. You can read league data but can't enter scores until verified.
+        <br><button class="btn-verify" onclick="resendVerification()">Resend Email</button>
+      </div>
+    </div>
+
     <div class="profile-header">
       <div class="profile-av" id="profile-av-wrap">?</div>
       <div>
@@ -244,7 +264,22 @@ input:focus,select:focus{border-color:var(--grass)}
       <div id="player-record-body" style="padding:16px 20px;font-size:14px;color:var(--muted)">Loading…</div>
     </div>
 
+    <div class="section-card" id="family-unit-card" style="display:none">
+      <div class="section-hdr">👨‍👩‍👧 Family Members</div>
+      <div id="family-unit-body" style="padding:16px 20px">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Add family members (e.g. kids without accounts) so you can RSVP for them. You can also claim any unlinked player as a family member.</p>
+        <div id="family-members-list" style="margin-bottom:14px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="family-add-sel" style="flex:1;min-width:160px;padding:8px 12px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:13px;outline:none">
+            <option value="">— Select unlinked player to add —</option>
+          </select>
+          <button onclick="addFamilyMember()" style="padding:8px 16px;background:var(--grass);color:#fff;border:none;border-radius:8px;font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">+ Add</button>
+        </div>
+      </div>
+    </div>
+
     <button class="save-btn" id="save-profile-btn" onclick="saveProfile()">SAVE CHANGES</button>
+    <button class="btn-secondary" id="reset-pw-btn" style="display:none" onclick="sendPasswordReset()">RESET PASSWORD</button>
     <div class="logout-row">
       <span class="logout-link" onclick="signOut()">Sign out</span>
       <span style="color:var(--border);margin:0 10px">·</span>
@@ -264,7 +299,8 @@ import {
   getAuth, onAuthStateChanged, signOut as fbSignOut,
   createUserWithEmailAndPassword, signInWithEmailAndPassword,
   GoogleAuthProvider, signInWithPopup, updateProfile,
-  deleteUser, reauthenticateWithPopup
+  deleteUser, reauthenticateWithPopup,
+  sendEmailVerification, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -286,10 +322,19 @@ const ADMIN_EMAIL = 'matthew.r.fiebig@gmail.com';
 
 let players = [];
 let currentProfile = null;
+let pendingEmailProfile = null; // Set before createUserWithEmailAndPassword to survive the auth race
 
 onSnapshot(collection(db, 'players'), snap => {
   players = snap.docs.map(d => ({id: d.id, ...d.data()}));
   if(currentProfile) renderPlayerRecordSection();
+});
+
+let _allUsers = [];
+window._allUsers = _allUsers;
+onSnapshot(collection(db, 'users'), snap => {
+  _allUsers = snap.docs.map(d => ({uid: d.id, ...d.data()}));
+  window._allUsers = _allUsers;
+  if(currentProfile) renderFamilySection();
 });
 
 function initials(n){ return (n||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
@@ -343,15 +388,26 @@ onAuthStateChanged(auth, async user => {
     showScreen('auth');
     return;
   }
+  const isEmailUser = user.providerData.some(p => p.providerId === 'password');
+
+  // If emailSignUp just ran, use the profile data it already has — no getDoc race
+  if(pendingEmailProfile){
+    currentProfile = pendingEmailProfile;
+    pendingEmailProfile = null;
+    updateProfNavPill(user, currentProfile);
+    renderProfileScreen(user, currentProfile);
+    showScreen('profile');
+    return;
+  }
+
   const ref = doc(db, 'users', user.uid);
   const snap = await getDoc(ref);
 
   if(snap.exists()){
     currentProfile = snap.data();
     updateProfNavPill(user, currentProfile);
-    const needsCompletion = !currentProfile.firstName && !currentProfile.lastName;
+    const needsCompletion = !currentProfile.firstName && !currentProfile.lastName && !isEmailUser;
     if(needsCompletion){
-      // Pre-fill from Google displayName if available
       document.getElementById('complete-first').value = user.displayName?.split(' ')[0] || '';
       document.getElementById('complete-last').value  = user.displayName?.split(' ').slice(1).join(' ') || '';
       showScreen('complete');
@@ -360,12 +416,29 @@ onAuthStateChanged(auth, async user => {
       showScreen('profile');
     }
   } else {
-    // Brand new user — no profile doc yet
     updateProfNavPill(user, null);
-    const nameParts = (user.displayName || '').split(' ');
-    document.getElementById('complete-first').value = nameParts[0] || '';
-    document.getElementById('complete-last').value  = nameParts.slice(1).join(' ') || '';
-    showScreen('complete');
+    if(isEmailUser){
+      // Doc write still in-flight — retry once after a short wait
+      setTimeout(async () => {
+        try{
+          const retrySnap = await getDoc(ref);
+          if(retrySnap.exists()){
+            currentProfile = retrySnap.data();
+            updateProfNavPill(user, currentProfile);
+            renderProfileScreen(user, currentProfile);
+            showScreen('profile');
+          } else {
+            renderProfileScreen(user, {});
+            showScreen('profile');
+          }
+        } catch(_){ renderProfileScreen(user, {}); showScreen('profile'); }
+      }, 1500);
+    } else {
+      const nameParts = (user.displayName || '').split(' ');
+      document.getElementById('complete-first').value = nameParts[0] || '';
+      document.getElementById('complete-last').value  = nameParts.slice(1).join(' ') || '';
+      showScreen('complete');
+    }
   }
 });
 
@@ -402,27 +475,42 @@ window.emailSignIn = async function(){
 
 // ── Email sign-up ─────────────────────────────────────────────────────────────
 window.emailSignUp = async function(){
-  const first  = document.getElementById('signup-first').value.trim();
-  const last   = document.getElementById('signup-last').value.trim();
-  const email  = document.getElementById('signup-email').value.trim();
-  const pass   = document.getElementById('signup-password').value;
-  const bday   = document.getElementById('signup-birthday').value;
-  const pizza  = document.getElementById('signup-pizza').value.trim();
-  const phone  = document.getElementById('signup-phone').value.trim();
+  const first   = document.getElementById('signup-first').value.trim();
+  const last    = document.getElementById('signup-last').value.trim();
+  const email   = document.getElementById('signup-email').value.trim();
+  const pass    = document.getElementById('signup-password').value;
+  const confirm = document.getElementById('signup-password-confirm').value;
+  const bday    = document.getElementById('signup-birthday').value;
+  const pizza   = document.getElementById('signup-pizza').value.trim();
+  const phone   = document.getElementById('signup-phone').value.trim();
   showErr('signup-err','');
   if(!first||!last||!email||!pass){ showErr('signup-err','Please fill in all required fields'); return; }
   if(pass.length < 6){ showErr('signup-err','Password must be at least 6 characters'); return; }
+  if(pass !== confirm){ showErr('signup-err','Passwords do not match'); return; }
   const btn = document.getElementById('signup-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Creating account…';
+
+  // Set this BEFORE createUserWithEmailAndPassword so onAuthStateChanged
+  // can use it immediately instead of racing against the setDoc write
+  pendingEmailProfile = {
+    firstName: first, lastName: last, email,
+    birthday: bday || null, favPizzaTopping: pizza || null,
+    phone: phone || null,
+    linkedPlayerId: null, isAdmin: false, createdAt: Date.now()
+  };
 
   let cred = null;
   try{
     cred = await createUserWithEmailAndPassword(auth, email, pass);
   } catch(e){
+    pendingEmailProfile = null;
     showErr('signup-err', friendlyAuthErr(e.code));
     btn.disabled = false; btn.textContent = 'CREATE ACCOUNT';
     return;
   }
+
+  // Send verification email
+  try{ await sendEmailVerification(cred.user); } catch(_){}
 
   // Auth succeeded — now write Firestore docs (non-fatal if rules block)
   try{ await updateProfile(cred.user, { displayName: `${first} ${last}` }); }catch(_){}
@@ -435,6 +523,7 @@ window.emailSignUp = async function(){
       seasonGames:0, lifetimeGames:0, format:'both', autoCreated:true
     });
     linkedPlayerId = playerRef.id;
+    if(pendingEmailProfile) pendingEmailProfile.linkedPlayerId = linkedPlayerId;
   } catch(fe){ console.warn('Player creation failed (check Firestore rules):', fe.message); }
 
   try{
@@ -527,6 +616,15 @@ function renderProfileScreen(user, profile){
   const badge = document.getElementById('profile-link-badge');
   badge.style.display = profile.linkedPlayerId ? 'inline-flex' : 'none';
 
+  // Show verify banner for unverified email/password users
+  const isEmailUser = user.providerData.some(p => p.providerId === 'password');
+  const verifyBanner = document.getElementById('verify-banner');
+  if(verifyBanner) verifyBanner.style.display = (isEmailUser && !user.emailVerified) ? 'flex' : 'none';
+
+  // Show reset password button only for email/password users
+  const resetBtn = document.getElementById('reset-pw-btn');
+  if(resetBtn) resetBtn.style.display = isEmailUser ? 'block' : 'none';
+
   renderPlayerRecordSection();
 }
 
@@ -541,19 +639,12 @@ function renderPlayerRecordSection(){
   const linkedPlayer = linkedId ? players.find(p => p.id === linkedId) : null;
 
   if(isAdmin){
-    // Admin sees all players with link management
     if(!players.length){ box.innerHTML='<div style="color:var(--muted);font-size:13px">No players loaded.</div>'; return; }
-    const sorted = [...players].sort((a,b)=>{
-      const aL=a.name.split(' ').slice(1).join(' ').toLowerCase()||a.name.toLowerCase();
-      const bL=b.name.split(' ').slice(1).join(' ').toLowerCase()||b.name.toLowerCase();
-      return aL.localeCompare(bL);
-    });
     box.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">As admin, you can link any user account to a player record. Go to <strong>Admin Panel → Players → ▼ More</strong> on <a href="index.html#admin" style="color:var(--grass)">the main site</a>.</div>`
       + (linkedPlayer
         ? `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--grass-pale);border-radius:8px;font-size:13px"><span style="font-size:20px">🎯</span><div><strong>Your linked record:</strong> ${linkedPlayer.name} · ${dispRating(linkedPlayer.rating)} rating · ${linkedPlayer.wins||0}W–${linkedPlayer.losses||0}L</div></div>`
         : `<div style="font-size:13px;color:var(--muted);padding:8px 0">Your account is not linked to a player record. Link it via the Admin Panel.</div>`);
   } else {
-    // Regular user: read-only
     if(linkedPlayer){
       box.innerHTML = `<div style="display:flex;align-items:center;gap:14px">
         <div style="width:44px;height:44px;border-radius:50%;background:var(--grass-pale);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:18px;color:var(--grass);flex-shrink:0">${initials(linkedPlayer.name)}</div>
@@ -567,7 +658,84 @@ function renderPlayerRecordSection(){
       box.innerHTML = `<div style="font-size:13px;color:var(--muted)">Your account hasn't been linked to a player record yet. Ask the league admin to link it for you.</div>`;
     }
   }
+
+  // Show family unit section only for linked users (non-admin linked users, or any linked user)
+  renderFamilySection();
 }
+
+// ── Family Members ────────────────────────────────────────────────────────────
+function renderFamilySection(){
+  const user = auth.currentUser; if(!user) return;
+  const linkedId = currentProfile?.linkedPlayerId;
+  const card = document.getElementById('family-unit-card');
+
+  // Only show if user has a linked player record
+  if(!linkedId){ card.style.display='none'; return; }
+  card.style.display='block';
+
+  const familyIds = currentProfile.familyMembers || [];
+  const listEl = document.getElementById('family-members-list');
+
+  if(!familyIds.length){
+    listEl.innerHTML = `<div style="font-size:13px;color:var(--muted);padding:6px 0">No family members added yet.</div>`;
+  } else {
+    listEl.innerHTML = familyIds.map(pid => {
+      const p = players.find(x => x.id === pid);
+      const name = p ? p.name : `Unknown (${pid})`;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--border)">
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--grass-pale);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:13px;color:var(--grass);flex-shrink:0">${initials(name)}</div>
+        <span style="flex:1;font-size:14px;font-weight:600">${name}</span>
+        <button onclick="removeFamilyMember('${pid}')" style="padding:5px 12px;border-radius:6px;border:0.5px solid var(--border);background:none;color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--fb);transition:all .15s" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Remove</button>
+      </div>`;
+    }).join('');
+  }
+
+  // Populate the add-select with unlinked players not already in family
+  // "Unlinked" = no user has linkedPlayerId pointing to them, AND not already in any family unit
+  const allLinkedPids = new Set(
+    [...(window._allUsers||[])].map(u => u.linkedPlayerId).filter(Boolean)
+  );
+  // Also exclude pids already claimed in ANY family unit by any user
+  const allFamilyPids = new Set(
+    [...(window._allUsers||[])].flatMap(u => u.familyMembers||[])
+  );
+
+  const sel = document.getElementById('family-add-sel');
+  const available = players.filter(p =>
+    p.id !== linkedId &&
+    !allLinkedPids.has(p.id) &&
+    !familyIds.includes(p.id) &&
+    !allFamilyPids.has(p.id)
+  ).sort((a,b) => a.name.localeCompare(b.name));
+
+  sel.innerHTML = '<option value="">— Select unlinked player to add —</option>' +
+    available.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+}
+
+window.addFamilyMember = async function(){
+  const user = auth.currentUser; if(!user) return;
+  const sel = document.getElementById('family-add-sel');
+  const pid = sel.value;
+  if(!pid){ toast('Select a player first', true); return; }
+  const newList = [...(currentProfile.familyMembers||[]), pid];
+  try{
+    await updateDoc(doc(db,'users',user.uid), { familyMembers: newList });
+    currentProfile.familyMembers = newList;
+    toast(`${players.find(p=>p.id===pid)?.name||'Player'} added to your family ✓`);
+    renderFamilySection();
+  }catch(e){ toast('Error: '+e.message, true); }
+};
+
+window.removeFamilyMember = async function(pid){
+  const user = auth.currentUser; if(!user) return;
+  const newList = (currentProfile.familyMembers||[]).filter(id => id !== pid);
+  try{
+    await updateDoc(doc(db,'users',user.uid), { familyMembers: newList });
+    currentProfile.familyMembers = newList;
+    toast('Family member removed');
+    renderFamilySection();
+  }catch(e){ toast('Error: '+e.message, true); }
+};
 
 // ── Save profile ──────────────────────────────────────────────────────────────
 window.saveProfile = async function(){
@@ -589,6 +757,26 @@ window.saveProfile = async function(){
     toast('Profile saved! ✓');
   } catch(e){ toast(e.message, true); }
   btn.disabled = false; btn.textContent = 'SAVE CHANGES';
+};
+
+// ── Resend verification email ─────────────────────────────────────────────────
+window.resendVerification = async function(){
+  const user = auth.currentUser; if(!user) return;
+  try{
+    await sendEmailVerification(user);
+    toast('Verification email sent! Check your inbox.');
+  } catch(e){ toast('Could not send email: ' + (e.message||e.code), true); }
+};
+
+// ── Password reset ────────────────────────────────────────────────────────────
+window.sendPasswordReset = async function(){
+  const user = auth.currentUser; if(!user) return;
+  const confirmed = window.confirm(`Send a password reset link to ${user.email}?`);
+  if(!confirmed) return;
+  try{
+    await sendPasswordResetEmail(auth, user.email);
+    toast('Password reset email sent! Check your inbox.');
+  } catch(e){ toast('Error: ' + (e.message||e.code), true); }
 };
 
 // ── Sign out ──────────────────────────────────────────────────────────────────
@@ -667,6 +855,6 @@ document.addEventListener('click', function(e){
     menu.classList.remove('open');
 });
 </script>
-<footer style="text-align:center;padding:20px 16px 28px;font-size:11px;color:var(--muted);letter-spacing:.4px">Friday Cornhole League &nbsp;·&nbsp; Ver 1.8</footer>
+<footer style="text-align:center;padding:20px 16px 28px;font-size:11px;color:var(--muted);letter-spacing:.4px">Friday Cornhole League &nbsp;·&nbsp; Ver 1.9</footer>
 </body>
 </html>

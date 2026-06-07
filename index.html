@@ -518,10 +518,10 @@ onSnapshot(collection(db,'events'), snap=>{
 });
 onSnapshot(collection(db,'users'), snap=>{
   users=snap.docs.map(d=>({uid:d.id,...d.data()}));
-  // Refresh current user's profile in case isAdmin changed
+  // Refresh current user's profile in case isAdmin or familyMembers changed
   if(indexCurrentUser){
     const fresh=users.find(u=>u.uid===indexCurrentUser.uid);
-    if(fresh){ indexUserProfile=fresh; updateNavAuth(indexCurrentUser,fresh); }
+    if(fresh){ indexUserProfile=fresh; updateNavAuth(indexCurrentUser,fresh); refreshActive(); }
   }
 });
 
@@ -1090,38 +1090,56 @@ window.renderPlayerStats=function renderPlayerStats(){
     </div>`;
 }
 
-// ── RSVP (Firestore-backed) ───────────────────────────────────────────────────
+// ── RSVP (Firestore-backed, family-unit model) ────────────────────────────────
+// Key formats:
+//   uid                       → linked user's own RSVP (resolves to their linkedPlayerId)
+//   family_{ownerUid}_{pid}   → family member RSVP set by ownerUid for player pid
+
 function getRsvp(evId, uid){
   const ev=events.find(e=>e.id===evId); if(!ev) return 'none';
   const u=uid||indexCurrentUser?.uid; if(!u) return 'none';
   return (ev.rsvps&&ev.rsvps[u]) || 'none';
 }
+
+function getFamilyMemberRsvp(evId, ownerUid, playerId){
+  const ev=events.find(e=>e.id===evId); if(!ev) return 'none';
+  const key=`family_${ownerUid}_${playerId}`;
+  return (ev.rsvps&&ev.rsvps[key]) || 'none';
+}
+
 function getRsvpCounts(evId){
   const ev=events.find(e=>e.id===evId); if(!ev||!ev.rsvps) return {yes:0,no:0};
-  // Count all rsvp entries (includes proxy entries keyed by uid)
   let yes=0,no=0;
   for(const [key,v] of Object.entries(ev.rsvps)){
     if(v==='yes') yes++; else if(v==='no') no++;
   }
   return{yes,no};
 }
+
 function getRsvpLists(evId){
   const ev=events.find(e=>e.id===evId); if(!ev||!ev.rsvps) return{yes:[],no:[]};
   const yes=[],no=[];
   for(const [key,v] of Object.entries(ev.rsvps)){
-    // key is either uid (own RSVP) or uid_proxy_PLAYERID (proxy RSVP)
     let label='';
-    if(key.includes('_proxy_')){
-      const playerId=key.split('_proxy_')[1];
+    if(key.startsWith('family_')){
+      // family_{ownerUid}_{playerId}
+      const parts=key.slice('family_'.length).split('_');
+      // ownerUid may contain underscores — playerId is last segment
+      const playerId=parts[parts.length-1];
+      const ownerUid=parts.slice(0,-1).join('_');
       const player=players.find(x=>x.id===playerId);
-      label=player?player.name:'Unknown guest';
-      // find who submitted it
-      const submitterUid=key.split('_proxy_')[0];
-      const submitter=users.find(u=>u.uid===submitterUid);
-      if(submitter) label+=` (via ${submitter.firstName||'someone'})`;
+      const owner=users.find(u=>u.uid===ownerUid);
+      label=player?player.name:'Unknown';
+      if(owner) label+=` (via ${owner.firstName||'someone'})`;
     } else {
+      // own uid key — resolve to linked player name if available
       const u=users.find(x=>x.uid===key);
-      label=u?`${u.firstName||''} ${u.lastName||''}`.trim()||u.email:'Unknown';
+      if(u){
+        const linkedPlayer=u.linkedPlayerId?players.find(p=>p.id===u.linkedPlayerId):null;
+        label=linkedPlayer?linkedPlayer.name:`${u.firstName||''} ${u.lastName||''}`.trim()||u.email;
+      } else {
+        label='Unknown';
+      }
     }
     if(v==='yes') yes.push(label);
     else if(v==='no') no.push(label);
@@ -1137,7 +1155,6 @@ window.setRsvp=async function(evId,val,btnGoing,btnNo){
   if(btnGoing) btnGoing.disabled=true;
   if(btnNo) btnNo.disabled=true;
   const cur=getRsvp(evId);
-  // Toggle off if clicking the same value
   const next = cur===val ? 'none' : val;
   try{
     const evRef=doc(db,'events',evId);
@@ -1153,18 +1170,18 @@ window.setRsvp=async function(evId,val,btnGoing,btnNo){
   if(btnNo) btnNo.disabled=false;
 };
 
-window.setProxyRsvp=async function(evId,val,playerId){
+window.setFamilyRsvp=async function(evId,val,playerId){
   if(!indexCurrentUser){ toast('Sign in first',true); return; }
-  if(!playerId){ toast('Select a player first',true); return; }
-  const key=`${indexCurrentUser.uid}_proxy_${playerId}`;
+  if(!playerId){ toast('Select a family member first',true); return; }
+  const key=`family_${indexCurrentUser.uid}_${playerId}`;
   try{
     const evRef=doc(db,'events',evId);
     if(val==='none'){
-      await updateDoc(evRef,{[key]:deleteField()});
+      await updateDoc(evRef,{[`rsvps.${key}`]:deleteField()});
     } else {
-      await updateDoc(evRef,{[key]:val});
+      await updateDoc(evRef,{[`rsvps.${key}`]:val});
     }
-    const pName=players.find(x=>x.id===playerId)?.name||'Guest';
+    const pName=players.find(x=>x.id===playerId)?.name||'Family member';
     toast(val==='yes'?`${pName} marked as going 🎉`:val==='no'?`${pName} marked as not going`:`${pName} RSVP cleared`);
   }catch(e){toast('Error: '+e.message,true);}
 };
@@ -1337,28 +1354,35 @@ function renderCalendar(){
       </div>`
     :`<button onclick="toast('Sign in to RSVP — click My Profile in the nav',true)" style="padding:6px 14px;border-radius:6px;border:1.5px solid var(--border);background:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--fb)">🔒 Sign In to RSVP</button>`):'';
 
-    // Proxy RSVP — for other players (any signed-in user can RSVP for others)
-    // Build list of players not already RSVP'd via this user's proxy
-    const proxySection=!isCancelled&&!isPast&&indexCurrentUser?`
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px">
-        <span style="font-size:12px;font-weight:600;color:var(--muted)">RSVP for someone:</span>
-        <select id="proxy-sel-${ev.id}" style="padding:5px 10px;border:0.5px solid var(--border);border-radius:6px;font-family:var(--fb);font-size:13px;outline:none;background:#fff;max-width:160px">
-          <option value="">— Select —</option>
-          ${players.filter(p=>{
-            // exclude the user's own linked player (they have their own buttons)
-            if(p.id===indexUserProfile?.linkedPlayerId) return false;
-            return true;
-          }).sort((a,b)=>a.name.localeCompare(b.name)).map(p=>{
-            const proxyKey=`${indexCurrentUser.uid}_proxy_${p.id}`;
-            const proxyVal=(ev.rsvps&&ev.rsvps[proxyKey])||'none';
-            const tag=proxyVal==='yes'?' ✅':proxyVal==='no'?' ❌':'';
-            return`<option value="${p.id}">${p.name.split(' ')[0]}${tag}</option>`;
-          }).join('')}
-        </select>
-        <button onclick="setProxyRsvp('${ev.id}','yes',document.getElementById('proxy-sel-${ev.id}').value)" style="padding:5px 12px;border-radius:6px;border:1.5px solid var(--grass);background:var(--grass-pale);color:var(--grass);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb)">✅</button>
-        <button onclick="setProxyRsvp('${ev.id}','no',document.getElementById('proxy-sel-${ev.id}').value)" style="padding:5px 12px;border-radius:6px;border:1.5px solid var(--danger);background:#FCEBEB;color:var(--danger);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb)">❌</button>
-        <button onclick="setProxyRsvp('${ev.id}','none',document.getElementById('proxy-sel-${ev.id}').value)" style="padding:5px 12px;border-radius:6px;border:1.5px solid var(--border);background:none;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb)">Clear</button>
-      </div>`:'';
+    // Family RSVP — linked users can RSVP for their family members
+    // Family members are stored as an array of playerIds on the user's profile
+    const familySection=(()=>{
+      if(isCancelled||isPast||!indexCurrentUser||!indexUserProfile) return '';
+      const familyIds=indexUserProfile.familyMembers||[];
+      if(!familyIds.length) return '';
+      const rows=familyIds.map(pid=>{
+        const p=players.find(x=>x.id===pid); if(!p) return '';
+        const curVal=getFamilyMemberRsvp(ev.id,indexCurrentUser.uid,pid);
+        const isYes=curVal==='yes', isNo=curVal==='no';
+        return`<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:5px 0;border-bottom:0.5px solid var(--border)">
+          <span style="font-size:13px;font-weight:600;min-width:90px">${p.name.split(' ')[0]} <span style="font-weight:400;color:var(--muted);font-size:12px">${p.name.split(' ').slice(1).join(' ')}</span></span>
+          <button onclick="setFamilyRsvp('${ev.id}','yes','${pid}')"
+            style="padding:4px 11px;border-radius:6px;border:1.5px solid ${isYes?'var(--grass)':'var(--border)'};background:${isYes?'var(--grass-pale)':'none'};color:${isYes?'var(--grass)':'var(--muted)'};font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb)">
+            ✅ Going${isYes?' ✓':''}
+          </button>
+          <button onclick="setFamilyRsvp('${ev.id}','no','${pid}')"
+            style="padding:4px 11px;border-radius:6px;border:1.5px solid ${isNo?'var(--danger)':'var(--border)'};background:${isNo?'#FCEBEB':'none'};color:${isNo?'var(--danger)':'var(--muted)'};font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb)">
+            ❌ Not Going${isNo?' ✓':''}
+          </button>
+          ${(isYes||isNo)?`<button onclick="setFamilyRsvp('${ev.id}','none','${pid}')" style="padding:4px 9px;border-radius:6px;border:1.5px solid var(--border);background:none;color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--fb)">Clear</button>`:''}
+        </div>`;
+      }).filter(Boolean).join('');
+      if(!rows) return '';
+      return`<div style="margin-top:6px;background:var(--bg);border:0.5px solid var(--border);border-radius:8px;padding:8px 12px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--grass);margin-bottom:6px">👨‍👩‍👧 Family RSVPs</div>
+        ${rows}
+      </div>`;
+    })();
 
     return`<div class="cal-card ${cardClass}">
       <div class="cal-card-hdr" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
@@ -1383,9 +1407,7 @@ function renderCalendar(){
         ${!isCancelled?`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           ${rsvpBtns}
         </div>`:''}
-        ${!isCancelled?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-          ${proxySection}
-        </div>`:''}
+        ${familySection?`<div style="width:100%">${familySection}</div>`:''}
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-top:${(!isCancelled)?'4px':'0'}">
           ${!isCancelled?`<a class="icon-btn" href="${buildGCalUrl(ev)}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px">📅 Google Cal</a>`:''}
           ${!isCancelled?`<button class="icon-btn" onclick="window._icalDownload('${ev.id}')" style="display:inline-flex;align-items:center;gap:4px">📆 iCal / Apple</button>`:''}
