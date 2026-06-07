@@ -1092,8 +1092,12 @@ window.renderPlayerStats=function renderPlayerStats(){
 
 // ── RSVP (Firestore-backed, family-unit model) ────────────────────────────────
 // Key formats:
-//   uid                       → linked user's own RSVP (resolves to their linkedPlayerId)
-//   family_{ownerUid}_{pid}   → family member RSVP set by ownerUid for player pid
+//   {uid}                     → linked user's own RSVP
+//   family_{ownerUid}_{pid}   → family member RSVP, set by ownerUid for player pid
+//
+// Each person (owner + each family member) has their own independent RSVP.
+// The owner's buttons write only their own key. Per-member buttons write only
+// that member's key. The going/not going list resolves every key to a name.
 
 function getRsvp(evId, uid){
   const ev=events.find(e=>e.id===evId); if(!ev) return 'none';
@@ -1107,10 +1111,27 @@ function getFamilyMemberRsvp(evId, ownerUid, playerId){
   return (ev.rsvps&&ev.rsvps[key]) || 'none';
 }
 
+// Resolve a key to a display name
+function resolveRsvpKey(key){
+  if(key.startsWith('family_')){
+    // family_{ownerUid}_{playerId} — playerId is everything after the last underscore
+    const inner=key.slice('family_'.length);
+    const lastUs=inner.lastIndexOf('_');
+    const playerId=inner.slice(lastUs+1);
+    const p=players.find(x=>x.id===playerId);
+    return p?p.name:null;
+  }
+  // Own uid key — resolve to linked player name
+  const u=users.find(x=>x.uid===key);
+  if(!u) return null;
+  const linked=u.linkedPlayerId?players.find(p=>p.id===u.linkedPlayerId):null;
+  return linked?linked.name:`${u.firstName||''} ${u.lastName||''}`.trim()||u.email||null;
+}
+
 function getRsvpCounts(evId){
   const ev=events.find(e=>e.id===evId); if(!ev||!ev.rsvps) return {yes:0,no:0};
   let yes=0,no=0;
-  for(const [key,v] of Object.entries(ev.rsvps)){
+  for(const v of Object.values(ev.rsvps)){
     if(v==='yes') yes++; else if(v==='no') no++;
   }
   return{yes,no};
@@ -1120,27 +1141,8 @@ function getRsvpLists(evId){
   const ev=events.find(e=>e.id===evId); if(!ev||!ev.rsvps) return{yes:[],no:[]};
   const yes=[],no=[];
   for(const [key,v] of Object.entries(ev.rsvps)){
-    let label='';
-    if(key.startsWith('family_')){
-      // family_{ownerUid}_{playerId}
-      const parts=key.slice('family_'.length).split('_');
-      // ownerUid may contain underscores — playerId is last segment
-      const playerId=parts[parts.length-1];
-      const ownerUid=parts.slice(0,-1).join('_');
-      const player=players.find(x=>x.id===playerId);
-      const owner=users.find(u=>u.uid===ownerUid);
-      label=player?player.name:'Unknown';
-      if(owner) label+=` (via ${owner.firstName||'someone'})`;
-    } else {
-      // own uid key — resolve to linked player name if available
-      const u=users.find(x=>x.uid===key);
-      if(u){
-        const linkedPlayer=u.linkedPlayerId?players.find(p=>p.id===u.linkedPlayerId):null;
-        label=linkedPlayer?linkedPlayer.name:`${u.firstName||''} ${u.lastName||''}`.trim()||u.email;
-      } else {
-        label='Unknown';
-      }
-    }
+    const label=resolveRsvpKey(key);
+    if(!label) continue;
     if(v==='yes') yes.push(label);
     else if(v==='no') no.push(label);
   }
@@ -1155,16 +1157,11 @@ window.setRsvp=async function(evId,val,btnGoing,btnNo){
   if(btnGoing) btnGoing.disabled=true;
   if(btnNo) btnNo.disabled=true;
   const cur=getRsvp(evId);
-  const next = cur===val ? 'none' : val;
+  const next=cur===val?'none':val;
   try{
     const evRef=doc(db,'events',evId);
-    if(next==='none'){
-      await updateDoc(evRef,{[`rsvps.${indexCurrentUser.uid}`]:deleteField()});
-    } else {
-      await updateDoc(evRef,{[`rsvps.${indexCurrentUser.uid}`]:next});
-    }
-    const msg=next==='yes'?"You're going! 🎉":next==='no'?"Marked as not going":"RSVP cleared";
-    toast(msg);
+    await updateDoc(evRef,{[`rsvps.${indexCurrentUser.uid}`]:next==='none'?deleteField():next});
+    toast(next==='yes'?"You're going! 🎉":next==='no'?"Marked as not going":"RSVP cleared");
   }catch(e){toast('Error saving RSVP: '+e.message,true);}
   if(btnGoing) btnGoing.disabled=false;
   if(btnNo) btnNo.disabled=false;
@@ -1172,21 +1169,18 @@ window.setRsvp=async function(evId,val,btnGoing,btnNo){
 
 window.setFamilyRsvp=async function(evId,val,playerId){
   if(!indexCurrentUser){ toast('Sign in first',true); return; }
-  if(!playerId){ toast('Select a family member first',true); return; }
+  if(!playerId){ toast('No player specified',true); return; }
   const key=`family_${indexCurrentUser.uid}_${playerId}`;
+  const cur=getFamilyMemberRsvp(evId,indexCurrentUser.uid,playerId);
+  const next=cur===val?'none':val;
   try{
     const evRef=doc(db,'events',evId);
-    if(val==='none'){
-      await updateDoc(evRef,{[`rsvps.${key}`]:deleteField()});
-    } else {
-      await updateDoc(evRef,{[`rsvps.${key}`]:val});
-    }
+    await updateDoc(evRef,{[`rsvps.${key}`]:next==='none'?deleteField():next});
     const pName=players.find(x=>x.id===playerId)?.name||'Family member';
-    toast(val==='yes'?`${pName} marked as going 🎉`:val==='no'?`${pName} marked as not going`:`${pName} RSVP cleared`);
+    toast(next==='yes'?`${pName} going 🎉`:next==='no'?`${pName} not going`:`${pName} RSVP cleared`);
   }catch(e){toast('Error: '+e.message,true);}
 };
 
-// Toggle RSVP list expansion (stored in DOM)
 window.toggleRsvpList=function(evId){
   const el=document.getElementById('rsvp-list-'+evId);
   if(!el) return;
@@ -1335,7 +1329,7 @@ function renderCalendar(){
         </div>
       </div>`:'';
 
-    // RSVP buttons — Going and Not Going as separate buttons
+    // Owner's own RSVP buttons
     const myGoing=myRsvp==='yes';
     const myNo=myRsvp==='no';
     const rsvpBtns=!isCancelled&&!isPast?(indexCurrentUser?`
@@ -1354,8 +1348,7 @@ function renderCalendar(){
       </div>`
     :`<button onclick="toast('Sign in to RSVP — click My Profile in the nav',true)" style="padding:6px 14px;border-radius:6px;border:1.5px solid var(--border);background:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--fb)">🔒 Sign In to RSVP</button>`):'';
 
-    // Family RSVP — linked users can RSVP for their family members
-    // Family members are stored as an array of playerIds on the user's profile
+    // Per-member family RSVP — each member has independent Going/Not Going buttons
     const familySection=(()=>{
       if(isCancelled||isPast||!indexCurrentUser||!indexUserProfile) return '';
       const familyIds=indexUserProfile.familyMembers||[];
@@ -1364,8 +1357,10 @@ function renderCalendar(){
         const p=players.find(x=>x.id===pid); if(!p) return '';
         const curVal=getFamilyMemberRsvp(ev.id,indexCurrentUser.uid,pid);
         const isYes=curVal==='yes', isNo=curVal==='no';
-        return`<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:5px 0;border-bottom:0.5px solid var(--border)">
-          <span style="font-size:13px;font-weight:600;min-width:90px">${p.name.split(' ')[0]} <span style="font-weight:400;color:var(--muted);font-size:12px">${p.name.split(' ').slice(1).join(' ')}</span></span>
+        const firstName=p.name.split(' ')[0];
+        const lastName=p.name.split(' ').slice(1).join(' ');
+        return`<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 0;border-bottom:0.5px solid var(--border)">
+          <span style="font-size:13px;font-weight:600;min-width:80px">${firstName}${lastName?` <span style="font-weight:400;color:var(--muted);font-size:12px">${lastName}</span>`:''}</span>
           <button onclick="setFamilyRsvp('${ev.id}','yes','${pid}')"
             style="padding:4px 11px;border-radius:6px;border:1.5px solid ${isYes?'var(--grass)':'var(--border)'};background:${isYes?'var(--grass-pale)':'none'};color:${isYes?'var(--grass)':'var(--muted)'};font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb)">
             ✅ Going${isYes?' ✓':''}
@@ -1379,7 +1374,7 @@ function renderCalendar(){
       }).filter(Boolean).join('');
       if(!rows) return '';
       return`<div style="margin-top:6px;background:var(--bg);border:0.5px solid var(--border);border-radius:8px;padding:8px 12px">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--grass);margin-bottom:6px">👨‍👩‍👧 Family RSVPs</div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--grass);margin-bottom:4px">👨‍👩‍👧 Family RSVPs</div>
         ${rows}
       </div>`;
     })();
