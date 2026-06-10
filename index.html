@@ -371,6 +371,12 @@ const auth = getAuth(app);
 let indexCurrentUser = null;
 let indexUserProfile = null;
 
+// ── Profile cache (localStorage) ─────────────────────────────────────────────
+const PROFILE_CACHE_KEY = 'fcl_user_profile';
+function getCachedProfile(){ try{ return JSON.parse(localStorage.getItem(PROFILE_CACHE_KEY)); }catch{ return null; } }
+function setCachedProfile(uid, data){ try{ localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({uid, ...data})); }catch(_){} }
+function clearCachedProfile(){ try{ localStorage.removeItem(PROFILE_CACHE_KEY); }catch(_){} }
+
 function isAdmin(user, profile){
   if(!user) return false;
   if(user.email === ADMIN_EMAIL) return true;
@@ -411,11 +417,19 @@ onAuthStateChanged(auth, async user => {
   indexUserProfile = null;
 
   if(user){
-    // Load user profile
+    // 1. Render immediately from cache — zero latency
+    const cached = getCachedProfile();
+    if(cached?.uid === user.uid){
+      indexUserProfile = cached;
+      updateNavAuth(user, cached);
+    }
+
+    // 2. Fetch fresh profile in background
     try{
       const snap = await getDoc(doc(db,'users',user.uid));
       if(snap.exists()){
         indexUserProfile = snap.data();
+        setCachedProfile(user.uid, indexUserProfile);
       } else {
         // Brand-new user — create profile + player record
         const nameParts = (user.displayName||'').split(' ');
@@ -447,12 +461,15 @@ onAuthStateChanged(auth, async user => {
           b.set(doc(db,'users',user.uid), newProfile);
           await b.commit();
         }
+        setCachedProfile(user.uid, newProfile);
       }
     } catch(e){ console.warn('Profile load error', e); }
     // Superadmin email always gets isAdmin flag synced
     if(user.email === ADMIN_EMAIL && !indexUserProfile?.isAdmin){
-      try{ await updateDoc(doc(db,'users',user.uid),{isAdmin:true}); indexUserProfile = {...indexUserProfile, isAdmin:true}; }catch(e){}
+      try{ await updateDoc(doc(db,'users',user.uid),{isAdmin:true}); indexUserProfile = {...indexUserProfile, isAdmin:true}; setCachedProfile(user.uid, indexUserProfile); }catch(e){}
     }
+  } else {
+    clearCachedProfile();
   }
 
   updateNavAuth(user, indexUserProfile);
@@ -526,7 +543,7 @@ onSnapshot(collection(db,'users'), snap=>{
   // Refresh current user's profile in case isAdmin or familyMembers changed
   if(indexCurrentUser){
     const fresh=users.find(u=>u.uid===indexCurrentUser.uid);
-    if(fresh){ indexUserProfile=fresh; updateNavAuth(indexCurrentUser,fresh); refreshActive(); }
+    if(fresh){ indexUserProfile=fresh; setCachedProfile(indexCurrentUser.uid, fresh); updateNavAuth(indexCurrentUser,fresh); refreshActive(); }
   }
 });
 

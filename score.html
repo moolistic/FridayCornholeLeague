@@ -455,13 +455,27 @@ const gProvider = new GoogleAuthProvider();
 let currentUser = null;
 let currentUserProfile = null;
 
+// ── Profile cache (localStorage) ─────────────────────────────────────────────
+const PROFILE_CACHE_KEY = 'fcl_user_profile';
+function getCachedProfile(){ try{ return JSON.parse(localStorage.getItem(PROFILE_CACHE_KEY)); }catch{ return null; } }
+function setCachedProfile(uid, data){ try{ localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({uid, ...data})); }catch(_){} }
+function clearCachedProfile(){ try{ localStorage.removeItem(PROFILE_CACHE_KEY); }catch(_){} }
+
 onAuthStateChanged(auth, async user => {
   currentUser = user;
   if(user){
-    // Load profile to get linkedPlayerId
+    // 1. Render immediately from cache
+    const cached = getCachedProfile();
+    if(cached?.uid === user.uid){
+      currentUserProfile = cached;
+      updateScoreNavPill(user, cached);
+    }
+
+    // 2. Fetch fresh profile in background
     try{
       const snap = await getDoc(doc(db,'users',user.uid));
       currentUserProfile = snap.exists() ? snap.data() : null;
+      if(currentUserProfile) setCachedProfile(user.uid, currentUserProfile);
     } catch(e){ currentUserProfile = null; }
     updateScoreNavPill(user, currentUserProfile);
 
@@ -488,6 +502,7 @@ onAuthStateChanged(auth, async user => {
   } else {
     currentUser = null;
     currentUserProfile = null;
+    clearCachedProfile();
     updateScoreNavPill(null, null);
     renderStep0SignedOut();
     if(currentStep !== 0) showStep(0);
