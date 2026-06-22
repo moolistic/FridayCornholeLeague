@@ -146,6 +146,26 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
 .prior-form{background:var(--grass-pale);border-radius:8px;padding:14px 16px;margin-top:4px}
 .prior-form .fg{margin-bottom:10px}
 .prior-form .fg:last-child{margin-bottom:0}
+/* memories */
+.mem-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.mem-card{background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad);overflow:hidden}
+.mem-card img{width:100%;height:200px;object-fit:cover;display:block;background:var(--bg)}
+.mem-card-body{padding:10px 14px}
+.mem-card-theme{font-weight:600;font-size:14px;margin-bottom:4px}
+.mem-card-meta{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.mem-card-meta span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mem-event-tag{display:inline-block;font-size:10px;font-weight:600;color:var(--grass);background:var(--grass-pale);padding:2px 7px;border-radius:10px;margin-top:4px}
+.mem-subtabs{display:flex;gap:6px;margin-bottom:20px;border-bottom:0.5px solid var(--border)}
+.mem-subtab{background:none;border:none;padding:10px 16px;font-family:var(--fb);font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s}
+.mem-subtab:hover{color:var(--grass)}
+.mem-subtab.active{color:var(--grass);border-bottom-color:var(--grass)}
+.mem-subpage{display:none}
+.mem-subpage.active{display:block}
+.theme-row{display:flex;align-items:center;gap:14px;background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad);padding:14px 18px;margin-bottom:10px}
+.theme-vote{display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0}
+.theme-vote button{background:none;border:none;cursor:pointer;font-size:18px;color:var(--muted);padding:2px 6px;line-height:1;transition:color .15s}
+.theme-vote button:hover{color:var(--grass)}
+.theme-vote-score{font-family:var(--fd);font-size:20px;line-height:1}
 @media(max-width:600px){
   /* Nav — switch to hamburger */
   nav{padding:0 10px}
@@ -198,6 +218,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
     <button class="nb" onclick="showPage('rankings',this);closeHam()">Rankings</button>
     <a class="nb" href="score.html" style="text-decoration:none">Enter Score</a>
     <button class="nb" onclick="showPage('stats',this);closeHam()">Player Stats</button>
+    <button class="nb" onclick="showPage('memories',this);closeHam()">Memories</button>
     <a class="nb" id="nav-admin-btn" href="admin.html" style="display:none;text-decoration:none">Admin</a>
   </div>
   <a href="profile.html" id="nav-profile-pill" style="text-decoration:none;display:flex;align-items:center;gap:7px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:4px 12px 4px 5px;color:#fff;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0;transition:background .15s;margin-left:8px">
@@ -214,6 +235,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
   <button class="nb" onclick="showPage('rankings',this);closeHam()">Rankings</button>
   <a class="nb" href="score.html" style="text-decoration:none">Enter Score</a>
   <button class="nb" onclick="showPage('stats',this);closeHam()">Player Stats</button>
+  <button class="nb" onclick="showPage('memories',this);closeHam()">Memories</button>
   <a class="nb" id="ham-admin-btn" href="admin.html" style="display:none;text-decoration:none">Admin</a>
   <a class="nb" href="profile.html" style="text-decoration:none">My Profile</a>
 </div>
@@ -278,6 +300,46 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
   <div id="calendar-content"><div class="loading-overlay"><div class="spinner"></div></div></div>
 </div>
 
+<!-- MEMORIES -->
+<div class="page" id="page-memories">
+  <div class="ph">
+    <div class="pt">Memories</div>
+    <div class="ps">Pics &amp; theme ideas from league nights</div>
+  </div>
+
+  <div class="mem-subtabs">
+    <button class="mem-subtab active" id="mem-subtab-photos" onclick="showMemSubtab('photos')">📸 Photos</button>
+    <button class="mem-subtab" id="mem-subtab-themes" onclick="showMemSubtab('themes')">💡 Theme Suggestions</button>
+  </div>
+
+  <!-- PHOTOS -->
+  <div class="mem-subpage active" id="mem-sub-photos">
+    <div id="memory-upload-box" class="psc" style="display:none">
+      <label>Add a Memory</label>
+      <input type="file" id="mem-file" accept="image/*" style="margin-bottom:10px">
+      <input type="text" id="mem-theme" placeholder="Caption (optional)" style="margin-bottom:10px">
+      <label>Attribute to Event <span style="font-weight:400;font-size:11px;color:var(--muted);text-transform:none">(optional)</span></label>
+      <select id="mem-event-sel" style="margin-bottom:10px"><option value="">— No specific event —</option></select>
+      <button class="subbtn" id="mem-post-btn" onclick="postMemory()" style="margin-top:0">📸 Post Memory</button>
+    </div>
+    <div id="memory-signin-msg" style="display:none;background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad);padding:16px 20px;margin-bottom:20px;text-align:center;color:var(--muted);font-size:14px">Sign in to post a memory.</div>
+    <div id="memory-grid"><div class="loading-overlay"><div class="spinner"></div></div></div>
+  </div>
+
+  <!-- THEME SUGGESTIONS -->
+  <div class="mem-subpage" id="mem-sub-themes" style="display:none">
+    <div id="theme-suggest-box" class="psc" style="display:none">
+      <label>Suggest a Theme</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input type="text" id="theme-input" placeholder="e.g. 80s Throwback Night" style="flex:1;min-width:160px">
+        <button class="subbtn" id="theme-post-btn" onclick="postThemeSuggestion()" style="margin-top:0;width:auto;padding:0 22px">💡 Submit</button>
+      </div>
+    </div>
+    <div id="theme-signin-msg" style="display:none;background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad);padding:16px 20px;margin-bottom:20px;text-align:center;color:var(--muted);font-size:14px">Sign in to suggest a theme.</div>
+    <div id="theme-list"><div class="loading-overlay"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
 
 <!-- ADD/EDIT EVENT MODAL -->
 <div class="moverlay" id="modal-event" onclick="closeModal('modal-event',event)">
@@ -321,28 +383,46 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
 
 <!-- ADMIN REMINDER MODAL -->
 <div class="moverlay" id="modal-reminder" onclick="closeModal('modal-reminder',event)">
-  <div class="mbox" style="max-width:500px">
+  <div class="mbox" style="max-width:520px">
     <div class="mt2">📣 Send Reminder</div>
-    <div id="reminder-event-info" style="background:var(--grass-pale);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--grass);font-weight:600"></div>
+    <div id="reminder-event-info" style="background:var(--grass-pale);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--grass);font-weight:600"></div>
+
+    <!-- Message type: RSVP vs Update -->
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <button id="reminder-type-rsvp" onclick="setReminderType('rsvp')" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid var(--grass);background:var(--grass);color:#fff;font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer">📋 RSVP Reminder</button>
       <button id="reminder-type-update" onclick="setReminderType('update')" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid var(--border);background:none;color:var(--muted);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer">📢 Event Update</button>
     </div>
-    <div class="fg" style="margin-bottom:12px">
+
+    <!-- Channel: Email / SMS / Both -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px">Send via</div>
+      <div style="display:flex;gap:6px">
+        <button id="ch-email" onclick="setReminderChannel('email')" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--grass);background:var(--grass-pale);color:var(--grass);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer">📧 Email</button>
+        <button id="ch-sms" onclick="setReminderChannel('sms')" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--border);background:none;color:var(--muted);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer">💬 SMS</button>
+        <button id="ch-both" onclick="setReminderChannel('both')" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--border);background:none;color:var(--muted);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer">📧+💬 Both</button>
+      </div>
+    </div>
+
+    <!-- Subject (email only) -->
+    <div class="fg" id="reminder-subject-row" style="margin-bottom:12px">
       <label style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:block">Subject</label>
       <input type="text" id="reminder-subject" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none">
     </div>
+
     <div class="fg" style="margin-bottom:12px">
       <label style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:block">Message</label>
       <textarea id="reminder-body" rows="5" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none;resize:vertical;line-height:1.5"></textarea>
+      <div id="sms-char-count" style="display:none;text-align:right;font-size:11px;color:var(--muted);margin-top:3px"></div>
     </div>
-    <div id="reminder-recipients" style="font-size:12px;color:var(--muted);margin-bottom:16px;padding:8px 12px;background:var(--bg);border-radius:6px;max-height:180px;overflow-y:auto"></div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;padding:8px 12px;background:#FFFBF0;border:0.5px solid rgba(186,117,23,0.2);border-radius:6px">
-      ⚙️ Requires EmailJS configured — see setup notes in code comments.
+
+    <div id="reminder-recipients" style="font-size:12px;color:var(--muted);margin-bottom:16px;padding:8px 12px;background:var(--bg);border-radius:6px;max-height:200px;overflow-y:auto"></div>
+
+    <div id="reminder-channel-note" style="font-size:11px;color:var(--muted);margin-bottom:14px;padding:8px 12px;background:#FFFBF0;border:0.5px solid rgba(186,117,23,0.2);border-radius:6px">
+      ⚙️ Email requires EmailJS · SMS requires the Firebase sendPlayerReminders function to be deployed.
     </div>
     <div class="macts">
       <button class="bsec" onclick="closeModal('modal-reminder')">Cancel</button>
-      <button class="bpri" id="send-reminder-btn" onclick="sendReminder()">Send Emails</button>
+      <button class="bpri" id="send-reminder-btn" onclick="sendReminder()">Send</button>
     </div>
   </div>
 </div>
@@ -352,6 +432,8 @@ import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.0/fir
 import { getFirestore, collection, doc, addDoc, getDoc, updateDoc, deleteDoc, deleteField, writeBatch, onSnapshot }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey:            "AIzaSyBjMKqN6n8bdfoZ157fU71nuzZAvFzwZCI",
@@ -367,6 +449,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app);
 
 let indexCurrentUser = null;
 let indexUserProfile = null;
@@ -431,25 +514,33 @@ onAuthStateChanged(auth, async user => {
         indexUserProfile = snap.data();
         setCachedProfile(user.uid, indexUserProfile);
       } else {
-        // Brand-new user — create profile + player record
+        // Brand-new user — create profile + player record (or claim an existing unlinked match)
         const nameParts = (user.displayName||'').split(' ');
         const firstName = nameParts[0]||'';
         const lastName  = nameParts.slice(1).join(' ')||'';
         const fullName  = user.displayName || user.email.split('@')[0];
-        // Create player doc
-        const playerRef = await addDoc(collection(db,'players'),{
-          name: fullName,
-          rating: RAW_CENTER, lifetimeRating: RAW_CENTER,
-          wins:0, losses:0, totalPoints:0,
-          seasonGames:0, lifetimeGames:0,
-          format:'both', autoCreated:true
-        });
+        // Try to auto-link to an admin-precreated player with the same name first
+        const linkedPidsNow = new Set(users.map(u=>u.linkedPlayerId).filter(Boolean));
+        const existingMatch = players.find(p => p.name.trim().toLowerCase()===fullName.trim().toLowerCase() && !linkedPidsNow.has(p.id));
+        let newPlayerId;
+        if(existingMatch){
+          newPlayerId = existingMatch.id;
+        } else {
+          const playerRef = await addDoc(collection(db,'players'),{
+            name: fullName,
+            rating: RAW_CENTER, lifetimeRating: RAW_CENTER,
+            wins:0, losses:0, totalPoints:0,
+            seasonGames:0, lifetimeGames:0,
+            format:'both', autoCreated:true
+          });
+          newPlayerId = playerRef.id;
+        }
         // Create user profile linked to that player
         const newProfile = {
           firstName, lastName,
           email: user.email,
           birthday: null, favPizzaTopping: null,
-          linkedPlayerId: playerRef.id,
+          linkedPlayerId: newPlayerId,
           isAdmin: false,
           createdAt: Date.now()
         };
@@ -514,7 +605,7 @@ function toast(msg,err){
 }
 
 // ── In-memory cache ───────────────────────────────────────────────────────────
-let players=[], matches=[], events=[], users=[];
+let players=[], matches=[], events=[], users=[], memories=[], themeSuggestions=[];
 
 // Returns today's date as YYYY-MM-DD in local time (not UTC)
 function localDateStr(d=new Date()){
@@ -538,6 +629,15 @@ onSnapshot(collection(db,'events'), snap=>{
   events.sort((a,b)=>(a.date||'')<(b.date||'')?-1:1);
   refreshActive();
 });
+onSnapshot(collection(db,'memories'), snap=>{
+  memories=snap.docs.map(d=>({id:d.id,...d.data()}));
+  memories.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+  refreshActive();
+});
+onSnapshot(collection(db,'themeSuggestions'), snap=>{
+  themeSuggestions=snap.docs.map(d=>({id:d.id,...d.data()}));
+  refreshActive();
+});
 onSnapshot(collection(db,'users'), snap=>{
   users=snap.docs.map(d=>({uid:d.id,...d.data()}));
   // Refresh current user's profile in case isAdmin or familyMembers changed
@@ -553,6 +653,7 @@ function refreshActive(){
   if(id==='page-rankings') renderRankings();
   if(id==='page-stats')    { fillSelects(); defaultStatsToCurrentUser(); renderPlayerStats(); }
   if(id==='page-calendar') renderCalendar();
+  if(id==='page-memories'){ renderMemories(); renderThemeSuggestions(); }
 
 }
 
@@ -585,6 +686,7 @@ window.showPage=function(p,btn){
   if(p==='rankings') renderRankings();
   if(p==='stats')    { fillSelects(); defaultStatsToCurrentUser(); renderPlayerStats(); }
   if(p==='calendar') renderCalendar();
+  if(p==='memories'){ renderMemories(); renderThemeSuggestions(); }
 };
 
 // ── Home Dashboard ────────────────────────────────────────────────────────────
@@ -1564,6 +1666,187 @@ window.confirmDeleteEvent=function(id){
   openModal('modal-confirm');
 };
 
+// ── Memories ──────────────────────────────────────────────────────────────────
+window.showMemSubtab=function(tab){
+  document.getElementById('mem-subtab-photos').classList.toggle('active', tab==='photos');
+  document.getElementById('mem-subtab-themes').classList.toggle('active', tab==='themes');
+  document.getElementById('mem-sub-photos').style.display = tab==='photos'?'block':'none';
+  document.getElementById('mem-sub-themes').style.display = tab==='themes'?'block':'none';
+};
+
+function populateMemEventSelect(){
+  const sel=document.getElementById('mem-event-sel');
+  if(!sel) return;
+  const cur=sel.value;
+  const today=localDateStr();
+  const curYear=new Date().getFullYear();
+  // Today's or past events from this season only (no future events to attribute photos to)
+  const opts=events.filter(e=>!e.cancelled && e.date && e.date<=today && e.date.startsWith(curYear+'')).slice().reverse();
+  sel.innerHTML='<option value="">— No specific event —</option>'+
+    opts.map(e=>{
+      const d=new Date(e.date+'T12:00:00');
+      const label=`${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}${e.theme?' · '+e.theme:''}${e.date===today?' (Today)':''}`;
+      return`<option value="${e.id}">${label}</option>`;
+    }).join('');
+  if(cur) sel.value=cur;
+}
+
+function renderMemories(){
+  const uploadBox=document.getElementById('memory-upload-box');
+  const signinMsg=document.getElementById('memory-signin-msg');
+  if(uploadBox&&signinMsg){
+    if(indexCurrentUser){ uploadBox.style.display='block'; signinMsg.style.display='none'; }
+    else { uploadBox.style.display='none'; signinMsg.style.display='block'; }
+  }
+  populateMemEventSelect();
+  const box=document.getElementById('memory-grid');
+  if(!box) return;
+  if(!memories.length){
+    box.innerHTML='<div class="es"><p>No memories posted yet — be the first! 📸</p></div>';
+    return;
+  }
+  const adminAuthed=isAdmin(indexCurrentUser, indexUserProfile);
+  box.innerHTML=`<div class="mem-grid">${memories.map(m=>{
+    const canDelete=adminAuthed||(indexCurrentUser&&indexCurrentUser.uid===m.postedBy);
+    const dateStr=m.timestamp?new Date(m.timestamp).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
+    const path=(m.storagePath||'').replace(/'/g,"\\'");
+    return`<div class="mem-card">
+      <img src="${m.imageURL}" alt="${(m.theme||'Memory').replace(/"/g,'&quot;')}" loading="lazy">
+      <div class="mem-card-body">
+        ${m.theme?`<div class="mem-card-theme">${m.theme}</div>`:''}
+        ${m.eventLabel?`<div class="mem-event-tag">📅 ${m.eventLabel}</div>`:''}
+        <div class="mem-card-meta" style="margin-top:6px">
+          <span>${m.postedByName||'Someone'}${dateStr?' · '+dateStr:''}</span>
+          ${canDelete?`<button class="icon-btn danger" style="padding:2px 8px;font-size:11px;flex-shrink:0" onclick="deleteMemory('${m.id}','${path}')">🗑</button>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+window.postMemory=async function(){
+  if(!indexCurrentUser){ toast('Sign in to post a memory',true); return; }
+  const fileEl=document.getElementById('mem-file');
+  const themeEl=document.getElementById('mem-theme');
+  const evSel=document.getElementById('mem-event-sel');
+  const file=fileEl?.files[0];
+  const theme=themeEl?.value.trim()||'';
+  const eventId=evSel?.value||null;
+  if(!file){ toast('Choose a photo first',true); return; }
+  const btn=document.getElementById('mem-post-btn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Uploading…';
+  try{
+    const path=`memories/${Date.now()}_${file.name}`;
+    const fileRef=storageRef(storage,path);
+    await uploadBytes(fileRef,file);
+    const url=await getDownloadURL(fileRef);
+    const posterName=indexUserProfile
+      ? `${indexUserProfile.firstName||''} ${indexUserProfile.lastName||''}`.trim()
+      : (indexCurrentUser.displayName||indexCurrentUser.email);
+    const ev=eventId?events.find(e=>e.id===eventId):null;
+    const eventLabel=ev?(ev.theme||new Date(ev.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})):null;
+    await addDoc(collection(db,'memories'),{
+      imageURL:url, storagePath:path, theme,
+      eventId:eventId||null, eventLabel:eventLabel||null,
+      postedBy:indexCurrentUser.uid, postedByName:posterName||'Someone',
+      timestamp:Date.now()
+    });
+    fileEl.value=''; if(themeEl) themeEl.value=''; if(evSel) evSel.value='';
+    toast('Memory posted! 📸');
+  }catch(e){ toast('Error: '+e.message,true); }
+  btn.disabled=false; btn.textContent='📸 Post Memory';
+};
+
+window.deleteMemory=async function(id,path){
+  if(!window.confirm('Delete this memory?')) return;
+  try{
+    await deleteDoc(doc(db,'memories',id));
+    if(path){ try{ await deleteObject(storageRef(storage,path)); }catch(_){} }
+    toast('Memory deleted');
+  }catch(e){ toast('Error: '+e.message,true); }
+};
+
+// ── Theme Suggestions ─────────────────────────────────────────────────────────
+function renderThemeSuggestions(){
+  const box=document.getElementById('theme-suggest-box');
+  const signinMsg=document.getElementById('theme-signin-msg');
+  if(box&&signinMsg){
+    if(indexCurrentUser){ box.style.display='block'; signinMsg.style.display='none'; }
+    else { box.style.display='none'; signinMsg.style.display='block'; }
+  }
+  const list=document.getElementById('theme-list');
+  if(!list) return;
+  if(!themeSuggestions.length){
+    list.innerHTML='<div class="es"><p>No theme suggestions yet — add one! 💡</p></div>';
+    return;
+  }
+  const adminAuthed=isAdmin(indexCurrentUser, indexUserProfile);
+  const withScore=themeSuggestions.map(t=>{
+    const votes=t.votes||{};
+    const score=Object.values(votes).reduce((s,v)=>s+v,0);
+    const myVote=indexCurrentUser?(votes[indexCurrentUser.uid]||0):0;
+    return{...t,score,myVote};
+  }).sort((a,b)=>b.score-a.score||(b.timestamp||0)-(a.timestamp||0));
+
+  list.innerHTML=withScore.map(t=>{
+    const canDelete=adminAuthed||(indexCurrentUser&&indexCurrentUser.uid===t.suggestedBy);
+    const scoreColor=t.score>0?'var(--grass)':t.score<0?'var(--danger)':'var(--muted)';
+    return`<div class="theme-row">
+      <div class="theme-vote">
+        <button onclick="voteTheme('${t.id}',1)" title="Upvote" style="${t.myVote===1?'color:var(--grass)':''}">▲</button>
+        <div class="theme-vote-score" style="color:${scoreColor}">${t.score}</div>
+        <button onclick="voteTheme('${t.id}',-1)" title="Downvote" style="${t.myVote===-1?'color:var(--danger)':''}">▼</button>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:15px">${t.theme}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Suggested by ${t.suggestedByName||'Someone'}</div>
+      </div>
+      ${canDelete?`<button class="icon-btn danger" onclick="deleteThemeSuggestion('${t.id}')">🗑</button>`:''}
+    </div>`;
+  }).join('');
+}
+
+window.postThemeSuggestion=async function(){
+  if(!indexCurrentUser){ toast('Sign in to suggest a theme',true); return; }
+  const inp=document.getElementById('theme-input');
+  const theme=inp?.value.trim();
+  if(!theme){ toast('Enter a theme first',true); return; }
+  const btn=document.getElementById('theme-post-btn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Posting…';
+  try{
+    const posterName=indexUserProfile
+      ? `${indexUserProfile.firstName||''} ${indexUserProfile.lastName||''}`.trim()
+      : (indexCurrentUser.displayName||indexCurrentUser.email);
+    await addDoc(collection(db,'themeSuggestions'),{
+      theme, suggestedBy:indexCurrentUser.uid, suggestedByName:posterName||'Someone',
+      timestamp:Date.now(), votes:{}
+    });
+    inp.value='';
+    toast('Theme suggested! 💡');
+  }catch(e){ toast('Error: '+e.message,true); }
+  btn.disabled=false; btn.textContent='💡 Submit';
+};
+
+window.voteTheme=async function(id,dir){
+  if(!indexCurrentUser){ toast('Sign in to vote',true); return; }
+  const t=themeSuggestions.find(x=>x.id===id); if(!t) return;
+  const votes=t.votes||{};
+  const cur=votes[indexCurrentUser.uid]||0;
+  const next=cur===dir?0:dir; // clicking the same direction again clears your vote
+  try{
+    if(next===0) await updateDoc(doc(db,'themeSuggestions',id),{[`votes.${indexCurrentUser.uid}`]:deleteField()});
+    else await updateDoc(doc(db,'themeSuggestions',id),{[`votes.${indexCurrentUser.uid}`]:next});
+  }catch(e){ toast('Error: '+e.message,true); }
+};
+
+window.deleteThemeSuggestion=async function(id){
+  if(!window.confirm('Delete this theme suggestion?')) return;
+  try{
+    await deleteDoc(doc(db,'themeSuggestions',id));
+    toast('Suggestion deleted');
+  }catch(e){ toast('Error: '+e.message,true); }
+};
+
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
 // ── EmailJS Configuration ─────────────────────────────────────────────────────
@@ -1579,11 +1862,18 @@ const EMAILJS_TEMPLATE_ID = 'template_FCL';  // e.g. 'template_abc123'
 
 let _reminderEventId = null;
 let _reminderType = 'rsvp';
+let _reminderChannel = 'email'; // 'email' | 'sms' | 'both'
+
+// ── Firebase SMS function URL ─────────────────────────────────────────────────
+// Deployed at: https://us-central1-fcl-database.cloudfunctions.net/sendPlayerReminders
+const SMS_FUNCTION_URL = 'https://us-central1-fcl-database.cloudfunctions.net/sendPlayerReminders';
 
 window.openReminderModal = function(evId){
   const ev = events.find(x=>x.id===evId); if(!ev) return;
   _reminderEventId = evId;
+  _reminderChannel = 'email';
   setReminderType('rsvp');
+  setReminderChannel('email');
 
   const dateObj = new Date(ev.date+'T12:00:00');
   const dateStr = dateObj.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
@@ -1599,26 +1889,80 @@ function renderReminderRecipients(evId){
   const linked = users.filter(u=>u.linkedPlayerId && u.email);
   const box = document.getElementById('reminder-recipients');
   if(!linked.length){
-    box.innerHTML='<span style="color:var(--muted)">No linked accounts with emails found.</span>';
+    box.innerHTML='<span style="color:var(--muted)">No linked accounts found.</span>';
     return;
   }
-  // Mark who already RSVPed yes
   box.innerHTML=`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px">Recipients <span style="font-weight:400;text-transform:none;letter-spacing:0">(uncheck to skip)</span></div>`+
     linked.map(u=>{
       const rsvpVal = (ev.rsvps&&ev.rsvps[u.uid])||'none';
       const alreadyYes = rsvpVal==='yes';
       const alreadyNo  = rsvpVal==='no';
-      const tag = alreadyYes?' <span style="color:var(--grass);font-size:10px;font-weight:700">✅ RSVP\'d Going</span>'
-                : alreadyNo ? ' <span style="color:var(--danger);font-size:10px;font-weight:700">❌ Not Going</span>'
-                : '';
-      // Default: un-check people who already said yes
+      const rsvpTag = alreadyYes?' <span style="color:var(--grass);font-size:10px;font-weight:700">✅ Going</span>'
+                    : alreadyNo ? ' <span style="color:var(--danger);font-size:10px;font-weight:700">❌ Not Going</span>'
+                    : '';
+      const hasPhone = !!u.phone;
+      const phoneTag = hasPhone
+        ? `<span style="color:var(--grass);font-size:10px;font-weight:700">💬 ${u.phone}</span>`
+        : `<span style="color:var(--muted);font-size:10px">no phone</span>`;
       const checked = !alreadyYes;
-      return`<label style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--border);cursor:pointer;font-size:13px">
-        <input type="checkbox" class="reminder-recip-cb" data-uid="${u.uid}" data-email="${u.email}" data-name="${`${u.firstName||''} ${u.lastName||''}`.trim()||u.email}" ${checked?'checked':''} style="width:15px;height:15px;accent-color:var(--grass);cursor:pointer;flex-shrink:0">
-        <span>${`${u.firstName||''} ${u.lastName||''}`.trim()||u.email}${tag}</span>
+      const name = `${u.firstName||''} ${u.lastName||''}`.trim()||u.email;
+      return`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--border);cursor:pointer;font-size:13px">
+        <input type="checkbox" class="reminder-recip-cb"
+          data-uid="${u.uid}"
+          data-email="${u.email}"
+          data-phone="${u.phone||''}"
+          data-name="${name}"
+          ${checked?'checked':''}
+          style="width:15px;height:15px;accent-color:var(--grass);cursor:pointer;flex-shrink:0">
+        <span style="flex:1;min-width:0">
+          <span style="font-weight:600">${name}</span>${rsvpTag}
+          <br><span style="font-size:11px;color:var(--muted)">${u.email}</span>
+        </span>
+        <span>${phoneTag}</span>
       </label>`;
     }).join('');
 }
+
+window.setReminderChannel = function(ch){
+  _reminderChannel = ch;
+  const ids = ['ch-email','ch-sms','ch-both'];
+  const activeStyle = 'flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--grass);background:var(--grass-pale);color:var(--grass);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer';
+  const inactiveStyle = 'flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--border);background:none;color:var(--muted);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer';
+  ids.forEach(id=>{
+    const btn=document.getElementById(id);
+    if(btn) btn.style.cssText = id===`ch-${ch}` ? activeStyle : inactiveStyle;
+  });
+  // Show/hide subject field (email only)
+  const subjectRow = document.getElementById('reminder-subject-row');
+  if(subjectRow) subjectRow.style.display = ch==='sms' ? 'none' : 'block';
+  // Show char counter for SMS
+  const charCount = document.getElementById('sms-char-count');
+  if(charCount) charCount.style.display = ch!=='email' ? 'block' : 'none';
+  // Update send button label
+  const sendBtn = document.getElementById('send-reminder-btn');
+  if(sendBtn) sendBtn.textContent = ch==='email' ? 'Send Emails' : ch==='sms' ? 'Send Texts' : 'Send Email + Text';
+  // Update channel note
+  const note = document.getElementById('reminder-channel-note');
+  if(note){
+    if(ch==='email')      note.innerHTML = '⚙️ Emails sent via EmailJS. Recipients without a phone number will only get email.';
+    else if(ch==='sms')   note.innerHTML = '⚙️ Texts sent via Firebase + Twilio. Only recipients with a saved phone number will receive an SMS.';
+    else                  note.innerHTML = '⚙️ Email via EmailJS · SMS via Firebase + Twilio. Players without a phone get email only.';
+  }
+  updateSmsCharCount();
+};
+
+function updateSmsCharCount(){
+  const charCount = document.getElementById('sms-char-count');
+  if(!charCount||_reminderChannel==='email') return;
+  const body = document.getElementById('reminder-body')?.value||'';
+  const len = body.length;
+  const segs = Math.ceil(len/160)||1;
+  charCount.textContent = `${len} chars · ${segs} SMS segment${segs!==1?'s':''}`;
+  charCount.style.color = len > 320 ? 'var(--danger)' : 'var(--muted)';
+}
+
+// Wire up char counter
+document.getElementById('reminder-body')?.addEventListener('input', updateSmsCharCount);
 
 window.setReminderType = function(type){
   _reminderType = type;
@@ -1639,82 +1983,128 @@ window.setReminderType = function(type){
   if(type==='rsvp'){
     document.getElementById('reminder-subject').value = `📋 RSVP Reminder — FCL ${dateStr}`;
     document.getElementById('reminder-body').value =
-`Hello! A reminder to RSVP for Friday Cornhole League this ${dateStr}.
- https://www.fridaycornholeleague.com/
-
+`FCL is this ${dateStr}! 🌽
 ${title}
 ${timeStr ? '⏰ '+timeStr+'\n' : ''}${loc ? '📍 '+loc+'\n' : ''}
-Head to the FCL site to RSVP so we can plan the dough count!
-
-See you on the boards 🌽`;
+RSVP at fridaycornholeleague.com so we can plan the boards!`;
   } else {
     document.getElementById('reminder-subject').value = `📢 FCL Update — ${dateStr}`;
     document.getElementById('reminder-body').value =
-`Hey everyone — quick update about FCL on ${dateStr}.
-
+`FCL update for ${dateStr}:
 ${title}
 ${timeStr ? '⏰ '+timeStr+'\n' : ''}${loc ? '📍 '+loc+'\n' : ''}
-[Add your update details here]
+[Add details here]
 
 See you on the boards 🌽`;
   }
+  updateSmsCharCount();
 };
 
 window.sendReminder = async function(){
-  if(EMAILJS_PUBLIC_KEY === 'YOUR_PUBLIC_KEY'){
+  const body = document.getElementById('reminder-body').value.trim();
+  if(!body){ toast('Message is required', true); return; }
+
+  const sendEmail = _reminderChannel === 'email' || _reminderChannel === 'both';
+  const sendSms   = _reminderChannel === 'sms'   || _reminderChannel === 'both';
+
+  if(sendEmail && EMAILJS_PUBLIC_KEY === 'YOUR_PUBLIC_KEY'){
     toast('EmailJS not configured yet — see code comments in index.html', true);
     return;
   }
-  const subject = document.getElementById('reminder-subject').value.trim();
-  const body    = document.getElementById('reminder-body').value.trim();
-  if(!subject||!body){ toast('Subject and message are required', true); return; }
 
   const ev = events.find(x=>x.id===_reminderEventId); if(!ev) return;
   const dateObj = new Date(ev.date+'T12:00:00');
   const dateStr = dateObj.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
 
-  // Collect only checked recipients
   const checked = [...document.querySelectorAll('.reminder-recip-cb:checked')];
   if(!checked.length){ toast('No recipients selected', true); return; }
-  const recipients = checked.map(cb=>({email:cb.dataset.email, name:cb.dataset.name}));
+
+  const emailRecipients = sendEmail ? checked.filter(cb=>cb.dataset.email).map(cb=>({email:cb.dataset.email, name:cb.dataset.name})) : [];
+  const smsRecipients   = sendSms   ? checked.filter(cb=>cb.dataset.phone).map(cb=>({phone:cb.dataset.phone, name:cb.dataset.name})) : [];
+
+  if(sendSms && !smsRecipients.length){
+    toast('No checked recipients have a phone number saved', true);
+    return;
+  }
 
   const btn = document.getElementById('send-reminder-btn');
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Sending…';
 
-  if(typeof emailjs !== 'undefined'){
-    emailjs.init(EMAILJS_PUBLIC_KEY);
-  } else {
-    toast('EmailJS library not loaded', true);
-    btn.disabled=false; btn.textContent='Send Emails';
-    return;
+  let emailSent=0, emailFailed=0, smsSent=0, smsFailed=0;
+
+  // ── Send emails via EmailJS ───────────────────────────────────────────────
+  if(sendEmail && emailRecipients.length){
+    const subject = document.getElementById('reminder-subject').value.trim();
+    if(typeof emailjs !== 'undefined'){
+      emailjs.init(EMAILJS_PUBLIC_KEY);
+      for(const r of emailRecipients){
+        try{
+          await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+            to_email:    r.email,
+            to_name:     r.name,
+            subject:     subject,
+            message:     body,
+            event_date:  dateStr,
+            event_title: ev.theme || 'Cornhole Night',
+          });
+          emailSent++;
+        } catch(e){
+          console.warn('Email failed for', r.email, e);
+          emailFailed++;
+        }
+        await new Promise(r=>setTimeout(r,150));
+      }
+    } else {
+      toast('EmailJS library not loaded', true);
+      btn.disabled=false;
+      btn.textContent = _reminderChannel==='email' ? 'Send Emails' : _reminderChannel==='sms' ? 'Send Texts' : 'Send Email + Text';
+      return;
+    }
   }
 
-  let sent=0, failed=0;
-  for(const r of recipients){
+  // ── Send SMS via Firebase function ────────────────────────────────────────
+  if(sendSms && smsRecipients.length){
     try{
-      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-        to_email:    r.email,
-        to_name:     r.name,
-        subject:     subject,
-        message:     body,
-        event_date:  dateStr,
-        event_title: ev.theme || 'Cornhole Night',
+      const resp = await fetch(SMS_FUNCTION_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messageText: body,
+          recipients: smsRecipients.map(r=>({ phone: r.phone, name: r.name }))
+        })
       });
-      sent++;
+      const data = await resp.json();
+      if(resp.ok && data.success){
+        smsSent = smsRecipients.length;
+      } else {
+        console.warn('SMS function error:', data);
+        smsFailed = smsRecipients.length;
+      }
     } catch(e){
-      console.warn('Email failed for', r.email, e);
-      failed++;
+      console.warn('SMS function fetch error:', e);
+      smsFailed = smsRecipients.length;
     }
-    await new Promise(r=>setTimeout(r,150));
   }
 
   closeModal('modal-reminder');
-  if(failed===0){
-    toast(`✅ Sent to ${sent} player${sent!==1?'s':''}!`);
+
+  const parts = [];
+  if(emailSent)   parts.push(`${emailSent} email${emailSent!==1?'s':''}`);
+  if(smsSent)     parts.push(`${smsSent} text${smsSent!==1?'s':''}`);
+  const failParts = [];
+  if(emailFailed) failParts.push(`${emailFailed} email${emailFailed!==1?'s':''}`);
+  if(smsFailed)   failParts.push(`${smsFailed} text${smsFailed!==1?'s':''}`);
+
+  if(parts.length && !failParts.length){
+    toast(`✅ Sent ${parts.join(' + ')}!`);
+  } else if(parts.length && failParts.length){
+    toast(`Sent ${parts.join(' + ')} · Failed ${failParts.join(' + ')} — check console`, true);
   } else {
-    toast(`Sent ${sent}, failed ${failed} — check console`, true);
+    toast(`All sends failed — check console`, true);
   }
-  btn.disabled=false; btn.textContent='Send Emails';
+
+  btn.disabled=false;
+  btn.textContent = _reminderChannel==='email' ? 'Send Emails' : _reminderChannel==='sms' ? 'Send Texts' : 'Send Email + Text';
 };
 
 // ── Modals ────────────────────────────────────────────────────────────────────
@@ -1738,15 +2128,15 @@ window.closeModal=function(id,e){if(!e||e.target===document.getElementById(id))d
     history.replaceState(null,'',location.pathname);
     return;
   }
-  const validPages=['home','rankings','stats','calendar'];
+  const validPages=['home','rankings','stats','calendar','memories'];
   const target=validPages.includes(hash)?hash:'home';
-  const labelMap={home:'home',rankings:'rankings',stats:'player stats',calendar:'calendar'};
+  const labelMap={home:'home',rankings:'rankings',stats:'player stats',calendar:'calendar',memories:'memories'};
   const btn=[...document.querySelectorAll('.nb')].find(b=>
     b.textContent.trim().toLowerCase()===(labelMap[target]||target));
   showPage(target, btn||null);
   history.replaceState(null,'',location.pathname);
 })();
 </script>
-<footer style="text-align:center;padding:20px 16px 28px;font-size:11px;color:var(--muted);letter-spacing:.4px">Friday Cornhole League &nbsp;·&nbsp; Ver 1.9</footer>
+<footer style="text-align:center;padding:20px 16px 28px;font-size:11px;color:var(--muted);letter-spacing:.4px">Friday Cornhole League &nbsp;·&nbsp; Ver 2.0</footer>
 </body>
 </html>

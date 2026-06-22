@@ -125,6 +125,7 @@ input:focus,select:focus{border-color:var(--grass)}
     <a class="nb" href="index.html#rankings">Rankings</a>
     <a class="nb" href="score.html">Enter Score</a>
     <a class="nb" href="index.html#stats">Player Stats</a>
+    <a class="nb" href="index.html#memories">Memories</a>
     <a class="nb" id="prof-admin-link" href="index.html#admin" style="display:none">Admin</a>
   </div>
   <a href="profile.html" id="prof-profile-pill" style="text-decoration:none;display:flex;align-items:center;gap:7px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:4px 12px 4px 5px;color:#fff;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0;transition:background .15s;margin-left:8px;border:2px solid rgba(255,255,255,0.35)">
@@ -141,6 +142,7 @@ input:focus,select:focus{border-color:var(--grass)}
   <a class="nb" href="index.html#rankings">Rankings</a>
   <a class="nb" href="score.html">Enter Score</a>
   <a class="nb" href="index.html#stats">Player Stats</a>
+  <a class="nb" href="index.html#memories">Memories</a>
   <a class="nb" id="prof-ham-admin" href="index.html#admin" style="display:none">Admin</a>
   <a class="nb active" href="profile.html">My Profile</a>
 </div>
@@ -346,6 +348,15 @@ onSnapshot(collection(db, 'users'), snap => {
 function initials(n){ return (n||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
 function dispRating(raw){ return Math.max(0,Math.min(10,5+((raw||5)-5)/1)).toFixed(1); }
 
+// Find an existing player record with no linked account whose name matches (case-insensitive).
+// Used so a new signup claims an admin-precreated player instead of creating a duplicate.
+function findUnlinkedPlayerMatch(fullName){
+  const target = (fullName||'').trim().toLowerCase();
+  if(!target) return null;
+  const linkedPids = new Set((window._allUsers||[]).map(u=>u.linkedPlayerId).filter(Boolean));
+  return players.find(p => p.name.trim().toLowerCase()===target && !linkedPids.has(p.id)) || null;
+}
+
 function toast(msg, err){
   const t = document.getElementById('toast');
   t.textContent = msg; t.className = 'toast'+(err?' err':'')+' show';
@@ -533,15 +544,21 @@ window.emailSignUp = async function(){
   try{ await updateProfile(cred.user, { displayName: `${first} ${last}` }); }catch(_){}
 
   let linkedPlayerId = null;
-  try{
-    const playerRef = await addDoc(collection(db,'players'),{
-      name:`${first} ${last}`, rating:5, lifetimeRating:5,
-      wins:0, losses:0, totalPoints:0,
-      seasonGames:0, lifetimeGames:0, format:'both', autoCreated:true
-    });
-    linkedPlayerId = playerRef.id;
-    if(pendingEmailProfile) pendingEmailProfile.linkedPlayerId = linkedPlayerId;
-  } catch(fe){ console.warn('Player creation failed (check Firestore rules):', fe.message); }
+  const fullName = `${first} ${last}`;
+  const existingMatch = findUnlinkedPlayerMatch(fullName);
+  if(existingMatch){
+    linkedPlayerId = existingMatch.id;
+  } else {
+    try{
+      const playerRef = await addDoc(collection(db,'players'),{
+        name: fullName, rating:5, lifetimeRating:5,
+        wins:0, losses:0, totalPoints:0,
+        seasonGames:0, lifetimeGames:0, format:'both', autoCreated:true
+      });
+      linkedPlayerId = playerRef.id;
+    } catch(fe){ console.warn('Player creation failed (check Firestore rules):', fe.message); }
+  }
+  if(pendingEmailProfile) pendingEmailProfile.linkedPlayerId = linkedPlayerId;
 
   try{
     await setDoc(doc(db,'users',cred.user.uid), {
@@ -574,15 +591,21 @@ window.saveCompletion = async function(){
     let linkedPlayerId = existing?.linkedPlayerId || null;
 
     if(!linkedPlayerId){
-      // No player yet — create one now
-      try{
-        const playerRef = await addDoc(collection(db,'players'),{
-          name:`${first} ${last}`, rating:5, lifetimeRating:5,
-          wins:0, losses:0, totalPoints:0,
-          seasonGames:0, lifetimeGames:0, format:'both', autoCreated:true
-        });
-        linkedPlayerId = playerRef.id;
-      } catch(fe){ console.warn('Player creation failed (check Firestore rules):', fe.message); }
+      // No player yet — try to auto-link to an existing unlinked match, else create one
+      const fullName = `${first} ${last}`;
+      const existingMatch = findUnlinkedPlayerMatch(fullName);
+      if(existingMatch){
+        linkedPlayerId = existingMatch.id;
+      } else {
+        try{
+          const playerRef = await addDoc(collection(db,'players'),{
+            name: fullName, rating:5, lifetimeRating:5,
+            wins:0, losses:0, totalPoints:0,
+            seasonGames:0, lifetimeGames:0, format:'both', autoCreated:true
+          });
+          linkedPlayerId = playerRef.id;
+        } catch(fe){ console.warn('Player creation failed (check Firestore rules):', fe.message); }
+      }
     } else {
       // Player exists — update name if it was auto-created with a placeholder
       try{
@@ -740,20 +763,22 @@ function renderFamilySection(){
   listEl.innerHTML = incomingHtml + membersHtml;
 
   // ── Add dropdown ──
-  // Pids already in confirmed families (across all users)
-  const allFamilyPids = new Set(allUsers.flatMap(u => u.familyMembers||[]));
+  // Count how many confirmed family slots each pid currently occupies (across all users)
+  const familyPidCounts = {};
+  allUsers.forEach(u => (u.familyMembers||[]).forEach(pid => { familyPidCounts[pid] = (familyPidCounts[pid]||0) + 1; }));
+  const MAX_FAMILY_OWNERS = 2;
   // Pids with linked accounts (excluding myself)
   const allLinkedPids = new Set(allUsers.map(u=>u.linkedPlayerId).filter(Boolean));
 
   // Available = any player except:
   //   - my own linked player
   //   - already in my family
-  //   - already in someone else's family (unless unlinked — allow admin-only path; linked players go via request)
+  //   - already claimed by MAX_FAMILY_OWNERS families (e.g. both parents already added)
   //   - I've already sent them a request (show pending label instead)
   const available = players.filter(p =>
     p.id !== myLinkedId &&
     !familyIds.includes(p.id) &&
-    !allFamilyPids.has(p.id)   // not already in any family
+    (familyPidCounts[p.id]||0) < MAX_FAMILY_OWNERS
   ).sort((a,b) => a.name.localeCompare(b.name));
 
   // Also show players I sent requests to (so user can see pending)
@@ -1036,6 +1061,6 @@ document.addEventListener('click', function(e){
     menu.classList.remove('open');
 });
 </script>
-<footer style="text-align:center;padding:20px 16px 28px;font-size:11px;color:var(--muted);letter-spacing:.4px">Friday Cornhole League &nbsp;·&nbsp; Ver 1.9</footer>
+<footer style="text-align:center;padding:20px 16px 28px;font-size:11px;color:var(--muted);letter-spacing:.4px">Friday Cornhole League &nbsp;·&nbsp; Ver 2.0</footer>
 </body>
 </html>

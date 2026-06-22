@@ -103,6 +103,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
     <a class="nb" href="index.html#rankings">Rankings</a>
     <a class="nb" href="score.html">Enter Score</a>
     <a class="nb" href="index.html#stats">Player Stats</a>
+    <a class="nb" href="index.html#memories">Memories</a>
     <a class="nb active" href="admin.html">Admin</a>
   </div>
   <a href="profile.html" id="admin-profile-pill" style="text-decoration:none;display:flex;align-items:center;gap:7px;background:rgba(0,0,0,0.2);border:2px solid rgba(255,255,255,0.35);border-radius:20px;padding:4px 12px 4px 5px;color:#fff;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0;transition:background .15s;margin-left:8px">
@@ -119,6 +120,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
   <a class="nb" href="index.html#rankings">Rankings</a>
   <a class="nb" href="score.html">Enter Score</a>
   <a class="nb" href="index.html#stats">Player Stats</a>
+  <a class="nb" href="index.html#memories">Memories</a>
   <a class="nb active" href="admin.html">Admin</a>
   <a class="nb" href="profile.html">My Profile</a>
 </div>
@@ -437,9 +439,10 @@ function renderAdminPlayers(){
   // Build lookup maps once
   const allLinkedPids  = new Set(users.map(u=>u.linkedPlayerId).filter(Boolean));
   const allFamilyPids  = new Set(users.flatMap(u=>u.familyMembers||[]));
-  // pid → ownerUser
-  const familyOwnerOf  = {};
-  users.forEach(u=>(u.familyMembers||[]).forEach(pid=>{ familyOwnerOf[pid]=u; }));
+  // pid → array of owner users (max MAX_FAMILY_OWNERS allowed, e.g. both parents)
+  const MAX_FAMILY_OWNERS = 2;
+  const familyOwnersOf = {};
+  users.forEach(u=>(u.familyMembers||[]).forEach(pid=>{ (familyOwnersOf[pid]=familyOwnersOf[pid]||[]).push(u); }));
 
   box.innerHTML=[...players].sort((a,b)=>{
     const lastName=n=>{const parts=n.trim().split(' ');return parts.length>1?parts.slice(1).join(' ').toLowerCase():parts[0].toLowerCase();};
@@ -453,8 +456,7 @@ function renderAdminPlayers(){
       :`<span style="font-size:11px;color:var(--muted)">No account linked</span>`;
 
     // ── Family unit inline control ──
-    const familyOwner = familyOwnerOf[p.id];
-    const ownerLinkedUser = linkedUser; // player's own account (if linked)
+    const owners = familyOwnersOf[p.id] || [];
 
     let familyHtml = '';
     if(linkedUser){
@@ -488,26 +490,31 @@ function renderAdminPlayers(){
           <button class="icon-btn" style="padding:3px 10px;font-size:12px" onclick="adminAddFamilyMember('${linkedUser.uid}','${theirFamilyIds.join(',')}')">Add</button>`
         :''}
       </div>`;
-    } else if(familyOwner){
-      // This is an unlinked player already claimed by a family
-      const ownerName = `${familyOwner.firstName||''} ${familyOwner.lastName||''}`.trim() || familyOwner.email;
-      const ownerFamilyIds = familyOwner.familyMembers || [];
-      familyHtml = `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px">
-        <span style="font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap">👨‍👩‍👧 Family of:</span>
-        <span style="font-size:11px;background:#f0f0ec;color:var(--muted);padding:2px 8px;border-radius:10px;font-weight:600">${ownerName}</span>
-        <button class="icon-btn danger" style="padding:3px 10px;font-size:12px" onclick="adminRemoveFamilyMember('${familyOwner.uid}','${p.id}','${ownerFamilyIds.join(',')}')">Remove from family</button>
-      </div>`;
-    } else if(!allLinkedPids.has(p.id)){
-      // Unlinked + unclaimed — show a picker to add them to any linked user's family
-      const linkedUsers = users.filter(u=>u.linkedPlayerId);
-      familyHtml = linkedUsers.length ? `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px">
-        <span style="font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap">👨‍👩‍👧 Assign to family:</span>
+    } else {
+      // Unlinked player — claimable by up to MAX_FAMILY_OWNERS accounts (e.g. both parents)
+      const ownerChips = owners.map(o=>{
+        const ownerName = `${o.firstName||''} ${o.lastName||''}`.trim() || o.email;
+        const ownerFamilyIds = o.familyMembers || [];
+        return`<span style="display:inline-flex;align-items:center;gap:4px;background:#f0f0ec;color:var(--muted);font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px">
+          ${ownerName}
+          <span onclick="adminRemoveFamilyMember('${o.uid}','${p.id}','${ownerFamilyIds.join(',')}')" style="cursor:pointer;font-size:12px;line-height:1;color:var(--muted);opacity:.7;margin-left:2px" title="Remove">×</span>
+        </span>`;
+      }).join('');
+      const ownerUids = new Set(owners.map(o=>o.uid));
+      const linkedUsersAvail = owners.length<MAX_FAMILY_OWNERS ? users.filter(u=>u.linkedPlayerId && !ownerUids.has(u.uid)) : [];
+      const pickerHtml = linkedUsersAvail.length ? `
         <select id="fadmin-assign-${p.id}" style="padding:3px 8px;border:0.5px solid var(--border);border-radius:6px;font-family:var(--fb);font-size:12px;outline:none;max-width:180px">
           <option value="">— Pick account —</option>
-          ${linkedUsers.map(u=>`<option value="${u.uid}|${(u.familyMembers||[]).join(',')}">${u.firstName||''} ${u.lastName||''} (${u.email||''})</option>`).join('')}
+          ${linkedUsersAvail.map(u=>`<option value="${u.uid}|${(u.familyMembers||[]).join(',')}">${u.firstName||''} ${u.lastName||''} (${u.email||''})</option>`).join('')}
         </select>
-        <button class="icon-btn" style="padding:3px 10px;font-size:12px" onclick="adminAssignToFamily('${p.id}')">Assign</button>
-      </div>` : '';
+        <button class="icon-btn" style="padding:3px 10px;font-size:12px" onclick="adminAssignToFamily('${p.id}')">Assign</button>` : '';
+      if(owners.length || pickerHtml){
+        familyHtml = `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px">
+          <span style="font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap">👨‍👩‍👧 ${owners.length?'Family of:':'Assign to family:'}</span>
+          ${ownerChips}
+          ${pickerHtml}
+        </div>`;
+      }
     }
 
     // Only show accounts not already linked to another player (or the current link)
