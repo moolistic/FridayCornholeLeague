@@ -193,7 +193,30 @@ input:focus,select:focus{border-color:var(--grass)}
           <div class="fg"><label>Birthday</label><input type="date" id="signup-birthday" autocomplete="bday"></div>
           <div class="fg"><label>🍕 Fav Pizza Topping</label><input type="text" id="signup-pizza" placeholder="e.g. Pepperoni"></div>
         </div>
-        <div class="fg" style="margin-top:14px"><label>📱 Phone Number <span style="font-weight:400;font-size:11px;color:var(--muted)">(optional · for future SMS reminders)</span></label><input type="tel" id="signup-phone" placeholder="e.g. 612-555-0100" autocomplete="tel"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
+          <div class="fg"><label>📱 Phone <span style="font-weight:400;font-size:11px;color:var(--muted)">(optional)</span></label><input type="tel" id="signup-phone" placeholder="e.g. 6125550100" autocomplete="tel"></div>
+          <div class="fg"><label>📡 Carrier</label>
+            <select id="signup-carrier">
+              <option value="">— Select —</option>
+              <option value="@txt.att.net">AT&amp;T</option>
+              <option value="@vtext.com">Verizon</option>
+              <option value="@tmomail.net">T-Mobile</option>
+              <option value="@messaging.sprintpcs.com">Sprint</option>
+              <option value="@email.uscc.net">US Cellular</option>
+              <option value="@sms.cricketwireless.net">Cricket</option>
+              <option value="@sms.myboostmobile.com">Boost Mobile</option>
+              <option value="@mymetropcs.com">Metro by T-Mobile</option>
+              <option value="@msg.fi.google.com">Google Fi</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg" style="margin-top:12px"><label>🔔 Reminder Preference</label>
+          <select id="signup-reminder-pref">
+            <option value="email">📧 Email only</option>
+            <option value="sms">💬 Text only</option>
+            <option value="both">📧+💬 Email &amp; Text</option>
+          </select>
+        </div>
         <button class="btn-primary" onclick="emailSignUp()" id="signup-btn">CREATE ACCOUNT</button>
       </div>
     </div>
@@ -217,7 +240,30 @@ input:focus,select:focus{border-color:var(--grass)}
           <div class="fg"><label>Birthday</label><input type="date" id="complete-birthday" autocomplete="bday"></div>
           <div class="fg"><label>🍕 Fav Pizza Topping</label><input type="text" id="complete-pizza" placeholder="e.g. Pepperoni"></div>
         </div>
-        <div class="fg" style="margin-bottom:14px"><label>📱 Phone Number <span style="font-weight:400;font-size:11px;color:var(--muted)">(optional · for future SMS reminders)</span></label><input type="tel" id="complete-phone" placeholder="e.g. 612-555-0100" autocomplete="tel"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px">
+          <div class="fg"><label>📱 Phone <span style="font-weight:400;font-size:11px;color:var(--muted)">(optional)</span></label><input type="tel" id="complete-phone" placeholder="e.g. 6125550100" autocomplete="tel"></div>
+          <div class="fg"><label>📡 Carrier</label>
+            <select id="complete-carrier">
+              <option value="">— Select —</option>
+              <option value="@txt.att.net">AT&amp;T</option>
+              <option value="@vtext.com">Verizon</option>
+              <option value="@tmomail.net">T-Mobile</option>
+              <option value="@messaging.sprintpcs.com">Sprint</option>
+              <option value="@email.uscc.net">US Cellular</option>
+              <option value="@sms.cricketwireless.net">Cricket</option>
+              <option value="@sms.myboostmobile.com">Boost Mobile</option>
+              <option value="@mymetropcs.com">Metro by T-Mobile</option>
+              <option value="@msg.fi.google.com">Google Fi</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg" style="margin-bottom:14px"><label>🔔 Reminder Preference</label>
+          <select id="complete-reminder-pref">
+            <option value="email">📧 Email only</option>
+            <option value="sms">💬 Text only</option>
+            <option value="both">📧+💬 Email &amp; Text</option>
+          </select>
+        </div>
         <button class="btn-primary" onclick="saveCompletion()" id="complete-btn">SAVE & CONTINUE</button>
       </div>
     </div>
@@ -257,7 +303,30 @@ input:focus,select:focus{border-color:var(--grass)}
           <div class="fg"><label>Birthday</label><input type="date" id="prof-birthday"></div>
           <div class="fg"><label>🍕 Fav Pizza Topping</label><input type="text" id="prof-pizza"></div>
         </div>
-        <div class="fg" style="margin-top:14px"><label>📱 Phone Number <span style="font-weight:400;font-size:11px;color:var(--muted)">(optional · for future SMS reminders)</span></label><input type="tel" id="prof-phone" placeholder="e.g. 612-555-0100" autocomplete="tel"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+          <div class="fg"><label>📱 Phone <span style="font-weight:400;font-size:11px;color:var(--muted)">(optional)</span></label><input type="tel" id="prof-phone" placeholder="e.g. 6125550100" autocomplete="tel"></div>
+          <div class="fg"><label>📡 Carrier</label>
+            <select id="prof-carrier">
+              <option value="">— Select —</option>
+              <option value="@txt.att.net">AT&amp;T</option>
+              <option value="@vtext.com">Verizon</option>
+              <option value="@tmomail.net">T-Mobile</option>
+              <option value="@messaging.sprintpcs.com">Sprint</option>
+              <option value="@email.uscc.net">US Cellular</option>
+              <option value="@sms.cricketwireless.net">Cricket</option>
+              <option value="@sms.myboostmobile.com">Boost Mobile</option>
+              <option value="@mymetropcs.com">Metro by T-Mobile</option>
+              <option value="@msg.fi.google.com">Google Fi</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg" style="margin-top:12px"><label>🔔 Reminder Preference</label>
+          <select id="prof-reminder-pref">
+            <option value="email">📧 Email only</option>
+            <option value="sms">💬 Text only</option>
+            <option value="both">📧+💬 Email &amp; Text</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -510,7 +579,9 @@ window.emailSignUp = async function(){
   const confirm = document.getElementById('signup-password-confirm').value;
   const bday    = document.getElementById('signup-birthday').value;
   const pizza   = document.getElementById('signup-pizza').value.trim();
-  const phone   = document.getElementById('signup-phone').value.trim();
+  const phone        = document.getElementById('signup-phone').value.trim();
+  const carrier      = document.getElementById('signup-carrier').value;
+  const reminderPref = document.getElementById('signup-reminder-pref').value || 'email';
   showErr('signup-err','');
   if(!first||!last||!email||!pass){ showErr('signup-err','Please fill in all required fields'); return; }
   if(pass.length < 6){ showErr('signup-err','Password must be at least 6 characters'); return; }
@@ -523,7 +594,8 @@ window.emailSignUp = async function(){
   pendingEmailProfile = {
     firstName: first, lastName: last, email,
     birthday: bday || null, favPizzaTopping: pizza || null,
-    phone: phone || null,
+    phone: phone || null, carrier: carrier || null,
+    reminderPref: reminderPref,
     linkedPlayerId: null, isAdmin: false, createdAt: Date.now()
   };
 
@@ -564,7 +636,8 @@ window.emailSignUp = async function(){
     await setDoc(doc(db,'users',cred.user.uid), {
       firstName: first, lastName: last, email,
       birthday: bday || null, favPizzaTopping: pizza || null,
-      phone: phone || null,
+      phone: phone || null, carrier: carrier || null,
+      reminderPref: reminderPref,
       linkedPlayerId, isAdmin: false, createdAt: Date.now()
     });
   } catch(fe){ console.warn('Profile doc failed (check Firestore rules):', fe.message); }
@@ -580,7 +653,9 @@ window.saveCompletion = async function(){
   const last  = document.getElementById('complete-last').value.trim();
   const bday  = document.getElementById('complete-birthday').value;
   const pizza = document.getElementById('complete-pizza').value.trim();
-  const phone = document.getElementById('complete-phone').value.trim();
+  const phone        = document.getElementById('complete-phone').value.trim();
+  const carrier      = document.getElementById('complete-carrier').value;
+  const reminderPref = document.getElementById('complete-reminder-pref').value || 'email';
   if(!first||!last){ showErr('complete-err','Please enter your first and last name'); return; }
   const btn = document.getElementById('complete-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Saving…';
@@ -619,7 +694,8 @@ window.saveCompletion = async function(){
     const profileData = {
       firstName: first, lastName: last, email: user.email,
       birthday: bday || null, favPizzaTopping: pizza || null,
-      phone: phone || null,
+      phone: phone || null, carrier: carrier || null,
+      reminderPref: reminderPref,
       linkedPlayerId, isAdmin: existing?.isAdmin || false,
       createdAt: existing?.createdAt || Date.now()
     };
@@ -653,6 +729,10 @@ function renderProfileScreen(user, profile){
   document.getElementById('prof-birthday').value = profile.birthday || '';
   document.getElementById('prof-pizza').value    = profile.favPizzaTopping || '';
   document.getElementById('prof-phone').value    = profile.phone || '';
+  const carrierEl = document.getElementById('prof-carrier');
+  if(carrierEl) carrierEl.value = profile.carrier || '';
+  const prefEl = document.getElementById('prof-reminder-pref');
+  if(prefEl) prefEl.value = profile.reminderPref || 'email';
 
   const badge = document.getElementById('profile-link-badge');
   badge.style.display = profile.linkedPlayerId ? 'inline-flex' : 'none';
@@ -948,12 +1028,14 @@ window.saveProfile = async function(){
   const last  = document.getElementById('prof-last').value.trim();
   const bday  = document.getElementById('prof-birthday').value;
   const pizza = document.getElementById('prof-pizza').value.trim();
-  const phone = document.getElementById('prof-phone').value.trim();
+  const phone        = document.getElementById('prof-phone').value.trim();
+  const carrier      = document.getElementById('prof-carrier').value;
+  const reminderPref = document.getElementById('prof-reminder-pref').value || 'email';
   if(!first||!last){ toast('Name cannot be empty', true); return; }
   const btn = document.getElementById('save-profile-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Saving…';
   try{
-    const updates = { firstName: first, lastName: last, birthday: bday||null, favPizzaTopping: pizza||null, phone: phone||null };
+    const updates = { firstName: first, lastName: last, birthday: bday||null, favPizzaTopping: pizza||null, phone: phone||null, carrier: carrier||null, reminderPref: reminderPref };
     await updateDoc(doc(db,'users',user.uid), updates);
     Object.assign(currentProfile, updates);
     setCachedProfile(user.uid, currentProfile);

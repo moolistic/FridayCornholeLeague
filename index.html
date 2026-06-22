@@ -387,23 +387,23 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
     <div class="mt2">📣 Send Reminder</div>
     <div id="reminder-event-info" style="background:var(--grass-pale);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--grass);font-weight:600"></div>
 
-    <!-- Message type: RSVP vs Update -->
+    <!-- Message type -->
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <button id="reminder-type-rsvp" onclick="setReminderType('rsvp')" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid var(--grass);background:var(--grass);color:#fff;font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer">📋 RSVP Reminder</button>
       <button id="reminder-type-update" onclick="setReminderType('update')" style="flex:1;padding:9px;border-radius:8px;border:1.5px solid var(--border);background:none;color:var(--muted);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer">📢 Event Update</button>
     </div>
 
-    <!-- Channel: Email / SMS / Both -->
+    <!-- Channel -->
     <div style="margin-bottom:14px">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px">Send via</div>
       <div style="display:flex;gap:6px">
         <button id="ch-email" onclick="setReminderChannel('email')" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--grass);background:var(--grass-pale);color:var(--grass);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer">📧 Email</button>
-        <button id="ch-sms" onclick="setReminderChannel('sms')" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--border);background:none;color:var(--muted);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer">💬 SMS</button>
+        <button id="ch-sms" onclick="setReminderChannel('sms')" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--border);background:none;color:var(--muted);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer">💬 Text</button>
         <button id="ch-both" onclick="setReminderChannel('both')" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--border);background:none;color:var(--muted);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer">📧+💬 Both</button>
       </div>
     </div>
 
-    <!-- Subject (email only) -->
+    <!-- Subject (hidden for SMS-only) -->
     <div class="fg" id="reminder-subject-row" style="margin-bottom:12px">
       <label style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:block">Subject</label>
       <input type="text" id="reminder-subject" style="width:100%;padding:10px 14px;border:0.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:14px;outline:none">
@@ -415,14 +415,14 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
       <div id="sms-char-count" style="display:none;text-align:right;font-size:11px;color:var(--muted);margin-top:3px"></div>
     </div>
 
-    <div id="reminder-recipients" style="font-size:12px;color:var(--muted);margin-bottom:16px;padding:8px 12px;background:var(--bg);border-radius:6px;max-height:200px;overflow-y:auto"></div>
+    <div id="reminder-recipients" style="font-size:12px;color:var(--muted);margin-bottom:14px;padding:8px 12px;background:var(--bg);border-radius:6px;max-height:200px;overflow-y:auto"></div>
 
     <div id="reminder-channel-note" style="font-size:11px;color:var(--muted);margin-bottom:14px;padding:8px 12px;background:#FFFBF0;border:0.5px solid rgba(186,117,23,0.2);border-radius:6px">
-      ⚙️ Email requires EmailJS · SMS requires the Firebase sendPlayerReminders function to be deployed.
+      ⚙️ Email via EmailJS · Text via carrier email gateway (free).
     </div>
     <div class="macts">
       <button class="bsec" onclick="closeModal('modal-reminder')">Cancel</button>
-      <button class="bpri" id="send-reminder-btn" onclick="sendReminder()">Send</button>
+      <button class="bpri" id="send-reminder-btn" onclick="sendReminder()">Send Emails</button>
     </div>
   </div>
 </div>
@@ -1850,23 +1850,27 @@ window.deleteThemeSuggestion=async function(id){
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
 // ── EmailJS Configuration ─────────────────────────────────────────────────────
-// 1. Sign up at https://www.emailjs.com (free tier: 200 emails/month)
-// 2. Create a Service (Gmail recommended) → copy the Service ID
-// 3. Create an Email Template with these variables:
-//    {{to_email}}, {{to_name}}, {{subject}}, {{message}}, {{event_date}}, {{event_title}}
-// 4. Copy your Public Key from Account → API Keys
-// 5. Paste your IDs below:
-const EMAILJS_PUBLIC_KEY  = 'HKhTcjRicnIDVi3Xv';   // e.g. 'user_abc123XYZ'
-const EMAILJS_SERVICE_ID  = 'service_ea685ui';   // e.g. 'service_abc123'
-const EMAILJS_TEMPLATE_ID = 'template_FCL';  // e.g. 'template_abc123'
+const EMAILJS_PUBLIC_KEY  = 'HKhTcjRicnIDVi3Xv';
+const EMAILJS_SERVICE_ID  = 'service_ea685ui';
+const EMAILJS_TEMPLATE_EMAIL = 'template_FCLemail';
+const EMAILJS_TEMPLATE_TEXT = 'template_FCLtxt';
+
+// Carrier gateway map — matches values stored in user.carrier
+const CARRIER_LABELS = {
+  '@txt.att.net':             'AT&T',
+  '@vtext.com':               'Verizon',
+  '@tmomail.net':             'T-Mobile',
+  '@messaging.sprintpcs.com':'Sprint',
+  '@email.uscc.net':          'US Cellular',
+  '@sms.cricketwireless.net': 'Cricket',
+  '@sms.myboostmobile.com':   'Boost Mobile',
+  '@mymetropcs.com':          'Metro by T-Mobile',
+  '@msg.fi.google.com':       'Google Fi',
+};
 
 let _reminderEventId = null;
-let _reminderType = 'rsvp';
+let _reminderType    = 'rsvp';
 let _reminderChannel = 'email'; // 'email' | 'sms' | 'both'
-
-// ── Firebase SMS function URL ─────────────────────────────────────────────────
-// Deployed at: https://us-central1-fcl-database.cloudfunctions.net/sendPlayerReminders
-const SMS_FUNCTION_URL = 'https://us-central1-fcl-database.cloudfunctions.net/sendPlayerReminders';
 
 window.openReminderModal = function(evId){
   const ev = events.find(x=>x.id===evId); if(!ev) return;
@@ -1882,6 +1886,10 @@ window.openReminderModal = function(evId){
 
   renderReminderRecipients(evId);
   openModal('modal-reminder');
+
+  // Wire up char counter after modal opens
+  const bodyEl = document.getElementById('reminder-body');
+  if(bodyEl) bodyEl.oninput = updateSmsCharCount;
 };
 
 function renderReminderRecipients(evId){
@@ -1892,101 +1900,108 @@ function renderReminderRecipients(evId){
     box.innerHTML='<span style="color:var(--muted)">No linked accounts found.</span>';
     return;
   }
-  box.innerHTML=`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px">Recipients <span style="font-weight:400;text-transform:none;letter-spacing:0">(uncheck to skip)</span></div>`+
+  box.innerHTML =
+    `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px">` +
+    `Recipients <span style="font-weight:400;text-transform:none;letter-spacing:0">(uncheck to skip)</span></div>` +
     linked.map(u=>{
-      const rsvpVal = (ev.rsvps&&ev.rsvps[u.uid])||'none';
+      const rsvpVal   = (ev.rsvps&&ev.rsvps[u.uid])||'none';
       const alreadyYes = rsvpVal==='yes';
       const alreadyNo  = rsvpVal==='no';
-      const rsvpTag = alreadyYes?' <span style="color:var(--grass);font-size:10px;font-weight:700">✅ Going</span>'
-                    : alreadyNo ? ' <span style="color:var(--danger);font-size:10px;font-weight:700">❌ Not Going</span>'
-                    : '';
-      const hasPhone = !!u.phone;
+      const rsvpTag = alreadyYes
+        ? ' <span style="color:var(--grass);font-size:10px;font-weight:700">✅ Going</span>'
+        : alreadyNo
+          ? ' <span style="color:var(--danger);font-size:10px;font-weight:700">❌ Not Going</span>'
+          : '';
+      const hasPhone   = !!(u.phone && u.carrier);
+      const carrierLabel = u.carrier ? (CARRIER_LABELS[u.carrier]||u.carrier) : '';
       const phoneTag = hasPhone
-        ? `<span style="color:var(--grass);font-size:10px;font-weight:700">💬 ${u.phone}</span>`
-        : `<span style="color:var(--muted);font-size:10px">no phone</span>`;
+        ? `<span style="color:var(--grass);font-size:10px;font-weight:700">💬 ${carrierLabel}</span>`
+        : `<span style="color:var(--muted);font-size:10px">no phone/carrier</span>`;
+      const prefTag = u.reminderPref && u.reminderPref !== 'email'
+        ? `<span style="color:var(--wood);font-size:10px;font-weight:700;margin-left:4px">prefers ${u.reminderPref}</span>`
+        : '';
+      const name  = `${u.firstName||''} ${u.lastName||''}`.trim()||u.email;
       const checked = !alreadyYes;
-      const name = `${u.firstName||''} ${u.lastName||''}`.trim()||u.email;
-      return`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--border);cursor:pointer;font-size:13px">
-        <input type="checkbox" class="reminder-recip-cb"
-          data-uid="${u.uid}"
-          data-email="${u.email}"
-          data-phone="${u.phone||''}"
-          data-name="${name}"
-          ${checked?'checked':''}
-          style="width:15px;height:15px;accent-color:var(--grass);cursor:pointer;flex-shrink:0">
-        <span style="flex:1;min-width:0">
-          <span style="font-weight:600">${name}</span>${rsvpTag}
-          <br><span style="font-size:11px;color:var(--muted)">${u.email}</span>
-        </span>
-        <span>${phoneTag}</span>
-      </label>`;
+      return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--border);cursor:pointer">` +
+        `<input type="checkbox" class="reminder-recip-cb"` +
+        ` data-uid="${u.uid}"` +
+        ` data-email="${u.email}"` +
+        ` data-phone="${(u.phone||'').replace(/\D/g,'')}"` +
+        ` data-carrier="${u.carrier||''}"` +
+        ` data-name="${name}"` +
+        ` data-pref="${u.reminderPref||'email'}"` +
+        ` ${checked?'checked':''}` +
+        ` style="width:15px;height:15px;accent-color:var(--grass);cursor:pointer;flex-shrink:0">` +
+        `<span style="flex:1;min-width:0">` +
+        `<span style="font-weight:600">${name}</span>${rsvpTag}${prefTag}` +
+        `<br><span style="font-size:11px;color:var(--muted)">${u.email}</span>` +
+        `</span>` +
+        `<span>${phoneTag}</span>` +
+        `</label>`;
     }).join('');
 }
 
 window.setReminderChannel = function(ch){
   _reminderChannel = ch;
-  const ids = ['ch-email','ch-sms','ch-both'];
-  const activeStyle = 'flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--grass);background:var(--grass-pale);color:var(--grass);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer';
+  const activeStyle   = 'flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--grass);background:var(--grass-pale);color:var(--grass);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer';
   const inactiveStyle = 'flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--border);background:none;color:var(--muted);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer';
-  ids.forEach(id=>{
-    const btn=document.getElementById(id);
-    if(btn) btn.style.cssText = id===`ch-${ch}` ? activeStyle : inactiveStyle;
+  ['email','sms','both'].forEach(id=>{
+    const btn = document.getElementById('ch-'+id);
+    if(btn) btn.style.cssText = id===ch ? activeStyle : inactiveStyle;
   });
-  // Show/hide subject field (email only)
+  // Hide subject for SMS-only
   const subjectRow = document.getElementById('reminder-subject-row');
   if(subjectRow) subjectRow.style.display = ch==='sms' ? 'none' : 'block';
-  // Show char counter for SMS
+  // Char counter for SMS modes
   const charCount = document.getElementById('sms-char-count');
   if(charCount) charCount.style.display = ch!=='email' ? 'block' : 'none';
-  // Update send button label
+  // Send button label
   const sendBtn = document.getElementById('send-reminder-btn');
   if(sendBtn) sendBtn.textContent = ch==='email' ? 'Send Emails' : ch==='sms' ? 'Send Texts' : 'Send Email + Text';
-  // Update channel note
+  // Channel note
   const note = document.getElementById('reminder-channel-note');
   if(note){
-    if(ch==='email')      note.innerHTML = '⚙️ Emails sent via EmailJS. Recipients without a phone number will only get email.';
-    else if(ch==='sms')   note.innerHTML = '⚙️ Texts sent via Firebase + Twilio. Only recipients with a saved phone number will receive an SMS.';
-    else                  note.innerHTML = '⚙️ Email via EmailJS · SMS via Firebase + Twilio. Players without a phone get email only.';
+    if(ch==='sms')
+      note.innerHTML = '💬 Texts sent free via carrier email gateway. Only recipients with a saved phone + carrier will receive a text.';
+    else if(ch==='both')
+      note.innerHTML = '📧 Email via EmailJS · 💬 Text via carrier gateway (free). Players without phone/carrier get email only.';
+    else
+      note.innerHTML = '📧 Email via EmailJS.';
   }
   updateSmsCharCount();
 };
 
 function updateSmsCharCount(){
   const charCount = document.getElementById('sms-char-count');
-  if(!charCount||_reminderChannel==='email') return;
-  const body = document.getElementById('reminder-body')?.value||'';
-  const len = body.length;
+  if(!charCount || _reminderChannel==='email') return;
+  const len  = (document.getElementById('reminder-body')?.value||'').length;
   const segs = Math.ceil(len/160)||1;
   charCount.textContent = `${len} chars · ${segs} SMS segment${segs!==1?'s':''}`;
-  charCount.style.color = len > 320 ? 'var(--danger)' : 'var(--muted)';
+  charCount.style.color = len>320 ? 'var(--danger)' : 'var(--muted)';
 }
-
-// Wire up char counter
-document.getElementById('reminder-body')?.addEventListener('input', updateSmsCharCount);
 
 window.setReminderType = function(type){
   _reminderType = type;
-  const ev = events.find(x=>x.id===_reminderEventId);
+  const ev      = events.find(x=>x.id===_reminderEventId);
   const dateObj = ev ? new Date(ev.date+'T12:00:00') : null;
   const dateStr = dateObj ? dateObj.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'}) : '';
-  const title = ev?.theme || 'Cornhole Night';
-  const loc = ev?.location || '';
+  const title   = ev?.theme || 'Cornhole Night';
+  const loc     = ev?.location || '';
   const timeStr = ev?.time && ev?.endtime ? `${ev.time} – ${ev.endtime}` : ev?.time || '';
 
-  const rsvpBtn = document.getElementById('reminder-type-rsvp');
+  const rsvpBtn   = document.getElementById('reminder-type-rsvp');
   const updateBtn = document.getElementById('reminder-type-update');
-  const activeStyle = 'flex:1;padding:9px;border-radius:8px;border:1.5px solid var(--grass);background:var(--grass);color:#fff;font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer';
+  const activeStyle   = 'flex:1;padding:9px;border-radius:8px;border:1.5px solid var(--grass);background:var(--grass);color:#fff;font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer';
   const inactiveStyle = 'flex:1;padding:9px;border-radius:8px;border:1.5px solid var(--border);background:none;color:var(--muted);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer';
-  rsvpBtn.style.cssText = type==='rsvp' ? activeStyle : inactiveStyle;
+  rsvpBtn.style.cssText   = type==='rsvp'   ? activeStyle : inactiveStyle;
   updateBtn.style.cssText = type==='update' ? activeStyle : inactiveStyle;
 
   if(type==='rsvp'){
     document.getElementById('reminder-subject').value = `📋 RSVP Reminder — FCL ${dateStr}`;
     document.getElementById('reminder-body').value =
-`FCL is this ${dateStr}! 🌽
-${title}
-${timeStr ? '⏰ '+timeStr+'\n' : ''}${loc ? '📍 '+loc+'\n' : ''}
-RSVP at fridaycornholeleague.com so we can plan the boards!`;
+`Please RSVP for ${title} at fridaycornholeleague.com 🌽\n
+${dateStr}
+${timeStr ? '⏰ '+timeStr+'\n' : ''}`;
   } else {
     document.getElementById('reminder-subject').value = `📢 FCL Update — ${dateStr}`;
     document.getElementById('reminder-body').value =
@@ -2004,12 +2019,11 @@ window.sendReminder = async function(){
   const body = document.getElementById('reminder-body').value.trim();
   if(!body){ toast('Message is required', true); return; }
 
-  const sendEmail = _reminderChannel === 'email' || _reminderChannel === 'both';
-  const sendSms   = _reminderChannel === 'sms'   || _reminderChannel === 'both';
+  const sendEmail = _reminderChannel==='email' || _reminderChannel==='both';
+  const sendSms   = _reminderChannel==='sms'   || _reminderChannel==='both';
 
   if(sendEmail && EMAILJS_PUBLIC_KEY === 'YOUR_PUBLIC_KEY'){
-    toast('EmailJS not configured yet — see code comments in index.html', true);
-    return;
+    toast('EmailJS not configured — see code comments', true); return;
   }
 
   const ev = events.find(x=>x.id===_reminderEventId); if(!ev) return;
@@ -2019,27 +2033,48 @@ window.sendReminder = async function(){
   const checked = [...document.querySelectorAll('.reminder-recip-cb:checked')];
   if(!checked.length){ toast('No recipients selected', true); return; }
 
-  const emailRecipients = sendEmail ? checked.filter(cb=>cb.dataset.email).map(cb=>({email:cb.dataset.email, name:cb.dataset.name})) : [];
-  const smsRecipients   = sendSms   ? checked.filter(cb=>cb.dataset.phone).map(cb=>({phone:cb.dataset.phone, name:cb.dataset.name})) : [];
+  // Respect each player's reminderPref when channel is 'both'
+  const emailRecips = sendEmail ? checked.filter(cb=>{
+    if(!cb.dataset.email) return false;
+    if(_reminderChannel==='both'){
+      // Skip if they only want texts (and have the means to receive one)
+      const pref = cb.dataset.pref||'email';
+      const canText = cb.dataset.phone && cb.dataset.carrier;
+      if(pref==='sms' && canText) return false;
+    }
+    return true;
+  }).map(cb=>({ email: cb.dataset.email, name: cb.dataset.name })) : [];
 
-  if(sendSms && !smsRecipients.length){
-    toast('No checked recipients have a phone number saved', true);
-    return;
+  const smsRecips = sendSms ? checked.filter(cb=>{
+    if(!cb.dataset.phone || !cb.dataset.carrier) return false;
+    if(_reminderChannel==='both'){
+      // Skip if they only want email
+      const pref = cb.dataset.pref||'email';
+      if(pref==='email') return false;
+    }
+    return true;
+  }).map(cb=>({
+    gateway: cb.dataset.phone.replace(/\D/g,'') + cb.dataset.carrier,
+    name:    cb.dataset.name
+  })) : [];
+
+  if(sendSms && !smsRecips.length){
+    toast('No selected recipients have a phone + carrier saved', true); return;
   }
 
   const btn = document.getElementById('send-reminder-btn');
-  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Sending…';
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Sending…';
 
   let emailSent=0, emailFailed=0, smsSent=0, smsFailed=0;
 
   // ── Send emails via EmailJS ───────────────────────────────────────────────
-  if(sendEmail && emailRecipients.length){
+  if(sendEmail && emailRecips.length){
     const subject = document.getElementById('reminder-subject').value.trim();
     if(typeof emailjs !== 'undefined'){
       emailjs.init(EMAILJS_PUBLIC_KEY);
-      for(const r of emailRecipients){
+      for(const r of emailRecips){
         try{
-          await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+          await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_EMAIL, {
             to_email:    r.email,
             to_name:     r.name,
             subject:     subject,
@@ -2052,7 +2087,7 @@ window.sendReminder = async function(){
           console.warn('Email failed for', r.email, e);
           emailFailed++;
         }
-        await new Promise(r=>setTimeout(r,150));
+        await new Promise(res=>setTimeout(res,150));
       }
     } else {
       toast('EmailJS library not loaded', true);
@@ -2062,45 +2097,46 @@ window.sendReminder = async function(){
     }
   }
 
-  // ── Send SMS via Firebase function ────────────────────────────────────────
-  if(sendSms && smsRecipients.length){
-    try{
-      const resp = await fetch(SMS_FUNCTION_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messageText: body,
-          recipients: smsRecipients.map(r=>({ phone: r.phone, name: r.name }))
-        })
-      });
-      const data = await resp.json();
-      if(resp.ok && data.success){
-        smsSent = smsRecipients.length;
-      } else {
-        console.warn('SMS function error:', data);
-        smsFailed = smsRecipients.length;
+  // ── Send SMS via carrier email gateway (free) ─────────────────────────────
+  // Each text is just a regular email to phonenumber@carrier.com via EmailJS
+  if(sendSms && smsRecips.length){
+    if(typeof emailjs !== 'undefined'){
+      emailjs.init(EMAILJS_PUBLIC_KEY);
+      for(const r of smsRecips){
+        try{
+          await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_TEXT, {
+            to_email:    r.gateway,   // e.g. 6125550100@vtext.com
+            to_name:     r.name,
+            subject:     'FCL',       // carriers strip/ignore subject
+            message:     body,
+            event_date:  dateStr,
+            event_title: ev.theme || 'Cornhole Night',
+          });
+          smsSent++;
+        } catch(e){
+          console.warn('SMS failed for', r.gateway, e);
+          smsFailed++;
+        }
+        await new Promise(res=>setTimeout(res,150));
       }
-    } catch(e){
-      console.warn('SMS function fetch error:', e);
-      smsFailed = smsRecipients.length;
     }
   }
 
   closeModal('modal-reminder');
 
   const parts = [];
-  if(emailSent)   parts.push(`${emailSent} email${emailSent!==1?'s':''}`);
-  if(smsSent)     parts.push(`${smsSent} text${smsSent!==1?'s':''}`);
+  if(emailSent) parts.push(`${emailSent} email${emailSent!==1?'s':''}`);
+  if(smsSent)   parts.push(`${smsSent} text${smsSent!==1?'s':''}`);
   const failParts = [];
   if(emailFailed) failParts.push(`${emailFailed} email${emailFailed!==1?'s':''}`);
   if(smsFailed)   failParts.push(`${smsFailed} text${smsFailed!==1?'s':''}`);
 
   if(parts.length && !failParts.length){
     toast(`✅ Sent ${parts.join(' + ')}!`);
-  } else if(parts.length && failParts.length){
+  } else if(parts.length){
     toast(`Sent ${parts.join(' + ')} · Failed ${failParts.join(' + ')} — check console`, true);
   } else {
-    toast(`All sends failed — check console`, true);
+    toast('All sends failed — check console', true);
   }
 
   btn.disabled=false;
