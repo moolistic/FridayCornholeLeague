@@ -194,7 +194,12 @@ input:focus,select:focus{border-color:var(--grass)}
           <div class="fg"><label>🍕 Fav Pizza Topping</label><input type="text" id="signup-pizza" placeholder="e.g. Pepperoni"></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
-          <div class="fg"><label>📱 Phone <span style="font-weight:400;font-size:11px;color:var(--muted)">(optional)</span></label><input type="tel" id="signup-phone" placeholder="e.g. 6125550100" autocomplete="tel"></div>
+          <div class="fg">
+            <label>📱 Phone <span style="font-weight:400;font-size:11px;color:var(--muted)">(optional)</span></label>
+            <input type="tel" id="signup-phone" placeholder="e.g. (612) 555-0100" autocomplete="tel"
+              oninput="formatPhoneInput(this)" onblur="validatePhoneInput(this)">
+            <span id="signup-phone-hint" style="font-size:11px;margin-top:3px;display:none"></span>
+          </div>
           <div class="fg"><label>📡 Carrier</label>
             <select id="signup-carrier">
               <option value="">— Select —</option>
@@ -241,7 +246,12 @@ input:focus,select:focus{border-color:var(--grass)}
           <div class="fg"><label>🍕 Fav Pizza Topping</label><input type="text" id="complete-pizza" placeholder="e.g. Pepperoni"></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px">
-          <div class="fg"><label>📱 Phone <span style="font-weight:400;font-size:11px;color:var(--muted)">(optional)</span></label><input type="tel" id="complete-phone" placeholder="e.g. 6125550100" autocomplete="tel"></div>
+          <div class="fg">
+            <label>📱 Phone <span style="font-weight:400;font-size:11px;color:var(--muted)">(optional)</span></label>
+            <input type="tel" id="complete-phone" placeholder="e.g. (612) 555-0100" autocomplete="tel"
+              oninput="formatPhoneInput(this)" onblur="validatePhoneInput(this)">
+            <span id="complete-phone-hint" style="font-size:11px;margin-top:3px;display:none"></span>
+          </div>
           <div class="fg"><label>📡 Carrier</label>
             <select id="complete-carrier">
               <option value="">— Select —</option>
@@ -304,7 +314,12 @@ input:focus,select:focus{border-color:var(--grass)}
           <div class="fg"><label>🍕 Fav Pizza Topping</label><input type="text" id="prof-pizza"></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
-          <div class="fg"><label>📱 Phone <span style="font-weight:400;font-size:11px;color:var(--muted)">(optional)</span></label><input type="tel" id="prof-phone" placeholder="e.g. 6125550100" autocomplete="tel"></div>
+          <div class="fg">
+            <label>📱 Phone <span style="font-weight:400;font-size:11px;color:var(--muted)">(optional)</span></label>
+            <input type="tel" id="prof-phone" placeholder="e.g. (612) 555-0100" autocomplete="tel"
+              oninput="formatPhoneInput(this)" onblur="validatePhoneInput(this)">
+            <span id="prof-phone-hint" style="font-size:11px;margin-top:3px;display:none"></span>
+          </div>
           <div class="fg"><label>📡 Carrier</label>
             <select id="prof-carrier">
               <option value="">— Select —</option>
@@ -555,6 +570,79 @@ window.googleSignIn = async function(){
   } catch(e){ toast(e.message, true); }
 };
 
+// ── Phone formatting & validation ─────────────────────────────────────────────
+// Strips leading country code 1 if present, then formats as (612) 555-0100
+function normalizeDigits(raw){
+  let d = raw.replace(/\D/g,'');
+  // Strip leading 1 (US country code) if 11 digits starting with 1
+  if(d.length === 11 && d[0] === '1') d = d.slice(1);
+  return d.slice(0,10);
+}
+
+window.formatPhoneInput = function(el){
+  const d = normalizeDigits(el.value);
+  let formatted = d;
+  if(d.length > 6)
+    formatted = '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6);
+  else if(d.length > 3)
+    formatted = '(' + d.slice(0,3) + ') ' + d.slice(3);
+  else if(d.length > 0)
+    formatted = '(' + d;
+  el.value = formatted;
+  // Clear hint while typing
+  const hint = document.getElementById(el.id + '-hint');
+  if(hint){ hint.style.display = 'none'; }
+};
+
+window.validatePhoneInput = function(el){
+  const d    = normalizeDigits(el.value);
+  const hint = document.getElementById(el.id + '-hint');
+  if(!el.value.trim() || d.length === 0){
+    if(hint) hint.style.display = 'none';
+    el.style.borderColor = '';
+    return true;
+  }
+  if(d.length !== 10){
+    if(hint){
+      hint.textContent   = `⚠️ Needs 10 digits — got ${d.length}`;
+      hint.style.color   = 'var(--danger)';
+      hint.style.display = 'block';
+    }
+    el.style.borderColor = 'var(--danger)';
+    return false;
+  }
+  // Valid — reformat cleanly in case they pasted something odd
+  el.value = '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6);
+  if(hint){
+    hint.textContent   = '✓ Looks good';
+    hint.style.color   = 'var(--grass)';
+    hint.style.display = 'block';
+  }
+  el.style.borderColor = 'var(--grass)';
+  return true;
+};
+
+// Returns raw 10-digit string for Firestore, or null if empty/invalid
+function cleanPhone(inputId){
+  const el = document.getElementById(inputId);
+  if(!el) return null;
+  const d = normalizeDigits(el.value);
+  if(d.length === 10) return d;
+  if(d.length === 0)  return null;
+  return null; // partial — don't store
+}
+
+// Populates a phone input with stored 10-digit string, formatted for display
+function setPhoneField(inputId, storedDigits){
+  const el = document.getElementById(inputId);
+  if(!el) return;
+  if(!storedDigits){ el.value = ''; return; }
+  const d = storedDigits.replace(/\D/g,'').slice(0,10);
+  el.value = d.length === 10
+    ? '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6)
+    : storedDigits;
+}
+
 // ── Email sign-in ─────────────────────────────────────────────────────────────
 window.emailSignIn = async function(){
   const email = document.getElementById('signin-email').value.trim();
@@ -579,13 +667,16 @@ window.emailSignUp = async function(){
   const confirm = document.getElementById('signup-password-confirm').value;
   const bday    = document.getElementById('signup-birthday').value;
   const pizza   = document.getElementById('signup-pizza').value.trim();
-  const phone        = document.getElementById('signup-phone').value.trim();
+  const phone        = cleanPhone('signup-phone');
   const carrier      = document.getElementById('signup-carrier').value;
   const reminderPref = document.getElementById('signup-reminder-pref').value || 'email';
   showErr('signup-err','');
   if(!first||!last||!email||!pass){ showErr('signup-err','Please fill in all required fields'); return; }
   if(pass.length < 6){ showErr('signup-err','Password must be at least 6 characters'); return; }
   if(pass !== confirm){ showErr('signup-err','Passwords do not match'); return; }
+  if(document.getElementById('signup-phone').value.trim() && !phone){
+    showErr('signup-err','Phone number must be 10 digits (e.g. 612-555-0100)'); return;
+  }
   const btn = document.getElementById('signup-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Creating account…';
 
@@ -653,10 +744,13 @@ window.saveCompletion = async function(){
   const last  = document.getElementById('complete-last').value.trim();
   const bday  = document.getElementById('complete-birthday').value;
   const pizza = document.getElementById('complete-pizza').value.trim();
-  const phone        = document.getElementById('complete-phone').value.trim();
+  const phone        = cleanPhone('complete-phone');
   const carrier      = document.getElementById('complete-carrier').value;
   const reminderPref = document.getElementById('complete-reminder-pref').value || 'email';
   if(!first||!last){ showErr('complete-err','Please enter your first and last name'); return; }
+  if(document.getElementById('complete-phone').value.trim() && !phone){
+    showErr('complete-err','Phone number must be 10 digits (e.g. 612-555-0100)'); return;
+  }
   const btn = document.getElementById('complete-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Saving…';
   try{
@@ -728,7 +822,7 @@ function renderProfileScreen(user, profile){
   document.getElementById('prof-email').value    = user.email;
   document.getElementById('prof-birthday').value = profile.birthday || '';
   document.getElementById('prof-pizza').value    = profile.favPizzaTopping || '';
-  document.getElementById('prof-phone').value    = profile.phone || '';
+  setPhoneField('prof-phone', profile.phone || '');
   const carrierEl = document.getElementById('prof-carrier');
   if(carrierEl) carrierEl.value = profile.carrier || '';
   const prefEl = document.getElementById('prof-reminder-pref');
@@ -1024,14 +1118,17 @@ window.removeFamilyMember = async function(pid){
 // ── Save profile ──────────────────────────────────────────────────────────────
 window.saveProfile = async function(){
   const user = auth.currentUser; if(!user) return;
-  const first = document.getElementById('prof-first').value.trim();
-  const last  = document.getElementById('prof-last').value.trim();
-  const bday  = document.getElementById('prof-birthday').value;
-  const pizza = document.getElementById('prof-pizza').value.trim();
-  const phone        = document.getElementById('prof-phone').value.trim();
+  const first        = document.getElementById('prof-first').value.trim();
+  const last         = document.getElementById('prof-last').value.trim();
+  const bday         = document.getElementById('prof-birthday').value;
+  const pizza        = document.getElementById('prof-pizza').value.trim();
+  const phone        = cleanPhone('prof-phone');
   const carrier      = document.getElementById('prof-carrier').value;
   const reminderPref = document.getElementById('prof-reminder-pref').value || 'email';
   if(!first||!last){ toast('Name cannot be empty', true); return; }
+  if(document.getElementById('prof-phone').value.trim() && !phone){
+    toast('Phone number must be 10 digits (e.g. 612-555-0100)', true); return;
+  }
   const btn = document.getElementById('save-profile-btn');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Saving…';
   try{
