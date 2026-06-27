@@ -1081,7 +1081,9 @@ function renderScoreStep(){
   renderScoreButtons();
   highlightActiveCard();
 
-  document.getElementById('match-date').value = new Date().toISOString().split('T')[0];
+  // Use CST local date (America/Chicago) to avoid the score rolling over to next day in UTC
+  const cstDate = new Date().toLocaleDateString('en-CA', {timeZone: 'America/Chicago'});
+  document.getElementById('match-date').value = cstDate;
   syncWinnerLoserFromAB();
   validateScores();
 }
