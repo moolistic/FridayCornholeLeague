@@ -42,13 +42,12 @@ nav{background:var(--grass);padding:0 14px;display:flex;align-items:center;heigh
 
 /* Player cards */
 .player-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
-.player-card{background:var(--card);border:2px solid var(--border);border-radius:12px;padding:14px 12px;cursor:pointer;transition:all .15s;text-align:center;user-select:none;-webkit-tap-highlight-color:transparent;position:relative;min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.player-card{background:var(--card);border:2px solid var(--border);border-radius:12px;padding:10px 8px;cursor:pointer;transition:all .15s;text-align:center;user-select:none;-webkit-tap-highlight-color:transparent;position:relative;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
 .player-card:active{transform:scale(0.97)}
 .player-card.selected{border-color:var(--grass);background:var(--grass-pale)}
 .player-card.selected .pc-name{color:var(--grass)}
 .player-card.disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
-.pc-av{width:36px;height:36px;border-radius:50%;background:var(--grass-pale);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:15px;color:var(--grass);margin-bottom:2px}
-.player-card.selected .pc-av{background:var(--grass);color:#fff}
+.pc-av{display:none}
 .pc-name{font-weight:600;font-size:14px;line-height:1.2;color:var(--text)}
 .pc-rating{font-size:11px;color:var(--muted)}
 .pc-check{position:absolute;top:6px;right:8px;font-size:14px;display:none}
@@ -76,6 +75,9 @@ nav{background:var(--grass);padding:0 14px;display:flex;align-items:center;heigh
 .wc-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:4px}
 .winner-card.selected .wc-label{color:var(--grass)}
 .wc-names{font-family:var(--fd);font-size:18px;letter-spacing:.3px;line-height:1.2}
+
+/* Sticky score header on step 6 */
+.score-sticky-header{position:sticky;top:52px;z-index:90;background:var(--bg);padding:10px 0 8px;margin-bottom:4px;border-bottom:1px solid var(--border)}
 
 /* Score slider section */
 .score-section{background:var(--card);border:0.5px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
@@ -394,16 +396,18 @@ select.fallback-select:last-child{border-bottom:none}
       <div class="step-sub">Winner needs 21+. Tap a score to edit it.</div>
     </div>
 
-    <!-- Horizontal score display -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-      <div id="score-team-a-card" style="flex:1;background:var(--card);border:2px solid var(--border);border-radius:12px;padding:14px 10px;text-align:center;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent" onclick="setActiveScoreTeam('A')">
-        <div id="score-label-a" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:4px"></div>
-        <div id="score-display-a" style="font-family:var(--fd);font-size:56px;color:var(--grass);line-height:1">21</div>
-      </div>
-      <div style="font-family:var(--fd);font-size:22px;color:var(--muted);flex-shrink:0">–</div>
-      <div id="score-team-b-card" style="flex:1;background:var(--card);border:2px solid var(--border);border-radius:12px;padding:14px 10px;text-align:center;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent" onclick="setActiveScoreTeam('B')">
-        <div id="score-label-b" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:4px"></div>
-        <div id="score-display-b" style="font-family:var(--fd);font-size:56px;color:var(--wood);line-height:1">0</div>
+    <!-- Horizontal score display — sticky so Team A / B always visible while scrolling -->
+    <div class="score-sticky-header">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="score-team-a-card" style="flex:1;background:var(--card);border:2px solid var(--border);border-radius:12px;padding:10px 10px;text-align:center;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent" onclick="setActiveScoreTeam('A')">
+          <div id="score-label-a" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:2px"></div>
+          <div id="score-display-a" style="font-family:var(--fd);font-size:52px;color:var(--grass);line-height:1">21</div>
+        </div>
+        <div style="font-family:var(--fd);font-size:22px;color:var(--muted);flex-shrink:0">–</div>
+        <div id="score-team-b-card" style="flex:1;background:var(--card);border:2px solid var(--border);border-radius:12px;padding:10px 10px;text-align:center;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent" onclick="setActiveScoreTeam('B')">
+          <div id="score-label-b" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:2px"></div>
+          <div id="score-display-b" style="font-family:var(--fd);font-size:52px;color:var(--wood);line-height:1">0</div>
+        </div>
       </div>
     </div>
 

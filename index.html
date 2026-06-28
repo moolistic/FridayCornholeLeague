@@ -11,7 +11,7 @@
 :root{--grass:#3B6D11;--grass-light:#639922;--grass-pale:#EAF3DE;--wood:#BA7517;--wood-pale:#FAEEDA;--corn:#FAC775;--bg:#f7f5f0;--card:#ffffff;--text:#2C2C2A;--muted:#888780;--border:rgba(0,0,0,0.1);--danger:#E24B4A;--fd:'Bebas Neue',sans-serif;--fb:'DM Sans',sans-serif;--rad:10px}
 body{font-family:var(--fb);background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
 nav{background:var(--grass);padding:0 14px;display:flex;align-items:center;height:52px;position:sticky;top:0;z-index:100}
-.brand{font-family:var(--fd);font-size:20px;color:var(--corn);letter-spacing:1px;margin-right:12px;white-space:nowrap}
+.brand{font-family:var(--fd);font-size:20px;color:var(--corn);letter-spacing:1px;margin-right:12px;white-space:nowrap;text-decoration:none}
 .brand span{color:#fff}
 .nav-links{display:flex;gap:2px;flex:1;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .nav-links::-webkit-scrollbar{display:none}
@@ -232,7 +232,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--grass)}
 <body>
 
 <nav>
-  <div class="brand">FC<span>L</span></div>
+  <a class="brand" href="index.html#home" onclick="showSection('home')">FC<span>L</span></a>
   <div class="nav-links" id="nav-links-desktop">
     <button class="nb active" onclick="showPage('home',this);closeHam()">Home</button>
     <button class="nb" onclick="showPage('calendar',this);closeHam()">Calendar</button>
