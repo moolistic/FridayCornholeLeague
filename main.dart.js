@@ -73667,24 +73667,26 @@ n=n.gD(a2)>=4?a0:new A.aBV(a3)
 o.push(A.fC(!1,a0,a0,a0,j<4,a0,a0,a0,!0,a0,m,a0,a0,a0,a0,n,!1,a0,a0,a0,a0,k,a0,l,a0,a0,a0))
 return A.a1(A.a([r,B.R,A.hE(A.a1(o,B.i,B.e,B.f),a0,a0),B.a3,A.f("Tap a league to switch to it. The code is for the one you are looking at.",a0,a0,a0,a0,A.a0(a0,a0,i,a0,a0,a0,a0,a0,a0,a0,a0,11.5,a0,a0,a0,a0,a0,!0,a0,a0,a0,a0,a0,a0,a0,a0),a0,a0,a0)],p),B.n,B.e,B.f)},
 vM(a,b,c,d){return this.ar3(a,b,c,d)},
-ar3(a,b,c,d){var s=0,r=A.p(t.H),q,p=2,o=[],n,m,l,k
+ar3(a,b,c,d){var s=0,r=A.p(t.H),q,p=2,o=[],n,m,l,k,j,i
 var $async$vM=A.l(function(e,f){if(e===1){o.push(f)
 s=p}for(;;)switch(s){case 0:s=3
 return A.i(A.dI(null,null,!0,null,new A.aBQ(c),a,null,!0,t.y),$async$vM)
 case 3:if(f!==!0||a.e==null){s=1
 break}n=a.U(t.q).f
+m=b.W($.bl(),t.v)
+l=b.W($.brI().gcY(),t.FC)
 p=5
 s=8
-return A.i(A.mT(b.W($.bl(),t.v),c.a,d),$async$vM)
-case 8:b.W($.brI().gcY(),t.FC).sX(null)
+return A.i(A.mT(m,c.a,d),$async$vM)
+case 8:l.sX(null)
 n.bp(A.cL(null,null,null,null,null,B.m,null,A.f("Now showing "+c.b,null,null,null,null,null,null,null,null),null,B.M,null,null,null,null,null,null,null,null,null,null))
 p=2
 s=7
 break
 case 5:p=4
-k=o.pop()
-m=A.V(k)
-n.bp(A.cL(null,null,null,null,null,B.m,null,A.f(A.t(m),null,null,null,null,null,null,null,null),null,B.M,null,null,null,null,null,null,null,null,null,null))
+i=o.pop()
+k=A.V(i)
+n.bp(A.cL(null,null,null,null,null,B.m,null,A.f(A.t(k),null,null,null,null,null,null,null,null),null,B.M,null,null,null,null,null,null,null,null,null,null))
 s=7
 break
 case 4:s=2
@@ -74342,72 +74344,70 @@ o=u.o}j=n.w?m:q
 j=A.a([A.be(A.fN(new A.a3(B.cI,A.f(p,m,m,m,m,m,m,m,m),m),j),m,1/0),B.a3,A.f(o,m,m,m,m,A.a0(m,m,l.ax,m,m,m,m,m,m,m,m,12,m,m,m,m,m,!0,m,m,m,m,m,m,m,m),m,m,m)],t.p)
 if(r!=null)j.push(A.aY(B.Ib,n.w?m:new A.b3n(n,r),m))
 return A.a1(j,B.n,B.e,B.f)},
-Gb(){var s=0,r=A.p(t.H),q=1,p=[],o=this,n,m,l,k,j,i,h
+Gb(){var s=0,r=A.p(t.H),q=1,p=[],o=this,n,m,l,k,j,i,h,g
 var $async$Gb=A.l(function(a,b){if(a===1){p.push(b)
-s=q}for(;;)switch(s){case 0:l=o.gaQ()
-k=l.W($.cg(),t.D).b
-j=k==null?null:k.a.c.a.a
-i=o.a.d.a
-if(j!=null){k=l.W($.eA(),t.u)
-n=i
-n=k==null?n!=null:k!==n
-k=n}else k=!1
-s=k?2:3
+s=q}for(;;)switch(s){case 0:m=o.gaQ()
+l=m.W($.cg(),t.D).b
+k=l==null?null:l.a.c.a.a
+j=m.W($.bl(),t.v)
+i=m.W($.eA(),t.u)
+h=o.a.d.a
+if(k!=null){m=h
+m=i==null?m!=null:i!==m}else m=!1
+s=m?2:3
 break
 case 2:q=5
 s=8
-return A.i(A.mT(l.W($.bl(),t.v),i,j),$async$Gb)
+return A.i(A.mT(j,h,k),$async$Gb)
 case 8:q=1
 s=7
 break
 case 5:q=4
-h=p.pop()
+g=p.pop()
 s=7
 break
 case 4:s=1
 break
-case 7:case 3:l=o.c
-if(l!=null)A.bW(l).cU("/",null)
+case 7:case 3:m=o.c
+if(m!=null)A.bW(m).cU("/",null)
 return A.n(null,r)
 case 1:return A.m(p.at(-1),r)}})
 return A.o($async$Gb,r)},
-vZ(){var s=0,r=A.p(t.H),q,p=2,o=[],n=[],m=this,l,k,j,i,h,g,f,e,d,c
+vZ(){var s=0,r=A.p(t.H),q,p=2,o=[],n=[],m=this,l,k,j,i,h,g,f,e,d
 var $async$vZ=A.l(function(a,b){if(a===1){o.push(b)
-s=p}for(;;)switch(s){case 0:f=m.gaQ()
-e=f.W($.cg(),t.D).b
-d=e==null?null:e.a.c.a.a
-if(d==null){s=1
+s=p}for(;;)switch(s){case 0:g=m.gaQ()
+f=g.W($.cg(),t.D).b
+e=f==null?null:f.a.c.a.a
+if(e==null){s=1
 break}m.H(new A.b3o(m))
 l=m.c.U(t.q).f
+k=g.W($.bl(),t.v)
 p=4
-e=$.bl()
-i=t.v
 s=7
-return A.i(A.Zi(f.W(e,i),m.a.d.a,d),$async$vZ)
-case 7:k=b
+return A.i(A.Zi(k,m.a.d.a,e),$async$vZ)
+case 7:j=b
 if(m.c==null){n=[1]
 s=5
-break}h=k
-s=!(h.a==null&&h.f)&&k.r!=null?8:9
+break}g=j
+s=!(g.a==null&&g.f)&&j.r!=null?8:9
 break
-case 8:f=f.W(e,i)
-e=k.r
-e.toString
+case 8:g=j.r
+g.toString
 s=10
-return A.i(A.mT(f,e,d),$async$vZ)
+return A.i(A.mT(k,g,e),$async$vZ)
 case 10:case 9:if(m.c==null){n=[1]
 s=5
 break}A.i2()
-f=m.c
-f.toString
-A.bW(f).cU("/",null)
+g=m.c
+g.toString
+A.bW(g).cU("/",null)
 n.push(6)
 s=5
 break
 case 4:p=3
-c=o.pop()
-j=A.V(c)
-l.bp(A.cL(null,null,null,null,null,B.m,null,A.f(j instanceof A.d_?j.a:A.t(j),null,null,null,null,null,null,null,null),null,B.M,null,null,null,null,null,null,null,null,null,null))
+d=o.pop()
+i=A.V(d)
+l.bp(A.cL(null,null,null,null,null,B.m,null,A.f(i instanceof A.d_?i.a:A.t(i),null,null,null,null,null,null,null,null),null,B.M,null,null,null,null,null,null,null,null,null,null))
 n.push(6)
 s=5
 break
@@ -74555,16 +74555,16 @@ return A.o($async$mf,r)}}
 A.baq.prototype={
 $0(){var s=0,r=A.p(t.H),q=1,p=[],o=this,n,m,l,k,j
 var $async$$0=A.l(function(a,b){if(a===1){p.push(b)
-s=q}for(;;)switch(s){case 0:l=o.a.gaQ()
+s=q}for(;;)switch(s){case 0:m=o.a.gaQ()
+l=m.W($.bl(),t.v)
 k=o.b.a
-s=l.W($.eA(),t.u)!==k?2:3
+s=m.W($.eA(),t.u)!==k?2:3
 break
 case 2:q=5
-l=l.W($.bl(),t.v)
-n=o.c
-n.toString
+m=o.c
+m.toString
 s=8
-return A.i(A.mT(l,k,n),$async$$0)
+return A.i(A.mT(l,k,m),$async$$0)
 case 8:q=1
 s=7
 break
@@ -74574,8 +74574,8 @@ s=7
 break
 case 4:s=1
 break
-case 7:case 3:l=o.d
-if(l.e!=null)A.bW(l).cU("/",null)
+case 7:case 3:m=o.d
+if(m.e!=null)A.bW(m).cU("/",null)
 return A.n(null,r)
 case 1:return A.m(p.at(-1),r)}})
 return A.o($async$$0,r)},
