@@ -77073,7 +77073,7 @@ Ah(a){return this.aDD(a)},
 aDD(a){var s=0,r=A.o(t.H),q,p=this,o
 var $async$Ah=A.k(function(b,c){if(b===1)return A.l(c,r)
 for(;;)switch(s){case 0:s=3
-return A.i(A.wC(a,"Recompute","Replays every ledger entry since the newest checkpoint and rewrites every athlete\u2019s world figures. League standings are not touched.","Recompute the world ladder?"),$async$Ah)
+return A.i(A.wC(a,"Recompute","Replays every ledger entry since the newest checkpoint and rewrites every athlete\u2019s world figures, then rebuilds the public ladder. League standings are not touched.","Recompute the world ladder?"),$async$Ah)
 case 3:o=c
 if(o==null||a.e==null){s=1
 break}s=4
@@ -77133,19 +77133,22 @@ A.b4D.prototype={
 $0(){return this.a.vI(this.b,!1)},
 $S:0}
 A.b4w.prototype={
-$0(){var s=0,r=A.o(t.N),q,p=this,o,n,m,l,k
+$0(){var s=0,r=A.o(t.N),q,p=this,o,n,m,l,k,j,i
 var $async$$0=A.k(function(a,b){if(a===1)return A.l(b,r)
 for(;;)switch(s){case 0:s=3
 return A.i(p.a.gaK().S($.m_(),t.xe).Lf(p.b),$async$$0)
-case 3:l=b
-k=l.h(0,"entries")
-k=A.t(k==null?"?":k)
-o=l.h(0,"counted")
+case 3:j=b
+i=j.h(0,"publicLadderError")
+if(i==null){o=j.h(0,"publicEntries")
+n="Public ladder: "+A.t(o==null?"?":o)+" shown."}else n="The public ladder failed to build: "+A.t(i)
+o=j.h(0,"entries")
 o=A.t(o==null?"?":o)
-n=l.h(0,"athletesWritten")
-n=A.t(n==null?"?":n)
-m=l.h(0,"ms")
-q="Replayed "+k+" entries, counted "+o+", wrote "+n+" athletes in "+A.t(m==null?"?":m)+"ms."
+m=j.h(0,"counted")
+m=A.t(m==null?"?":m)
+l=j.h(0,"athletesWritten")
+l=A.t(l==null?"?":l)
+k=j.h(0,"ms")
+q="Replayed "+o+" entries, counted "+m+", wrote "+l+" athletes in "+A.t(k==null?"?":k)+"ms. "+n
 s=1
 break
 case 1:return A.m(q,r)}})
