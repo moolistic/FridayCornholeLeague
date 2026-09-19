@@ -1,7 +1,8 @@
 {
+    "id": "/",
     "name": "Cornhole League",
     "short_name": "FCL",
-    "start_url": ".",
+    "start_url": "./#/",
     "display": "standalone",
     "background_color": "#2C5C0F",
     "theme_color": "#2C5C0F",

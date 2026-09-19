@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -19,7 +19,69 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Scores, rankings and RSVPs for the Friday Cornhole League.">
+  <meta name="description" content="FCL turns your cornhole game into a real league: live scoring, ratings that know who you played, RSVPs and a record of every match. Free, with no ads and no analytics.">
+
+  <!--
+    TWO FACES, ONE DOCUMENT.
+
+    www.fridaycornholeleague.com is both the front page and the app. Every link
+    the app has ever sent out is a hash route under this one file — join links
+    (/#/join/CODE), public league pages (/#/l/id), RSVP emails
+    (/#/calendar?event=), the Stripe return (/#/plus), the staff console
+    (/#/staff) — so the landing page cannot be a separate file without breaking
+    all of them, and GitHub Pages has no rewrite rules to paper over it.
+
+    So the page decides, before first paint, which face to show:
+
+      app      the URL already carries a route (#/...), or this is the
+               installed PWA, or this browser has signed in before;
+      landing  everyone else: a stranger typing the domain.
+
+    `?home` forces the landing for anyone, which is how you look at it from a
+    browser that is signed in. The landing costs ~40 KB of fonts and lazy
+    images; the 3 MB Flutter bundle is only fetched once the app face is
+    chosen, including when a landing link switches to it in place.
+
+    With no JavaScript the landing shows, which is what a crawler should see.
+  -->
+  <script>
+    (function () {
+      var face = 'landing';
+      try {
+        var appLink = location.hash.indexOf('#/') === 0;
+        var installed = (window.matchMedia &&
+            matchMedia('(display-mode: standalone)').matches) ||
+            navigator.standalone === true;
+        var forceHome = /[?&]home\b/.test(location.search);
+        // Written by FirstRunNotifier.rememberSignedIn through
+        // shared_preferences_web, which prefixes keys with "flutter." and
+        // stores JSON. Storage can throw (private mode, blocked cookies); a
+        // stranger's landing is the right answer when it does.
+        var known = false;
+        try {
+          known = localStorage.getItem('flutter.fcl.hasSignedIn') === 'true';
+        } catch (e) {}
+        // A route in the URL beats ?home: somebody following a join link
+        // wants the league, whatever else the link carries.
+        face = (appLink || installed) ? 'app'
+             : forceHome ? 'landing'
+             : known ? 'app' : 'landing';
+      } catch (e) {}
+      document.documentElement.setAttribute('data-face', face);
+    })();
+  </script>
+
+  <!-- Link previews. Absolute URLs: scrapers do not resolve against <base>. -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Friday Cornhole League">
+  <meta property="og:url" content="https://www.fridaycornholeleague.com/">
+  <meta property="og:title" content="FCL “Friday” Cornhole League">
+  <meta property="og:description" content="If somebody has to keep score, it may as well be good at it. Live scoring, ratings, RSVPs and a record of every match — free.">
+  <meta property="og:image" content="https://www.fridaycornholeleague.com/landing/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="A backyard cornhole night, under the FCL headline.">
+  <meta name="twitter:card" content="summary_large_image">
 
   <!-- Add to homescreen for Chrome on Android -->
 <meta name="google-signin-client_id" content="80061893239-lrhh80j701db38napkukm2jkgo8f2sfl.apps.googleusercontent.com">
@@ -36,19 +98,30 @@
   <!-- Colours the browser chrome on mobile to match the app. -->
   <meta name="theme-color" content="#2C5C0F">
 
-  <title>Cornhole League</title>
+  <title>FCL “Friday” Cornhole League</title>
   <link rel="manifest" href="manifest.json">
 
+  <!-- Only the two faces above the fold. The others swap in when used. -->
+  <link rel="preload" href="landing/fonts/bebas-neue.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="landing/fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin>
+
   <style>
+    /* Which face is on screen. The default (no attribute: no JavaScript) is
+       the landing, and the app face hides it outright rather than covering
+       it, so the Flutter view never sits over a scrollable page. */
+    #splash { display: none; }
+    html[data-face="app"] #splash { display: flex; }
+    html[data-face="app"] #landing { display: none; }
+
     /* Branded splash for the cold load.
        A Flutter web bundle is a few megabytes, so the first visit shows a
        blank white page for a second or two while it downloads — which reads
        as a broken site rather than a loading one. This fills that gap and is
        removed by the app itself once the first frame paints. */
-    html, body { margin: 0; padding: 0; height: 100%; }
+    html[data-face="app"], html[data-face="app"] body { margin: 0; padding: 0; height: 100%; }
     #splash {
       position: fixed; inset: 0; z-index: 9999;
-      display: flex; flex-direction: column;
+      flex-direction: column;
       align-items: center; justify-content: center;
       background: linear-gradient(135deg, #2C5C0F 0%, #3B6D11 55%, #4E8A17 100%);
       font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -83,6 +156,391 @@
     @media (prefers-reduced-motion: reduce) {
       #splash .bar i { animation: none; width: 100%; }
     }
+
+    /* ── The landing ─────────────────────────────────────────────────────── */
+
+    /* Subsets of the app's own bundled Bebas Neue and Inter (Latin plus the
+       typographic punctuation the copy uses), so the page and the app are one
+       typeface without pulling in a font CDN — the privacy line in the hero
+       would be a lie with Google Fonts in the head. Prefixed family names so
+       a locally installed Inter of a different cut never wins. */
+    @font-face { font-family: 'FCL Bebas Neue'; src: url(landing/fonts/bebas-neue.woff2) format('woff2'); font-weight: 400; font-display: swap; }
+    @font-face { font-family: 'FCL Inter'; src: url(landing/fonts/inter-400.woff2) format('woff2'); font-weight: 400; font-display: swap; }
+    @font-face { font-family: 'FCL Inter'; src: url(landing/fonts/inter-600.woff2) format('woff2'); font-weight: 600; font-display: swap; }
+    @font-face { font-family: 'FCL Inter'; src: url(landing/fonts/inter-700.woff2) format('woff2'); font-weight: 700; font-display: swap; }
+
+    html:not([data-face="app"]) body { margin: 0; background: #F6F4EF; }
+    @media (prefers-reduced-motion: no-preference) {
+      html[data-face="landing"] { scroll-behavior: smooth; }
+    }
+
+  /* ── Tokens ───────────────────────────────────────────────────────────────
+     Straight out of lib/theme.dart. The app already has a palette and two
+     bundled faces, so the site does not get to invent its own; a front page
+     that looked like a different product would be the most expensive kind of
+     inconsistency.
+
+     Scoped to #landing, custom properties included, because this page shares
+     a document with the Flutter app. Nothing here may leak into it, and the
+     app-face never renders this block anyway.
+
+     Single light theme on purpose: the page commits to the canvas ground with
+     a grass hero, and every colour is painted explicitly so it holds. */
+  #landing {
+    --grass-800: #20460D;
+    --grass-700: #2C5C0F;
+    --grass-600: #3B6D11;
+    --grass-500: #4E8A17;
+    --grass-400: #639922;
+    --grass-100: #EAF3DE;
+
+    --corn:      #FAC775;
+    --corn-deep: #E0A64B;
+    --wood-700:  #8A5410;
+
+    --canvas:    #F6F4EF;
+    --paper:     #FFFFFF;
+    /* Neutrals pulled a few degrees toward the grass, so they sit with it
+       instead of next to it. */
+    --ink:       #16200F;
+    --ink-soft:  #45513C;
+    --ink-faint: #7C8775;
+    --rule:      #DFE0D6;
+
+    --display: 'FCL Bebas Neue', 'Bebas Neue', 'Haettenschweiler', 'Arial Narrow', sans-serif;
+    --body: 'FCL Inter', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+    --shell: 1120px;
+  }
+
+  #landing, #landing * { box-sizing: border-box; }
+
+  #landing {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #landing .shell {
+    width: 100%;
+    max-width: var(--shell);
+    margin-inline: auto;
+    padding-inline: 20px;
+  }
+
+  #landing h1, #landing h2, #landing h3 { text-wrap: balance; margin: 0; }
+
+  #landing .eyebrow {
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--grass-500);
+    margin: 0;
+  }
+
+  /* ── Hero: the scoreboard ─────────────────────────────────────────────────
+     The thesis. Every app landing page opens with a floating phone; this one
+     opens with the object the whole product is about. The numbers are a real
+     cancellation-scored 21–9. */
+  #landing .hero {
+    background:
+      radial-gradient(1200px 520px at 78% -8%, rgba(99,153,34,.42), transparent 62%),
+      linear-gradient(158deg, var(--grass-800) 0%, var(--grass-700) 52%, var(--grass-600) 100%);
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+  /* The board, seen at the angle you actually see one from. Two flat planes,
+     no texture — a wood-grain image here would tip into kitsch. */
+  #landing .hero::after {
+    content: "";
+    position: absolute;
+    right: -14%;
+    bottom: -46%;
+    width: 78%;
+    height: 118%;
+    background: linear-gradient(180deg, var(--corn-deep), var(--wood-700));
+    opacity: .16;
+    transform: rotate(-16deg) skewX(-14deg);
+    border-radius: 18px;
+    pointer-events: none;
+  }
+  #landing .hero .shell { position: relative; z-index: 1; padding-block: 64px 72px; }
+
+  #landing .wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--display);
+    font-size: 22px;
+    letter-spacing: 0.14em;
+    color: var(--corn);
+  }
+  #landing .wordmark span {
+    display: grid;
+    place-items: center;
+    width: 34px; height: 34px;
+    border: 2px solid var(--corn);
+    border-radius: 9px;
+    font-size: 17px;
+    letter-spacing: .06em;
+    background: rgba(0,0,0,.24);
+  }
+
+  #landing .hero h1 {
+    font-family: var(--display);
+    font-size: clamp(46px, 8.4vw, 92px);
+    line-height: .92;
+    letter-spacing: .01em;
+    margin-block: 30px 0;
+    max-width: 14ch;
+  }
+  #landing .hero h1 em { font-style: normal; color: var(--corn); }
+  #landing .hero .lede {
+    font-size: clamp(16px, 1.9vw, 19px);
+    color: rgba(255,255,255,.86);
+    max-width: 48ch;
+    margin-block: 18px 0;
+  }
+
+  #landing .cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+  #landing .btn {
+    font: inherit;
+    font-weight: 700;
+    text-decoration: none;
+    border-radius: 10px;
+    padding: 13px 24px;
+    display: inline-block;
+  }
+  #landing .btn-corn { background: var(--corn); color: var(--grass-800); }
+  #landing .btn-ghost { background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.34); }
+  #landing .btn:focus-visible { outline: 2px solid var(--corn); outline-offset: 3px; }
+
+  #landing .hero-note {
+    margin-top: 18px;
+    font-size: 13.5px;
+    color: rgba(255,255,255,.62);
+  }
+
+  /* The scoreboard itself */
+  #landing .board {
+    margin-top: 44px;
+    background: rgba(9, 24, 4, .46);
+    border: 1px solid rgba(250,199,117,.26);
+    border-radius: 16px;
+    padding: 20px 22px 18px;
+    max-width: 560px;
+    backdrop-filter: blur(2px);
+  }
+  #landing .board-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase;
+    color: rgba(255,255,255,.5);
+    border-bottom: 1px solid rgba(255,255,255,.14);
+    padding-bottom: 9px;
+  }
+  #landing .board-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 10px;
+    padding-top: 14px;
+  }
+  #landing .side { min-width: 0; }
+  #landing .side .who {
+    font-size: 13px; font-weight: 600; color: rgba(255,255,255,.84);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #landing .side .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  #landing .side .dot.trail { margin-right: 0; margin-left: 6px; }
+  #landing .side .num {
+    font-family: var(--display);
+    font-size: clamp(56px, 12vw, 88px);
+    line-height: .86;
+    font-variant-numeric: tabular-nums;
+  }
+  #landing .side.b { text-align: right; }
+  #landing .a .num { color: #fff; }
+  #landing .b .num { color: rgba(255,255,255,.44); }
+  #landing .vs {
+    font-family: var(--display);
+    font-size: 15px; letter-spacing: .12em;
+    color: rgba(255,255,255,.4);
+  }
+  #landing .board-foot {
+    margin-top: 12px; padding-top: 11px;
+    border-top: 1px solid rgba(255,255,255,.12);
+    display: flex; flex-wrap: wrap; gap: 6px 18px;
+    font-size: 12px; color: rgba(255,255,255,.62);
+  }
+  #landing .board-foot b { color: var(--corn); font-weight: 700; }
+
+  /* ── Sections ─────────────────────────────────────────────────────────── */
+  #landing section { padding-block: 72px; }
+  #landing .band { background: var(--paper); border-block: 1px solid var(--rule); }
+
+  #landing .sec-head { max-width: 58ch; }
+  #landing .sec-head h2 {
+    font-family: var(--display);
+    font-size: clamp(30px, 4.6vw, 46px);
+    line-height: 1.02;
+    letter-spacing: .012em;
+    margin-top: 10px;
+  }
+  #landing .sec-head p { color: var(--ink-soft); margin-block: 14px 0; }
+
+  /* The night, as a sequence. Numbered because it genuinely is one — RSVP
+     happens before the game and the rating moves after it. */
+  #landing .steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 28px;
+    margin-top: 44px;
+  }
+  #landing .step { border-top: 2px solid var(--grass-400); padding-top: 14px; }
+  #landing .step .n {
+    font-family: var(--display);
+    font-size: 30px; line-height: 1;
+    color: var(--grass-400);
+  }
+  #landing .step h3 { font-size: 17px; font-weight: 700; margin-top: 4px; }
+  #landing .step p { margin-block: 6px 0; color: var(--ink-soft); font-size: 14.5px; }
+
+  /* Claim beside a screenshot. */
+  #landing .split {
+    display: grid;
+    grid-template-columns: 1fr minmax(240px, 300px);
+    gap: 56px;
+    align-items: center;
+    margin-top: 44px;
+  }
+  #landing .split.flip { grid-template-columns: minmax(240px, 300px) 1fr; }
+  #landing .split.flip .copy { order: 2; }
+  #landing .split.flip .shot { order: 1; }
+  @media (max-width: 760px) {
+    #landing .split, #landing .split.flip { grid-template-columns: 1fr; gap: 32px; }
+    #landing .split.flip .copy, #landing .split.flip .shot { order: initial; }
+  }
+
+  #landing .copy h3 {
+    font-family: var(--display);
+    font-size: clamp(26px, 3.4vw, 34px);
+    line-height: 1.05;
+    margin-top: 8px;
+  }
+  #landing .copy p { color: var(--ink-soft); margin-block: 12px 0; max-width: 54ch; }
+
+  #landing .facts { list-style: none; padding: 0; margin: 20px 0 0; display: grid; gap: 9px; }
+  #landing .facts li {
+    display: grid; grid-template-columns: 18px 1fr; gap: 10px;
+    font-size: 14.5px; color: var(--ink-soft);
+  }
+  #landing .facts li::before {
+    content: "";
+    width: 8px; height: 8px; margin-top: 8px;
+    border-radius: 2px;
+    background: var(--grass-400);
+  }
+
+  /* The handicap, as the one big number on the page. It is the figure that
+     separates this from a spreadsheet, so it gets the display face at size
+     and nothing else on the page competes with it. */
+  #landing .figure {
+    background: var(--grass-100);
+    border: 1px solid #CFE0BC;
+    border-radius: 14px;
+    padding: 22px 24px;
+    margin-top: 26px;
+    max-width: 380px;
+  }
+  #landing .figure .big {
+    font-family: var(--display);
+    font-size: 62px; line-height: .9;
+    color: var(--grass-700);
+    font-variant-numeric: tabular-nums;
+  }
+  #landing .figure .cap { font-size: 13.5px; color: var(--ink-soft); margin-top: 8px; }
+
+  /* ── The shots ────────────────────────────────────────────────────────────
+     The screenshots are the app in dark mode and the page is on canvas, so
+     each gets a dark surround and a lifted shadow: it reads as a device on
+     paper, deliberately, rather than as a dark rectangle that got lost. */
+  #landing .shot { margin: 0; }
+  #landing .device {
+    border-radius: 24px;
+    overflow: hidden;
+    background: #0B0F09;
+    border: 1px solid #2B3325;
+    box-shadow: 0 22px 44px -20px rgba(22,32,15,.58), 0 2px 6px rgba(22,32,15,.10);
+  }
+  #landing .device img, #landing .photo img { display: block; width: 100%; height: auto; }
+  #landing .photo {
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 22px 44px -22px rgba(22,32,15,.5);
+  }
+  #landing .shot figcaption {
+    margin-top: 11px;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    text-align: center;
+  }
+
+  /* ── Feature grid ─────────────────────────────────────────────────────── */
+  #landing .grid3 {
+    display: grid;
+    /* Fixed column counts rather than auto-fit: six cells in a 4-wide
+       row leaves two empty holes, which reads as something failed to load. */
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    margin-top: 44px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  @media (max-width: 900px) { #landing .grid3 { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { #landing .grid3 { grid-template-columns: 1fr; } }
+  #landing .cell { background: var(--paper); padding: 26px 24px; }
+  #landing .cell h3 { font-size: 16px; font-weight: 700; }
+  #landing .cell p { margin-block: 8px 0; color: var(--ink-soft); font-size: 14.5px; }
+  #landing .cell .tag {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--grass-500);
+  }
+
+  /* ── Close ────────────────────────────────────────────────────────────── */
+  #landing .close {
+    background: linear-gradient(160deg, var(--grass-700), var(--grass-800));
+    color: #fff;
+    text-align: center;
+  }
+  #landing .close h2 {
+    font-family: var(--display);
+    font-size: clamp(34px, 6vw, 62px);
+    line-height: 1;
+    margin-bottom: 14px;
+  }
+  #landing .close p { color: rgba(255,255,255,.82); max-width: 46ch; margin-inline: auto; }
+  #landing .close .cta-row { justify-content: center; }
+
+  #landing footer {
+    background: var(--ink);
+    color: rgba(255,255,255,.62);
+    font-size: 13px;
+    padding-block: 26px;
+  }
+  #landing footer .shell { display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; }
+  #landing footer a { color: rgba(255,255,255,.82); }
+
+  @media (prefers-reduced-motion: reduce) {
+    #landing, #landing * { animation: none !important; transition: none !important; }
+  }
   </style>
 </head>
 <body>
@@ -90,6 +548,242 @@
     <div class="mark">FCL</div>
     <div class="name">CORNHOLE LEAGUE</div>
     <div class="bar"><i></i></div>
+  </div>
+
+  <div id="landing">
+    <header class="hero">
+      <div class="shell">
+        <div class="wordmark" role="img" aria-label="FCL, Friday Cornhole League"><span aria-hidden="true">FCL</span> “Friday” Cornhole League</div>
+
+        <h1>If somebody has to <em>keep score</em>,<br>it may as well be good at it.</h1>
+
+        <p class="lede">
+          FCL turns your Cornhole game into a real league — ratings that mean
+          something, rivalries fueled, and a record of every match. Built for a
+          community league that plays regularly, and made to work for yours.
+        </p>
+
+        <div class="cta-row">
+          <a class="btn btn-corn" href="#/welcome">Start your league — free</a>
+          <a class="btn btn-ghost" href="#night" data-scroll>See how a night works</a>
+        </div>
+        <p class="hero-note">Free. No ads, no analytics — the only thing it tracks is
+          the score.</p>
+
+        <div class="board">
+          <div class="board-head">
+            <span>Friday · Week 14</span>
+            <span>Game 3 · Final</span>
+          </div>
+          <div class="board-grid">
+            <div class="side a">
+              <div class="who"><i class="dot" style="background:#E0674F"></i>Ann &amp; Doug</div>
+              <div class="num">21</div>
+            </div>
+            <div class="vs">VS</div>
+            <div class="side b">
+              <div class="who">Cal &amp; Bo<i class="dot trail" style="background:#4E8AC9"></i></div>
+              <div class="num">9</div>
+            </div>
+          </div>
+          <div class="board-foot">
+            <span>Cancellation scoring, to 21</span>
+            <span>Ann <b>+0.18</b></span>
+            <span>Doug <b>+0.16</b></span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+    <section class="band" id="night">
+      <div class="shell">
+        <div class="sec-head">
+          <p class="eyebrow">A Friday night</p>
+          <h2>Three things happen, and the app does two of them.</h2>
+          <p>
+            Nobody wants to run a league — they want to play!
+          </p>
+        </div>
+
+        <div class="steps">
+          <div class="step">
+            <div class="n">01</div>
+            <h3>Players say yes or no</h3>
+            <p>
+              Choose the time and place. People RSVP for themselves, family and
+              guests. A reminder goes out so nobody has an excuse to forget!
+            </p>
+          </div>
+          <div class="step">
+            <div class="n">02</div>
+            <h3>Tally as you throw</h3>
+            <p>
+              Enter points as you go and let the app do the math for you.
+            </p>
+          </div>
+          <div class="step">
+            <div class="n">03</div>
+            <h3>Watch the standings move</h3>
+            <p>
+              Every match shifts ratings depending on who played and the difference
+              in score. Both sides confirm the results before they count.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="shell">
+        <div class="split">
+          <div class="copy">
+            <p class="eyebrow">Score as you play</p>
+            <h3>App up, bags away.</h3>
+            <p>
+              Enter what each thrower put up. The app handles cancellation, the
+              running total and the finish. Backyards have bad reception — scores
+              save offline and sync themselves when you get signal back.
+            </p>
+            <ul class="facts">
+              <li>Singles or doubles, walk-ons included</li>
+              <li>Both teams sign off before a score counts</li>
+              <li>Every bag attributed to whoever threw it</li>
+            </ul>
+          </div>
+          <figure class="shot">
+            <div class="device"><img src="landing/live-scoring.jpg" width="640" height="1255" loading="lazy" decoding="async" alt="Live scoring: Amy and Rob 10, Brianne and Connor 15, round nine of a game to 21."></div>
+            <figcaption>Round nine. Brianne &amp; Connor by five, with Amy to throw.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="shell">
+        <div class="split flip">
+          <figure class="shot">
+            <div class="device"><img src="landing/stats.jpg" width="640" height="1255" loading="lazy" decoding="async" alt="A player's stats: season rating 5.321, lifetime 5.796, handicap plus 3.9."></div>
+            <figcaption>A season in one screen — and the handicap, in the app’s own words.</figcaption>
+          </figure>
+          <div class="copy">
+            <p class="eyebrow">Ratings that react</p>
+            <h3>A number that knows who you played.</h3>
+            <p>
+              Beating somebody better than you moves your rating further than
+              beating somebody worse. So does the margin. What you end up with is a
+              handicap — the margin you'd be expected to win by against an average
+              player — which is the figure that settles arguments.
+            </p>
+            <div class="figure">
+              <div class="big">+3.9</div>
+              <p class="cap">
+                Jonathan's handicap, after 25 games this season. Against a 5.000
+                player he is expected to win 21–17. Everyone starts at 5.000 and
+                the scale runs 0–10.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="shell">
+        <div class="sec-head">
+          <p class="eyebrow">The rest of it</p>
+          <h2>Everything a league argues about, written down.</h2>
+        </div>
+
+        <div class="grid3">
+          <div class="cell">
+            <p class="tag">Rankings</p>
+            <h3>Season and lifetime</h3>
+            <p>Two ladders, because "best this year" and "best ever" are different arguments and both get had.</p>
+          </div>
+          <div class="cell">
+            <p class="tag">Head to head</p>
+            <h3>The full series against anyone</h3>
+            <p>Record, points, rating swing and every game you've shared. Find out who's got your number.</p>
+          </div>
+          <div class="cell">
+            <p class="tag">Balanced teams</p>
+            <h3>Pairings with the closest margin</h3>
+            <p>Given who turned up, the app proposes the evenest game. No more lopsided nights because the same two always partner.</p>
+          </div>
+          <div class="cell">
+            <p class="tag">Badges &amp; awards</p>
+            <h3>Skunked Em. Giant Slayer. Hot Hand.</h3>
+            <p>Earned, not handed out — and season awards at the end: The Bag Baron, Glow Up, Ice in the Veins.</p>
+          </div>
+          <div class="cell">
+            <p class="tag">League chat</p>
+            <h3>Somewhere better than a group chat</h3>
+            <p>Results post themselves, so the trash talk lands next to the scoreline that earned it. Tuesday's argument still has Friday's evidence attached.</p>
+          </div>
+          <div class="cell">
+            <p class="tag">Private by default</p>
+            <h3>Invite-only, always</h3>
+            <p>Create a league, get a join code. Only people with it get in, and they only ever see your league.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="shell">
+        <div class="split">
+          <div class="copy">
+            <p class="eyebrow">Beyond your backyard</p>
+            <h3>And a world ranking, if you want one.</h3>
+            <p>
+              Your league's ladder is your league's. Alongside it, confirmed matches
+              feed a world ranking across every league that plays — by town, by
+              state, by country. Nobody has to be on it, and being on it changes
+              nothing about your Friday.
+            </p>
+            <ul class="facts">
+              <li>Your league's rating and the world rating never touch</li>
+              <li>Hide yourself from the public list at any time</li>
+              <li>Under-18 accounts are never listed</li>
+            </ul>
+          </div>
+          <figure class="shot">
+            <div class="device"><img src="landing/world.jpg" width="640" height="1255" loading="lazy" decoding="async" alt="The world ranking, with a player card: rating 5.291, third in the world, 24 rated games."></div>
+            <figcaption>The world ladder, and your own standing on it.</figcaption>
+          </figure>
+        </div>
+
+        <figure class="shot" style="margin-top:56px">
+            <div class="photo"><img src="landing/backyard-1400.jpg" srcset="landing/backyard-800.jpg 800w, landing/backyard-1400.jpg 1400w" sizes="(max-width: 1120px) 100vw, 1080px" width="1400" height="788" loading="lazy" decoding="async" alt="A backyard cornhole night: two boards on the grass, players mid-game, a corgi watching."></div>
+            <figcaption>A Friday, in somebody’s garden. This is the whole point.</figcaption>
+          </figure>
+      </div>
+    </section>
+
+    <section class="close">
+      <div class="shell">
+        <h2>Play Friday. Argue about it all week.</h2>
+        <p>
+          Start a league in about a minute: name it, pick a colour, share the code.
+          Everything else fills itself in as you play.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-corn" href="#/welcome">Start your league</a>
+          <a class="btn btn-ghost" href="#/">Open the app</a>
+        </div>
+        <p class="hero-note" style="text-align:center">Free, with no ads and no
+          analytics. Nothing about you is sold or followed anywhere.</p>
+      </div>
+    </section>
+    </main>
+
+    <footer>
+      <div class="shell">
+        <span>Friday Cornhole League</span>
+        <span><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="#/">Open the app</a></span>
+      </div>
+    </footer>
   </div>
 
   <script>
@@ -100,8 +794,50 @@
       s.classList.add('hide');
       setTimeout(function () { s.remove(); }, 400);
     });
-  </script>
 
-  <script src="flutter_bootstrap.js" async></script>
+    (function () {
+      var root = document.documentElement;
+      var booted = false;
+
+      // The Flutter bundle is fetched here rather than by a static tag, so a
+      // stranger reading the landing never downloads it.
+      function bootApp() {
+        if (booted) return;
+        booted = true;
+        root.setAttribute('data-face', 'app');
+        window.scrollTo(0, 0);
+        var s = document.createElement('script');
+        s.src = 'flutter_bootstrap.js';
+        s.async = true;
+        document.body.appendChild(s);
+      }
+
+      if (root.getAttribute('data-face') === 'app') {
+        bootApp();
+        return;
+      }
+
+      // The landing's own links into the app are plain hash routes (#/welcome,
+      // #/), so they work with a middle-click and read correctly in a status
+      // bar. Following one in this tab changes only the hash, which reloads
+      // nothing — so switch faces and start the app in place. go_router reads
+      // the hash on start and lands on the right screen.
+      window.addEventListener('hashchange', function () {
+        if (location.hash.indexOf('#/') === 0) bootApp();
+      });
+
+      // In-page jumps. With <base href="/"> a bare "#night" resolves against
+      // the site root, which is the same page only when there is no query;
+      // under ?home it would navigate and drop the flag.
+      document.querySelectorAll('#landing a[data-scroll]').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+          var target = document.getElementById(a.getAttribute('href').slice(1));
+          if (!target) return;
+          e.preventDefault();
+          target.scrollIntoView({ block: 'start' });
+        });
+      });
+    })();
+  </script>
 </body>
 </html>
